@@ -15,22 +15,16 @@ interface Props {
 
 const TYPE_CONFIG = {
   shell: {
-    icon: "▸",
-    pill: "bg-zinc-500/15 text-zinc-400",
+    badge: "bg-[#1a1a1a] text-[#888]",
     label: "Shell",
-    border: "border-white/[0.06]",
   },
   claude: {
-    icon: "◆",
-    pill: "bg-orange-500/15 text-orange-400",
+    badge: "bg-[#1a1a1a] text-[#f5a623]",
     label: "Claude",
-    border: "border-orange-500/10",
   },
   codex: {
-    icon: "◈",
-    pill: "bg-violet-500/15 text-violet-400",
+    badge: "bg-[#1a1a1a] text-[#7928ca]",
     label: "Codex",
-    border: "border-violet-500/10",
   },
 };
 
@@ -76,32 +70,31 @@ export function TerminalTile({
 
     const xterm = new Terminal({
       theme: {
-        background: "#08080c",
-        foreground: "#d4d4d8",
-        cursor: "#a1a1aa",
-        cursorAccent: "#08080c",
-        selectionBackground: "rgba(99, 102, 241, 0.3)",
-        black: "#18181b",
-        red: "#f87171",
-        green: "#4ade80",
-        yellow: "#facc15",
-        blue: "#60a5fa",
-        magenta: "#c084fc",
-        cyan: "#22d3ee",
-        white: "#e4e4e7",
-        brightBlack: "#3f3f46",
-        brightRed: "#fca5a5",
-        brightGreen: "#86efac",
-        brightYellow: "#fde047",
-        brightBlue: "#93c5fd",
-        brightMagenta: "#d8b4fe",
-        brightCyan: "#67e8f9",
+        background: "#0a0a0a",
+        foreground: "#ededed",
+        cursor: "#ededed",
+        cursorAccent: "#0a0a0a",
+        selectionBackground: "rgba(0, 112, 243, 0.3)",
+        black: "#111111",
+        red: "#ee0000",
+        green: "#0070f3",
+        yellow: "#f5a623",
+        blue: "#0070f3",
+        magenta: "#7928ca",
+        cyan: "#79ffe1",
+        white: "#ededed",
+        brightBlack: "#444444",
+        brightRed: "#ff4444",
+        brightGreen: "#50e3c2",
+        brightYellow: "#f7b955",
+        brightBlue: "#3291ff",
+        brightMagenta: "#a855f7",
+        brightCyan: "#79ffe1",
         brightWhite: "#fafafa",
       },
-      fontFamily:
-        "'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace",
+      fontFamily: '"Geist Mono", "SF Mono", "JetBrains Mono", Menlo, monospace',
       fontSize: 13,
-      lineHeight: 1.35,
+      lineHeight: 1.4,
       cursorBlink: true,
       cursorStyle: "bar",
       cursorWidth: 2,
@@ -126,17 +119,14 @@ export function TerminalTile({
         ptyId = id;
         updateTerminalPtyId(projectId, worktreeId, terminal.id, id);
 
-        // Sync xterm input to PTY
         xterm.onData((data) => {
           window.termcanvas.terminal.input(id, data);
         });
 
-        // Sync resize events to PTY
         xterm.onResize(({ cols, rows }) => {
           window.termcanvas.terminal.resize(id, cols, rows);
         });
 
-        // Fit now and sync the actual size to PTY immediately
         fitAddon.fit();
         const { cols, rows } = xterm;
         window.termcanvas.terminal.resize(id, cols, rows);
@@ -210,7 +200,7 @@ export function TerminalTile({
 
   return (
     <div
-      className={`relative terminal-tile rounded-lg ${config.border} border bg-[#08080c] overflow-hidden flex flex-col`}
+      className="relative terminal-tile rounded-md border border-[#333] bg-[#0a0a0a] overflow-hidden flex flex-col"
       style={{
         width: terminal.size.w,
         height: terminal.minimized ? "auto" : terminal.size.h,
@@ -218,14 +208,17 @@ export function TerminalTile({
       onClick={() => setFocusedTerminal(terminal.id)}
     >
       {/* Title bar */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-b from-white/[0.04] to-transparent select-none shrink-0 border-b border-white/[0.04]">
-        <span className={`type-pill ${config.pill}`}>{config.label}</span>
-        <span className="text-[11px] text-zinc-500 truncate flex-1 font-mono">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#111] select-none shrink-0 border-b border-[#333]">
+        <span className={`type-badge ${config.badge}`}>{config.label}</span>
+        <span
+          className="text-[11px] text-[#666] truncate flex-1"
+          style={{ fontFamily: '"Geist Mono", monospace' }}
+        >
           {terminal.title}
         </span>
         <div className="flex items-center gap-0.5">
           <button
-            className="text-zinc-600 hover:text-zinc-300 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            className="text-[#444] hover:text-[#ededed] transition-colors p-1 rounded hover:bg-[#1a1a1a]"
             onClick={(e) => {
               e.stopPropagation();
               toggleTerminalMinimize(projectId, worktreeId, terminal.id);
@@ -253,7 +246,7 @@ export function TerminalTile({
             </svg>
           </button>
           <button
-            className="text-zinc-600 hover:text-red-400 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            className="text-[#444] hover:text-[#ee0000] transition-colors p-1 rounded hover:bg-[#1a1a1a]"
             onClick={(e) => {
               e.stopPropagation();
               handleClose();
@@ -286,7 +279,7 @@ export function TerminalTile({
             width="12"
             height="12"
             viewBox="0 0 12 12"
-            className="text-zinc-600"
+            className="text-[#444]"
           >
             <path
               d="M11 11L6 11M11 11L11 6"
