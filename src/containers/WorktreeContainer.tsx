@@ -30,7 +30,7 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
 
   return (
     <div
-      className="relative glass-subtle rounded-xl glow-green"
+      className="relative panel-inner"
       style={{
         width: worktree.size.w > 0 ? worktree.size.w : undefined,
         minWidth: 200,
@@ -38,14 +38,17 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
       }}
     >
       {/* Title bar */}
-      <div className="flex items-center gap-2 px-3 py-2 select-none border-b border-white/[0.04]">
-        <span className="type-pill bg-green-500/15 text-green-400">WT</span>
-        <span className="text-xs text-zinc-300 truncate font-medium">
+      <div className="flex items-center gap-2 px-3 py-2 select-none border-b border-[#333]">
+        <span className="type-badge bg-[#111] text-[#888]">WT</span>
+        <span
+          className="text-xs text-[#ededed] truncate font-medium"
+          style={{ fontFamily: '"Geist Mono", monospace' }}
+        >
           {worktree.name}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <button
-            className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            className="text-[#666] hover:text-[#ededed] transition-colors p-1 rounded hover:bg-[#111]"
             onClick={() => toggleWorktreeCollapse(projectId, worktree.id)}
           >
             <svg
@@ -65,7 +68,7 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
             </svg>
           </button>
           <button
-            className="text-zinc-500 hover:text-green-400 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            className="text-[#666] hover:text-[#ededed] transition-colors p-1 rounded hover:bg-[#111]"
             onClick={handleNewTerminal}
             title="New terminal"
           >
@@ -95,7 +98,7 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
           ))}
           {worktree.terminals.length === 0 && (
             <button
-              className="w-full py-8 rounded-lg border border-dashed border-white/[0.06] text-zinc-600 text-xs hover:border-white/[0.12] hover:text-zinc-400 transition-all"
+              className="w-full py-8 rounded-md border border-dashed border-[#333] text-[#666] text-xs hover:border-[#444] hover:text-[#888] transition-all"
               onClick={handleNewTerminal}
             >
               + New Terminal
@@ -109,12 +112,7 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
         className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
         onMouseDown={handleResize}
       >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          className="text-zinc-600"
-        >
+        <svg width="12" height="12" viewBox="0 0 12 12" className="text-[#444]">
           <path
             d="M11 11L6 11M11 11L11 6"
             stroke="currentColor"
