@@ -1,18 +1,43 @@
 import { useCallback } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useProjectStore, generateId } from "../stores/projectStore";
+import { useNotificationStore } from "../stores/notificationStore";
+
+function isElectron(): boolean {
+  return typeof window !== "undefined" && !!window.termcanvas;
+}
 
 export function Toolbar() {
   const { viewport, setViewport, resetViewport } = useCanvasStore();
   const { addProject } = useProjectStore();
+  const { notify } = useNotificationStore();
 
   const handleAddProject = useCallback(async () => {
-    const dirPath = await window.termcanvas.project.selectDirectory();
-    if (!dirPath) return;
+    if (!isElectron()) {
+      notify("error", "Not running in Electron. Cannot access native APIs.");
+      return;
+    }
 
-    const info = await window.termcanvas.project.scan(dirPath);
+    let dirPath: string | null;
+    try {
+      dirPath = await window.termcanvas.project.selectDirectory();
+    } catch (err) {
+      notify("error", `Failed to open directory picker: ${err}`);
+      return;
+    }
+
+    if (!dirPath) return; // user cancelled, not an error
+
+    let info: Awaited<ReturnType<typeof window.termcanvas.project.scan>>;
+    try {
+      info = await window.termcanvas.project.scan(dirPath);
+    } catch (err) {
+      notify("error", `Failed to scan project: ${err}`);
+      return;
+    }
+
     if (!info) {
-      alert("Not a git repository");
+      notify("warn", `"${dirPath}" is not a git repository.`);
       return;
     }
 
@@ -31,7 +56,12 @@ export function Toolbar() {
         terminals: [],
       })),
     });
-  }, [addProject, viewport]);
+
+    notify(
+      "info",
+      `Added project "${info.name}" with ${info.worktrees.length} worktree(s).`,
+    );
+  }, [addProject, viewport, notify]);
 
   return (
     <div className="fixed top-0 left-0 right-0 h-10 bg-zinc-900/90 backdrop-blur border-b border-zinc-800 flex items-center px-3 gap-3 z-50">

@@ -3,6 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import type { TerminalData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
+import { useNotificationStore } from "../stores/notificationStore";
 
 interface Props {
   projectId: string;
@@ -29,9 +30,16 @@ export function TerminalTile({
     setFocusedTerminal,
   } = useProjectStore();
 
+  const { notify } = useNotificationStore();
+
   // Initialize xterm and PTY
   useEffect(() => {
     if (!containerRef.current || terminal.minimized) return;
+
+    if (!window.termcanvas) {
+      notify("error", "Terminal API not available. Not running in Electron.");
+      return;
+    }
 
     const xterm = new Terminal({
       theme: {
@@ -48,31 +56,34 @@ export function TerminalTile({
     xterm.loadAddon(fitAddon);
     xterm.open(containerRef.current);
 
-    // Fit after a frame to ensure dimensions are correct
     requestAnimationFrame(() => fitAddon.fit());
 
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
 
-    // Create PTY
     let ptyId: number | null = null;
 
-    window.termcanvas.terminal.create({ cwd: worktreePath }).then((id) => {
-      ptyId = id;
-      updateTerminalPtyId(projectId, worktreeId, terminal.id, id);
+    window.termcanvas.terminal
+      .create({ cwd: worktreePath })
+      .then((id) => {
+        ptyId = id;
+        updateTerminalPtyId(projectId, worktreeId, terminal.id, id);
 
-      // Send xterm input to PTY
-      xterm.onData((data) => {
-        window.termcanvas.terminal.input(id, data);
+        xterm.onData((data) => {
+          window.termcanvas.terminal.input(id, data);
+        });
+
+        xterm.onResize(({ cols, rows }) => {
+          window.termcanvas.terminal.resize(id, cols, rows);
+        });
+      })
+      .catch((err) => {
+        notify("error", `Failed to create PTY for "${terminal.title}": ${err}`);
+        xterm.write(
+          `\r\n\x1b[31m[Error] Failed to create terminal: ${err}\x1b[0m\r\n`,
+        );
       });
 
-      // Resize PTY when xterm resizes
-      xterm.onResize(({ cols, rows }) => {
-        window.termcanvas.terminal.resize(id, cols, rows);
-      });
-    });
-
-    // Receive PTY output
     const removeOutput = window.termcanvas.terminal.onOutput(
       (id: number, data: string) => {
         if (id === ptyId) {
@@ -81,16 +92,20 @@ export function TerminalTile({
       },
     );
 
-    // Handle PTY exit
     const removeExit = window.termcanvas.terminal.onExit(
-      (id: number, _exitCode: number) => {
+      (id: number, exitCode: number) => {
         if (id === ptyId) {
-          xterm.write("\r\n[Process exited]\r\n");
+          xterm.write(
+            `\r\n\x1b[33m[Process exited with code ${exitCode}]\x1b[0m\r\n`,
+          );
+          notify(
+            exitCode === 0 ? "info" : "warn",
+            `Terminal "${terminal.title}" exited with code ${exitCode}.`,
+          );
         }
       },
     );
 
-    // Observe container resize
     const resizeObserver = new ResizeObserver(() => {
       fitAddon.fit();
     });
@@ -102,7 +117,9 @@ export function TerminalTile({
       removeExit();
       xterm.dispose();
       if (ptyId !== null) {
-        window.termcanvas.terminal.destroy(ptyId);
+        window.termcanvas.terminal.destroy(ptyId).catch((err) => {
+          console.error(`[TermCanvas] Failed to destroy PTY ${ptyId}:`, err);
+        });
       }
     };
 
@@ -112,11 +129,13 @@ export function TerminalTile({
     };
   }, [
     terminal.id,
+    terminal.title,
     terminal.minimized,
     projectId,
     worktreeId,
     worktreePath,
     updateTerminalPtyId,
+    notify,
   ]);
 
   const handleClose = useCallback(() => {
