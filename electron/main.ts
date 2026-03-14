@@ -23,7 +23,7 @@ function createWindow() {
       nodeIntegration: false,
     },
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 12, y: 12 },
+    trafficLightPosition: { x: 12, y: 16 },
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
