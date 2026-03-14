@@ -33,6 +33,8 @@ export function ProjectContainer({ project }: Props) {
       (w: number, h: number) => updateProjectSize(project.id, w, h),
       [project.id, updateProjectSize],
     ),
+    340,
+    120,
   );
 
   return (
@@ -42,7 +44,7 @@ export function ProjectContainer({ project }: Props) {
         left: project.position.x,
         top: project.position.y,
         width: project.size.w > 0 ? project.size.w : undefined,
-        minWidth: 240,
+        minWidth: 340,
         height: project.size.h > 0 ? project.size.h : undefined,
       }}
     >

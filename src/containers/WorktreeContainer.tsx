@@ -26,6 +26,8 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
         updateWorktreeSize(projectId, worktree.id, w, h),
       [projectId, worktree.id, updateWorktreeSize],
     ),
+    300,
+    100,
   );
 
   return (
@@ -33,7 +35,7 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
       className="relative panel-inner"
       style={{
         width: worktree.size.w > 0 ? worktree.size.w : undefined,
-        minWidth: 200,
+        minWidth: 300,
         height: worktree.size.h > 0 ? worktree.size.h : undefined,
       }}
     >

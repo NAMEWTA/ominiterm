@@ -58,6 +58,8 @@ export function TerminalTile({
         updateTerminalSize(projectId, worktreeId, terminal.id, w, h),
       [projectId, worktreeId, terminal.id, updateTerminalSize],
     ),
+    260,
+    80,
   );
 
   useEffect(() => {
