@@ -48,6 +48,7 @@ export function Toolbar() {
       position: { x: 100 - viewport.x, y: 100 - viewport.y },
       size: { w: 620, h: 0 },
       collapsed: false,
+      zIndex: 0,
       worktrees: info.worktrees.map((wt) => ({
         id: generateId(),
         name: wt.branch,

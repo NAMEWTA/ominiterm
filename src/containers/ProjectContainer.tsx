@@ -15,6 +15,7 @@ export function ProjectContainer({ project }: Props) {
     updateProjectSize,
     toggleProjectCollapse,
     removeProject,
+    bringToFront,
   } = useProjectStore();
 
   const handleDrag = useDrag(
@@ -46,7 +47,9 @@ export function ProjectContainer({ project }: Props) {
         width: project.size.w > 0 ? project.size.w : undefined,
         minWidth: 340,
         height: project.size.h > 0 ? project.size.h : undefined,
+        zIndex: project.zIndex ?? 0,
       }}
+      onMouseDown={() => bringToFront(project.id)}
     >
       {/* Title bar */}
       <div

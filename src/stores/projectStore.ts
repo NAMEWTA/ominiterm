@@ -14,6 +14,7 @@ interface ProjectStore {
   updateProjectPosition: (projectId: string, x: number, y: number) => void;
   updateProjectSize: (projectId: string, w: number, h: number) => void;
   toggleProjectCollapse: (projectId: string) => void;
+  bringToFront: (projectId: string) => void;
 
   updateWorktreePosition: (
     projectId: string,
@@ -147,6 +148,16 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         p.id !== projectId ? p : { ...p, collapsed: !p.collapsed },
       ),
     })),
+
+  bringToFront: (projectId) =>
+    set((state) => {
+      const maxZ = Math.max(0, ...state.projects.map((p) => p.zIndex ?? 0));
+      return {
+        projects: state.projects.map((p) =>
+          p.id !== projectId ? p : { ...p, zIndex: maxZ + 1 },
+        ),
+      };
+    }),
 
   updateWorktreePosition: (projectId, worktreeId, x, y) =>
     set((state) => ({

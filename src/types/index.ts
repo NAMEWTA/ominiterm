@@ -45,6 +45,7 @@ export interface ProjectData {
   position: Position;
   size: Size;
   collapsed: boolean;
+  zIndex: number;
   worktrees: WorktreeData[];
 }
 
