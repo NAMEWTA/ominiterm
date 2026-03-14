@@ -1,4 +1,5 @@
 import { useRef, useCallback } from "react";
+import { useCanvasStore } from "../stores/canvasStore";
 
 interface ResizeState {
   startX: number;
@@ -14,13 +15,19 @@ export function useResize(
   w: number,
   h: number,
   onResize: (w: number, h: number) => void,
+  minW: number = MIN_W,
+  minH: number = MIN_H,
 ) {
   const resizeRef = useRef<ResizeState | null>(null);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      if (resizeRef.current) return; // Prevent overlapping resize sessions
       e.stopPropagation();
       e.preventDefault();
+
+      const scale = useCanvasStore.getState().viewport.scale;
+
       resizeRef.current = {
         startX: e.clientX,
         startY: e.clientY,
@@ -30,14 +37,10 @@ export function useResize(
 
       const handleMove = (ev: MouseEvent) => {
         if (!resizeRef.current) return;
-        const newW = Math.max(
-          MIN_W,
-          resizeRef.current.origW + ev.clientX - resizeRef.current.startX,
-        );
-        const newH = Math.max(
-          MIN_H,
-          resizeRef.current.origH + ev.clientY - resizeRef.current.startY,
-        );
+        const deltaX = (ev.clientX - resizeRef.current.startX) / scale;
+        const deltaY = (ev.clientY - resizeRef.current.startY) / scale;
+        const newW = Math.max(minW, resizeRef.current.origW + deltaX);
+        const newH = Math.max(minH, resizeRef.current.origH + deltaY);
         onResize(newW, newH);
       };
 
@@ -50,7 +53,7 @@ export function useResize(
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [w, h, onResize],
+    [w, h, onResize, minW, minH],
   );
 
   return handleMouseDown;

@@ -1,4 +1,5 @@
 import { useRef, useCallback } from "react";
+import { useCanvasStore } from "../stores/canvasStore";
 
 interface DragState {
   startX: number;
@@ -19,6 +20,9 @@ export function useDrag(
       if (e.button !== 0) return;
       e.stopPropagation();
       e.preventDefault();
+
+      const scale = useCanvasStore.getState().viewport.scale;
+
       dragRef.current = {
         startX: e.clientX,
         startY: e.clientY,
@@ -28,10 +32,9 @@ export function useDrag(
 
       const handleMove = (ev: MouseEvent) => {
         if (!dragRef.current) return;
-        onMove(
-          dragRef.current.origX + ev.clientX - dragRef.current.startX,
-          dragRef.current.origY + ev.clientY - dragRef.current.startY,
-        );
+        const deltaX = (ev.clientX - dragRef.current.startX) / scale;
+        const deltaY = (ev.clientY - dragRef.current.startY) / scale;
+        onMove(dragRef.current.origX + deltaX, dragRef.current.origY + deltaY);
       };
 
       const handleUp = () => {
