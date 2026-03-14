@@ -68,49 +68,71 @@ export function Toolbar() {
   const zoomPercent = Math.round(viewport.scale * 100);
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-11 glass-toolbar flex items-center px-4 gap-4 z-50">
+    <div className="fixed top-0 left-0 right-0 h-11 toolbar flex items-center px-4 gap-4 z-50">
       {/* App branding */}
       <div className="flex items-center gap-2">
-        <div className="w-3 h-3 rounded-sm bg-gradient-to-br from-blue-400 to-violet-500" />
-        <span className="text-[13px] font-semibold tracking-tight text-zinc-200">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect
+            x="1"
+            y="1"
+            width="14"
+            height="14"
+            rx="3"
+            stroke="#ededed"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M5 8L7 10L11 6"
+            stroke="#ededed"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="text-[13px] font-medium tracking-tight text-[#ededed]">
           TermCanvas
         </span>
       </div>
 
-      <div className="h-4 w-px bg-white/[0.06]" />
+      <div className="h-4 w-px bg-[#333]" />
 
       {/* Actions */}
-      <button className="btn-glass" onClick={handleAddProject}>
-        + Add Project
+      <button className="btn-geist" onClick={handleAddProject}>
+        Add Project
       </button>
 
       {/* Spacer */}
       <div className="flex-1" />
 
       {/* Zoom controls */}
-      <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg border border-white/[0.06] px-1">
+      <div className="flex items-center gap-0 border border-[#333] rounded-md overflow-hidden">
         <button
-          className="text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 text-xs"
+          className="text-[#888] hover:text-[#ededed] hover:bg-[#1a1a1a] transition-colors px-2.5 py-1 text-xs"
           onClick={() =>
             setViewport({ scale: Math.max(0.1, viewport.scale * 0.9) })
           }
         >
-          −
+          -
         </button>
-        <span className="text-[11px] text-zinc-500 w-10 text-center tabular-nums font-mono">
+        <div className="w-px h-5 bg-[#333]" />
+        <span
+          className="text-[12px] text-[#888] w-12 text-center tabular-nums px-1 py-1"
+          style={{ fontFamily: '"Geist Mono", monospace' }}
+        >
           {zoomPercent}%
         </span>
+        <div className="w-px h-5 bg-[#333]" />
         <button
-          className="text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 text-xs"
+          className="text-[#888] hover:text-[#ededed] hover:bg-[#1a1a1a] transition-colors px-2.5 py-1 text-xs"
           onClick={() =>
             setViewport({ scale: Math.min(2, viewport.scale * 1.1) })
           }
         >
           +
         </button>
-        <div className="h-3 w-px bg-white/[0.06]" />
+        <div className="w-px h-5 bg-[#333]" />
         <button
-          className="text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 text-[11px]"
+          className="text-[#888] hover:text-[#ededed] hover:bg-[#1a1a1a] transition-colors px-2.5 py-1 text-[11px]"
           onClick={resetViewport}
         >
           Reset
