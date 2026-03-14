@@ -37,7 +37,7 @@ export function ProjectContainer({ project }: Props) {
 
   return (
     <div
-      className="absolute glass rounded-2xl glow-blue"
+      className="absolute panel"
       style={{
         left: project.position.x,
         top: project.position.y,
@@ -48,18 +48,17 @@ export function ProjectContainer({ project }: Props) {
     >
       {/* Title bar */}
       <div
-        className="flex items-center gap-2.5 px-4 py-2.5 cursor-grab active:cursor-grabbing select-none border-b border-white/[0.06]"
+        className="flex items-center gap-2.5 px-4 py-2.5 cursor-grab active:cursor-grabbing select-none border-b border-[#333]"
         onMouseDown={handleDrag}
         onDoubleClick={() => toggleProjectCollapse(project.id)}
       >
-        <div className="drag-dots shrink-0 opacity-40" />
-        <span className="type-pill bg-blue-500/20 text-blue-300">Project</span>
-        <span className="text-[13px] font-medium text-zinc-200 truncate">
+        <span className="type-badge bg-[#1a1a1a] text-[#0070f3]">Project</span>
+        <span className="text-[13px] font-medium text-[#ededed] truncate">
           {project.name}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <button
-            className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            className="text-[#666] hover:text-[#ededed] transition-colors p-1 rounded hover:bg-[#1a1a1a]"
             onClick={(e) => {
               e.stopPropagation();
               toggleProjectCollapse(project.id);
@@ -82,7 +81,7 @@ export function ProjectContainer({ project }: Props) {
             </svg>
           </button>
           <button
-            className="text-zinc-600 hover:text-red-400 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            className="text-[#444] hover:text-[#ee0000] transition-colors p-1 rounded hover:bg-[#1a1a1a]"
             onClick={(e) => {
               e.stopPropagation();
               removeProject(project.id);
@@ -118,12 +117,7 @@ export function ProjectContainer({ project }: Props) {
         className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
         onMouseDown={handleResize}
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          className="text-zinc-500"
-        >
+        <svg width="16" height="16" viewBox="0 0 16 16" className="text-[#444]">
           <path
             d="M14 14L8 14M14 14L14 8M14 14L6 6"
             stroke="currentColor"
