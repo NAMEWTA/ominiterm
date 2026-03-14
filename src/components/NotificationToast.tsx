@@ -2,22 +2,22 @@ import { useNotificationStore } from "../stores/notificationStore";
 
 const typeConfig = {
   error: {
-    bg: "bg-red-950/80 border-red-500/20",
-    text: "text-red-300",
+    border: "border-[#ee0000]/30",
+    text: "text-[#ff4444]",
     label: "Error",
-    dot: "bg-red-400",
+    dot: "bg-[#ee0000]",
   },
   warn: {
-    bg: "bg-amber-950/80 border-amber-500/20",
-    text: "text-amber-300",
+    border: "border-[#f5a623]/30",
+    text: "text-[#f5a623]",
     label: "Warning",
-    dot: "bg-amber-400",
+    dot: "bg-[#f5a623]",
   },
   info: {
-    bg: "bg-zinc-900/80 border-zinc-500/20",
-    text: "text-zinc-300",
+    border: "border-[#333]",
+    text: "text-[#888]",
     label: "Info",
-    dot: "bg-zinc-400",
+    dot: "bg-[#666]",
   },
 };
 
@@ -33,23 +33,24 @@ export function NotificationToast() {
         return (
           <div
             key={n.id}
-            className={`rounded-xl border px-4 py-3 backdrop-blur-xl shadow-2xl text-sm flex items-start gap-3 animate-[slideIn_0.2s_ease-out] ${config.bg}`}
+            className={`rounded-lg border px-4 py-3 bg-[#111] shadow-lg text-sm flex items-start gap-3 animate-[slideIn_0.2s_ease-out] ${config.border}`}
           >
             <div
               className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${config.dot}`}
             />
             <div className="flex-1 min-w-0">
               <div
-                className={`text-[10px] font-semibold uppercase tracking-wider mb-0.5 opacity-70 ${config.text}`}
+                className={`text-[10px] font-medium uppercase tracking-wider mb-0.5 opacity-70 ${config.text}`}
+                style={{ fontFamily: '"Geist Mono", monospace' }}
               >
                 {config.label}
               </div>
-              <span className={`text-[13px] break-words ${config.text}`}>
+              <span className="text-[13px] break-words text-[#ededed]">
                 {n.message}
               </span>
             </div>
             <button
-              className="shrink-0 opacity-40 hover:opacity-100 transition-opacity text-zinc-300 p-0.5"
+              className="shrink-0 text-[#444] hover:text-[#ededed] transition-colors p-0.5"
               onClick={() => dismiss(n.id)}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
