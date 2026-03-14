@@ -1,102 +1,117 @@
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
 
-/* Canvas dot grid background */
+/* Geist Sans - Variable */
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2")
+    format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Geist Mono - Variable */
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2")
+    format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Base */
+:root {
+  --geist-background: #0a0a0a;
+  --geist-foreground: #ededed;
+  --geist-gray-100: #111111;
+  --geist-gray-200: #1a1a1a;
+  --geist-gray-300: #333333;
+  --geist-gray-400: #444444;
+  --geist-gray-500: #666666;
+  --geist-gray-600: #888888;
+  --geist-gray-700: #999999;
+  --geist-gray-800: #ededed;
+  --geist-gray-900: #fafafa;
+  --geist-blue: #0070f3;
+  --geist-red: #ee0000;
+  --geist-amber: #f5a623;
+  --geist-green: #0070f3;
+  --geist-radius-sm: 6px;
+  --geist-radius-md: 8px;
+  --geist-radius-lg: 12px;
+}
+
+body {
+  font-family:
+    "Geist Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Canvas background */
 .canvas-bg {
-  background-color: #0a0a0f;
-  background-image: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.03) 1px,
-    transparent 1px
-  );
-  background-size: 24px 24px;
+  background-color: var(--geist-background);
 }
 
-/* Glassmorphism panels */
-.glass {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    rgba(255, 255, 255, 0.02) 100%
-  );
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+/* Panels */
+.panel {
+  background: var(--geist-gray-100);
+  border: 1px solid var(--geist-gray-300);
+  border-radius: var(--geist-radius-lg);
 }
 
-.glass-subtle {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.01) 100%
-  );
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+.panel-inner {
+  background: var(--geist-gray-200);
+  border: 1px solid var(--geist-gray-300);
+  border-radius: var(--geist-radius-md);
 }
 
-.glass-toolbar {
-  background: linear-gradient(
-    180deg,
-    rgba(20, 20, 30, 0.85) 0%,
-    rgba(15, 15, 25, 0.9) 100%
-  );
-  backdrop-filter: blur(20px) saturate(1.2);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+/* Toolbar */
+.toolbar {
+  background: #000000;
+  border-bottom: 1px solid var(--geist-gray-300);
 }
 
-/* Accent glow */
-.glow-blue {
-  box-shadow:
-    0 0 0 1px rgba(59, 130, 246, 0.3),
-    0 0 20px rgba(59, 130, 246, 0.1);
+/* Buttons */
+.btn-geist {
+  background: var(--geist-background);
+  border: 1px solid var(--geist-gray-300);
+  border-radius: var(--geist-radius-sm);
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--geist-gray-800);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  font-family: inherit;
 }
 
-.glow-green {
-  box-shadow:
-    0 0 0 1px rgba(34, 197, 94, 0.2),
-    0 0 12px rgba(34, 197, 94, 0.05);
+.btn-geist:hover {
+  background: var(--geist-gray-200);
+  border-color: var(--geist-gray-400);
+  color: var(--geist-gray-900);
 }
 
-/* Terminal tile hover */
+.btn-geist:active {
+  background: var(--geist-gray-100);
+  transform: scale(0.98);
+}
+
+/* Terminal tile */
 .terminal-tile {
   transition:
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .terminal-tile:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-}
-
-/* Smooth button interactions */
-.btn-glass {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  transition: all 0.15s ease;
-  cursor: pointer;
-}
-
-.btn-glass:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.btn-glass:active {
-  background: rgba(255, 255, 255, 0.04);
-  transform: scale(0.97);
+  border-color: var(--geist-gray-400);
 }
 
 /* Scrollbar */
@@ -110,32 +125,20 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--geist-gray-300);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--geist-gray-400);
 }
 
-/* Title bar drag handle dots */
-.drag-dots {
-  background-image: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.2) 1px,
-    transparent 1px
-  );
-  background-size: 6px 6px;
-  width: 12px;
-  height: 18px;
-}
-
-/* Type indicator pills */
-.type-pill {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+/* Type badge */
+.type-badge {
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
   padding: 1px 6px;
   border-radius: 4px;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }

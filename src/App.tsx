@@ -4,7 +4,7 @@ import { NotificationToast } from "./components/NotificationToast";
 
 export function App() {
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#0a0a0f] text-zinc-100">
+    <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a] text-[#ededed]">
       <Toolbar />
       <Canvas />
       <NotificationToast />
