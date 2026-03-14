@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import type { TerminalData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { useNotificationStore } from "../stores/notificationStore";
+import { useResize } from "../hooks/useResize";
 
 interface Props {
   projectId: string;
@@ -48,11 +49,22 @@ export function TerminalTile({
     removeTerminal,
     toggleTerminalMinimize,
     updateTerminalPtyId,
+    updateTerminalSize,
     setFocusedTerminal,
   } = useProjectStore();
 
   const { notify } = useNotificationStore();
   const config = TYPE_CONFIG[terminal.type];
+
+  const handleResize = useResize(
+    terminal.size.w,
+    terminal.size.h,
+    useCallback(
+      (w: number, h: number) =>
+        updateTerminalSize(projectId, worktreeId, terminal.id, w, h),
+      [projectId, worktreeId, terminal.id, updateTerminalSize],
+    ),
+  );
 
   useEffect(() => {
     if (!containerRef.current || terminal.minimized) return;
@@ -198,7 +210,7 @@ export function TerminalTile({
 
   return (
     <div
-      className={`terminal-tile rounded-lg ${config.border} border bg-[#08080c] overflow-hidden flex flex-col`}
+      className={`relative terminal-tile rounded-lg ${config.border} border bg-[#08080c] overflow-hidden flex flex-col`}
       style={{
         width: terminal.size.w,
         height: terminal.minimized ? "auto" : terminal.size.h,
@@ -262,6 +274,28 @@ export function TerminalTile({
       {/* Terminal content */}
       {!terminal.minimized && (
         <div ref={containerRef} className="flex-1 min-h-0 p-1" />
+      )}
+
+      {/* Resize handle */}
+      {!terminal.minimized && (
+        <div
+          className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
+          onMouseDown={handleResize}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            className="text-zinc-600"
+          >
+            <path
+              d="M11 11L6 11M11 11L11 6"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
       )}
     </div>
   );

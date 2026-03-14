@@ -33,6 +33,7 @@ export interface WorktreeData {
   name: string;
   path: string;
   position: Position;
+  size: Size;
   collapsed: boolean;
   terminals: TerminalData[];
 }
@@ -42,6 +43,7 @@ export interface ProjectData {
   name: string;
   path: string;
   position: Position;
+  size: Size;
   collapsed: boolean;
   worktrees: WorktreeData[];
 }

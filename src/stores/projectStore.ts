@@ -12,6 +12,7 @@ interface ProjectStore {
   addProject: (project: ProjectData) => void;
   removeProject: (projectId: string) => void;
   updateProjectPosition: (projectId: string, x: number, y: number) => void;
+  updateProjectSize: (projectId: string, w: number, h: number) => void;
   toggleProjectCollapse: (projectId: string) => void;
 
   updateWorktreePosition: (
@@ -19,6 +20,12 @@ interface ProjectStore {
     worktreeId: string,
     x: number,
     y: number,
+  ) => void;
+  updateWorktreeSize: (
+    projectId: string,
+    worktreeId: string,
+    w: number,
+    h: number,
   ) => void;
   toggleWorktreeCollapse: (projectId: string, worktreeId: string) => void;
 
@@ -127,6 +134,13 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       ),
     })),
 
+  updateProjectSize: (projectId, w, h) =>
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id !== projectId ? p : { ...p, size: { w, h } },
+      ),
+    })),
+
   toggleProjectCollapse: (projectId) =>
     set((state) => ({
       projects: state.projects.map((p) =>
@@ -143,6 +157,20 @@ export const useProjectStore = create<ProjectStore>((set) => ({
               ...p,
               worktrees: p.worktrees.map((w) =>
                 w.id !== worktreeId ? w : { ...w, position: { x, y } },
+              ),
+            },
+      ),
+    })),
+
+  updateWorktreeSize: (projectId, worktreeId, w, h) =>
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id !== projectId
+          ? p
+          : {
+              ...p,
+              worktrees: p.worktrees.map((wt) =>
+                wt.id !== worktreeId ? wt : { ...wt, size: { w, h } },
               ),
             },
       ),

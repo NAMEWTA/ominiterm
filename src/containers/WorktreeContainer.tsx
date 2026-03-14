@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { WorktreeData } from "../types";
 import { useProjectStore, createTerminal } from "../stores/projectStore";
 import { TerminalTile } from "../terminal/TerminalTile";
+import { useResize } from "../hooks/useResize";
 
 interface Props {
   projectId: string;
@@ -9,15 +10,33 @@ interface Props {
 }
 
 export function WorktreeContainer({ projectId, worktree }: Props) {
-  const { toggleWorktreeCollapse, addTerminal } = useProjectStore();
+  const { toggleWorktreeCollapse, addTerminal, updateWorktreeSize } =
+    useProjectStore();
 
   const handleNewTerminal = useCallback(() => {
     const terminal = createTerminal("shell");
     addTerminal(projectId, worktree.id, terminal);
   }, [projectId, worktree.id, addTerminal]);
 
+  const handleResize = useResize(
+    worktree.size.w,
+    worktree.size.h,
+    useCallback(
+      (w: number, h: number) =>
+        updateWorktreeSize(projectId, worktree.id, w, h),
+      [projectId, worktree.id, updateWorktreeSize],
+    ),
+  );
+
   return (
-    <div className="glass-subtle rounded-xl glow-green min-w-[200px]">
+    <div
+      className="relative glass-subtle rounded-xl glow-green"
+      style={{
+        width: worktree.size.w > 0 ? worktree.size.w : undefined,
+        minWidth: 200,
+        height: worktree.size.h > 0 ? worktree.size.h : undefined,
+      }}
+    >
       {/* Title bar */}
       <div className="flex items-center gap-2 px-3 py-2 select-none border-b border-white/[0.04]">
         <span className="type-pill bg-green-500/15 text-green-400">WT</span>
@@ -64,7 +83,7 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
 
       {/* Terminals */}
       {!worktree.collapsed && (
-        <div className="p-2.5 flex flex-col gap-2">
+        <div className="p-2.5 flex flex-col gap-2 overflow-auto">
           {worktree.terminals.map((terminal) => (
             <TerminalTile
               key={terminal.id}
@@ -84,6 +103,26 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
           )}
         </div>
       )}
+
+      {/* Resize handle */}
+      <div
+        className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
+        onMouseDown={handleResize}
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          className="text-zinc-600"
+        >
+          <path
+            d="M11 11L6 11M11 11L11 6"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
     </div>
   );
 }
