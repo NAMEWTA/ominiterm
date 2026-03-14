@@ -48,28 +48,29 @@ export function useCanvasInteraction() {
       e.preventDefault();
       isPanning.current = true;
       lastPos.current = { x: e.clientX, y: e.clientY };
+
+      const handleMove = (ev: MouseEvent) => {
+        if (!isPanning.current) return;
+        const dx = ev.clientX - lastPos.current.x;
+        const dy = ev.clientY - lastPos.current.y;
+        lastPos.current = { x: ev.clientX, y: ev.clientY };
+        const v = useCanvasStore.getState().viewport;
+        useCanvasStore.getState().setViewport({ x: v.x + dx, y: v.y + dy });
+      };
+
+      const handleUp = () => {
+        isPanning.current = false;
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("mouseup", handleUp);
+      };
+
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", handleUp);
     }
-  }, []);
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isPanning.current) return;
-      const dx = e.clientX - lastPos.current.x;
-      const dy = e.clientY - lastPos.current.y;
-      lastPos.current = { x: e.clientX, y: e.clientY };
-      setViewport({ x: viewport.x + dx, y: viewport.y + dy });
-    },
-    [viewport, setViewport],
-  );
-
-  const handleMouseUp = useCallback(() => {
-    isPanning.current = false;
   }, []);
 
   return {
     handleWheel,
     handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
   };
 }

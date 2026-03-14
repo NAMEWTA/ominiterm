@@ -6,17 +6,13 @@ import { ProjectContainer } from "../containers/ProjectContainer";
 export function Canvas() {
   const { viewport } = useCanvasStore();
   const { projects } = useProjectStore();
-  const { handleWheel, handleMouseDown, handleMouseMove, handleMouseUp } =
-    useCanvasInteraction();
+  const { handleWheel, handleMouseDown } = useCanvasInteraction();
 
   return (
     <div
       className="fixed inset-0 overflow-hidden canvas-bg"
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
     >
       <div
         style={{
