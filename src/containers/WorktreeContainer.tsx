@@ -17,32 +17,54 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
   }, [projectId, worktree.id, addTerminal]);
 
   return (
-    <div className="rounded-lg border border-zinc-600 bg-zinc-800/60 min-w-[180px]">
+    <div className="glass-subtle rounded-xl glow-green min-w-[200px]">
       {/* Title bar */}
-      <div
-        className="flex items-center gap-2 px-3 py-1.5 select-none border-b border-zinc-700"
-        onDoubleClick={() => toggleWorktreeCollapse(projectId, worktree.id)}
-      >
-        <span className="text-xs font-mono text-green-400">WT</span>
-        <span className="text-xs text-zinc-300 truncate">{worktree.name}</span>
-        <button
-          className="ml-auto text-zinc-500 hover:text-zinc-300 text-xs"
-          onClick={() => toggleWorktreeCollapse(projectId, worktree.id)}
-        >
-          {worktree.collapsed ? "▸" : "▾"}
-        </button>
-        <button
-          className="text-zinc-500 hover:text-zinc-300 text-sm leading-none"
-          onClick={handleNewTerminal}
-          title="New terminal"
-        >
-          +
-        </button>
+      <div className="flex items-center gap-2 px-3 py-2 select-none border-b border-white/[0.04]">
+        <span className="type-pill bg-green-500/15 text-green-400">WT</span>
+        <span className="text-xs text-zinc-300 truncate font-medium">
+          {worktree.name}
+        </span>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            onClick={() => toggleWorktreeCollapse(projectId, worktree.id)}
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 12 12"
+              fill="none"
+              className={`transition-transform ${worktree.collapsed ? "-rotate-90" : ""}`}
+            >
+              <path
+                d="M3 4.5L6 7.5L9 4.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            className="text-zinc-500 hover:text-green-400 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            onClick={handleNewTerminal}
+            title="New terminal"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M6 2V10M2 6H10"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Terminals */}
       {!worktree.collapsed && (
-        <div className="p-2 flex flex-wrap gap-2">
+        <div className="p-2.5 flex flex-col gap-2">
           {worktree.terminals.map((terminal) => (
             <TerminalTile
               key={terminal.id}
@@ -54,7 +76,7 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
           ))}
           {worktree.terminals.length === 0 && (
             <button
-              className="w-full py-6 rounded border border-dashed border-zinc-600 text-zinc-500 text-xs hover:border-zinc-400 hover:text-zinc-400 transition-colors"
+              className="w-full py-8 rounded-lg border border-dashed border-white/[0.06] text-zinc-600 text-xs hover:border-white/[0.12] hover:text-zinc-400 transition-all"
               onClick={handleNewTerminal}
             >
               + New Terminal

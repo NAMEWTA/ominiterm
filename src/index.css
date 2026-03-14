@@ -1,2 +1,141 @@
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
+
+/* Canvas dot grid background */
+.canvas-bg {
+  background-color: #0a0a0f;
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* Glassmorphism panels */
+.glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-subtle {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.glass-toolbar {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 20, 30, 0.85) 0%,
+    rgba(15, 15, 25, 0.9) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Accent glow */
+.glow-blue {
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.3),
+    0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+.glow-green {
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.2),
+    0 0 12px rgba(34, 197, 94, 0.05);
+}
+
+/* Terminal tile hover */
+.terminal-tile {
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.terminal-tile:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Smooth button interactions */
+.btn-glass {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.btn-glass:active {
+  background: rgba(255, 255, 255, 0.04);
+  transform: scale(0.97);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Title bar drag handle dots */
+.drag-dots {
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.2) 1px,
+    transparent 1px
+  );
+  background-size: 6px 6px;
+  width: 12px;
+  height: 18px;
+}
+
+/* Type indicator pills */
+.type-pill {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}

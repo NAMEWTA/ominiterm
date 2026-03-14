@@ -8,7 +8,8 @@ interface Props {
 }
 
 export function ProjectContainer({ project }: Props) {
-  const { updateProjectPosition, toggleProjectCollapse } = useProjectStore();
+  const { updateProjectPosition, toggleProjectCollapse, removeProject } =
+    useProjectStore();
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -52,7 +53,7 @@ export function ProjectContainer({ project }: Props) {
 
   return (
     <div
-      className="absolute rounded-xl border border-zinc-700 bg-zinc-900/80 backdrop-blur-sm min-w-[200px]"
+      className="absolute glass rounded-2xl min-w-[240px] glow-blue"
       style={{
         left: project.position.x,
         top: project.position.y,
@@ -60,28 +61,61 @@ export function ProjectContainer({ project }: Props) {
     >
       {/* Title bar */}
       <div
-        className="flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing select-none border-b border-zinc-700"
+        className="flex items-center gap-2.5 px-4 py-2.5 cursor-grab active:cursor-grabbing select-none border-b border-white/[0.06]"
         onMouseDown={handleMouseDown}
         onDoubleClick={() => toggleProjectCollapse(project.id)}
       >
-        <span className="text-xs font-mono text-blue-400">PROJECT</span>
-        <span className="text-sm font-medium text-zinc-200 truncate">
+        <div className="drag-dots shrink-0 opacity-40" />
+        <span className="type-pill bg-blue-500/20 text-blue-300">Project</span>
+        <span className="text-[13px] font-medium text-zinc-200 truncate">
           {project.name}
         </span>
-        <button
-          className="ml-auto text-zinc-500 hover:text-zinc-300 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleProjectCollapse(project.id);
-          }}
-        >
-          {project.collapsed ? "▸" : "▾"}
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            className="text-zinc-500 hover:text-zinc-300 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleProjectCollapse(project.id);
+            }}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              className={`transition-transform ${project.collapsed ? "-rotate-90" : ""}`}
+            >
+              <path
+                d="M3 4.5L6 7.5L9 4.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            className="text-zinc-600 hover:text-red-400 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeProject(project.id);
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M3 3L9 9M9 3L3 9"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Worktrees */}
       {!project.collapsed && (
-        <div className="p-3 flex flex-wrap gap-3">
+        <div className="p-3 flex flex-col gap-3">
           {project.worktrees.map((worktree) => (
             <WorktreeContainer
               key={worktree.id}

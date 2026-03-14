@@ -26,7 +26,7 @@ export function Toolbar() {
       return;
     }
 
-    if (!dirPath) return; // user cancelled, not an error
+    if (!dirPath) return;
 
     let info: Awaited<ReturnType<typeof window.termcanvas.project.scan>>;
     try {
@@ -63,37 +63,52 @@ export function Toolbar() {
     );
   }, [addProject, viewport, notify]);
 
+  const zoomPercent = Math.round(viewport.scale * 100);
+
   return (
-    <div className="fixed top-0 left-0 right-0 h-10 bg-zinc-900/90 backdrop-blur border-b border-zinc-800 flex items-center px-3 gap-3 z-50">
-      <span className="text-sm font-semibold text-zinc-300">TermCanvas</span>
+    <div className="fixed top-0 left-0 right-0 h-11 glass-toolbar flex items-center px-4 gap-4 z-50">
+      {/* App branding */}
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded-sm bg-gradient-to-br from-blue-400 to-violet-500" />
+        <span className="text-[13px] font-semibold tracking-tight text-zinc-200">
+          TermCanvas
+        </span>
+      </div>
 
-      <div className="h-4 w-px bg-zinc-700" />
+      <div className="h-4 w-px bg-white/[0.06]" />
 
-      <button
-        className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-        onClick={handleAddProject}
-      >
+      {/* Actions */}
+      <button className="btn-glass" onClick={handleAddProject}>
         + Add Project
       </button>
 
-      <div className="ml-auto flex items-center gap-2">
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Zoom controls */}
+      <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg border border-white/[0.06] px-1">
         <button
-          className="text-xs text-zinc-500 hover:text-zinc-300 px-1"
-          onClick={() => setViewport({ scale: viewport.scale * 0.9 })}
+          className="text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 text-xs"
+          onClick={() =>
+            setViewport({ scale: Math.max(0.1, viewport.scale * 0.9) })
+          }
         >
           −
         </button>
-        <span className="text-xs text-zinc-500 w-12 text-center">
-          {Math.round(viewport.scale * 100)}%
+        <span className="text-[11px] text-zinc-500 w-10 text-center tabular-nums font-mono">
+          {zoomPercent}%
         </span>
         <button
-          className="text-xs text-zinc-500 hover:text-zinc-300 px-1"
-          onClick={() => setViewport({ scale: viewport.scale * 1.1 })}
+          className="text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 text-xs"
+          onClick={() =>
+            setViewport({ scale: Math.min(2, viewport.scale * 1.1) })
+          }
         >
           +
         </button>
+        <div className="h-3 w-px bg-white/[0.06]" />
         <button
-          className="text-xs text-zinc-500 hover:text-zinc-300 px-2"
+          className="text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1 text-[11px]"
           onClick={resetViewport}
         >
           Reset

@@ -12,6 +12,27 @@ interface Props {
   terminal: TerminalData;
 }
 
+const TYPE_CONFIG = {
+  shell: {
+    icon: "▸",
+    pill: "bg-zinc-500/15 text-zinc-400",
+    label: "Shell",
+    border: "border-white/[0.06]",
+  },
+  claude: {
+    icon: "◆",
+    pill: "bg-orange-500/15 text-orange-400",
+    label: "Claude",
+    border: "border-orange-500/10",
+  },
+  codex: {
+    icon: "◈",
+    pill: "bg-violet-500/15 text-violet-400",
+    label: "Codex",
+    border: "border-violet-500/10",
+  },
+};
+
 export function TerminalTile({
   projectId,
   worktreeId,
@@ -31,8 +52,8 @@ export function TerminalTile({
   } = useProjectStore();
 
   const { notify } = useNotificationStore();
+  const config = TYPE_CONFIG[terminal.type];
 
-  // Initialize xterm and PTY
   useEffect(() => {
     if (!containerRef.current || terminal.minimized) return;
 
@@ -43,13 +64,37 @@ export function TerminalTile({
 
     const xterm = new Terminal({
       theme: {
-        background: "#09090b",
-        foreground: "#e4e4e7",
-        cursor: "#e4e4e7",
+        background: "#08080c",
+        foreground: "#d4d4d8",
+        cursor: "#a1a1aa",
+        cursorAccent: "#08080c",
+        selectionBackground: "rgba(99, 102, 241, 0.3)",
+        black: "#18181b",
+        red: "#f87171",
+        green: "#4ade80",
+        yellow: "#facc15",
+        blue: "#60a5fa",
+        magenta: "#c084fc",
+        cyan: "#22d3ee",
+        white: "#e4e4e7",
+        brightBlack: "#3f3f46",
+        brightRed: "#fca5a5",
+        brightGreen: "#86efac",
+        brightYellow: "#fde047",
+        brightBlue: "#93c5fd",
+        brightMagenta: "#d8b4fe",
+        brightCyan: "#67e8f9",
+        brightWhite: "#fafafa",
       },
-      fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+      fontFamily:
+        "'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace",
       fontSize: 13,
+      lineHeight: 1.35,
       cursorBlink: true,
+      cursorStyle: "bar",
+      cursorWidth: 2,
+      scrollback: 5000,
+      allowTransparency: true,
     });
 
     const fitAddon = new FitAddon();
@@ -144,16 +189,9 @@ export function TerminalTile({
     removeTerminal(projectId, worktreeId, terminal.id);
   }, [projectId, worktreeId, terminal.id, removeTerminal]);
 
-  const typeColor =
-    terminal.type === "claude"
-      ? "text-orange-400"
-      : terminal.type === "codex"
-        ? "text-purple-400"
-        : "text-zinc-400";
-
   return (
     <div
-      className="rounded border border-zinc-600 bg-zinc-950 overflow-hidden flex flex-col"
+      className={`terminal-tile rounded-lg ${config.border} border bg-[#08080c] overflow-hidden flex flex-col`}
       style={{
         width: terminal.size.w,
         height: terminal.minimized ? "auto" : terminal.size.h,
@@ -161,40 +199,62 @@ export function TerminalTile({
       onClick={() => setFocusedTerminal(terminal.id)}
     >
       {/* Title bar */}
-      <div className="flex items-center gap-2 px-2 py-1 bg-zinc-800 select-none shrink-0">
-        <span className={`text-xs font-mono ${typeColor}`}>
-          {terminal.type === "shell"
-            ? "▸"
-            : terminal.type === "claude"
-              ? "◆"
-              : "◈"}
-        </span>
-        <span className="text-xs text-zinc-400 truncate flex-1">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-b from-white/[0.04] to-transparent select-none shrink-0 border-b border-white/[0.04]">
+        <span className={`type-pill ${config.pill}`}>{config.label}</span>
+        <span className="text-[11px] text-zinc-500 truncate flex-1 font-mono">
           {terminal.title}
         </span>
-        <button
-          className="text-zinc-500 hover:text-zinc-300 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleTerminalMinimize(projectId, worktreeId, terminal.id);
-          }}
-        >
-          {terminal.minimized ? "□" : "–"}
-        </button>
-        <button
-          className="text-zinc-500 hover:text-red-400 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleClose();
-          }}
-        >
-          ×
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            className="text-zinc-600 hover:text-zinc-300 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleTerminalMinimize(projectId, worktreeId, terminal.id);
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              {terminal.minimized ? (
+                <rect
+                  x="2"
+                  y="2"
+                  width="6"
+                  height="6"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  rx="0.5"
+                />
+              ) : (
+                <path
+                  d="M2 5H8"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
+              )}
+            </svg>
+          </button>
+          <button
+            className="text-zinc-600 hover:text-red-400 transition-colors p-1 rounded hover:bg-white/[0.06]"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClose();
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path
+                d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Terminal content */}
       {!terminal.minimized && (
-        <div ref={containerRef} className="flex-1 min-h-0" />
+        <div ref={containerRef} className="flex-1 min-h-0 p-1" />
       )}
     </div>
   );

@@ -11,7 +11,7 @@ export function Canvas() {
 
   return (
     <div
-      className="fixed inset-0 overflow-hidden bg-zinc-950"
+      className="fixed inset-0 overflow-hidden canvas-bg"
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -22,12 +22,28 @@ export function Canvas() {
         style={{
           transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
           transformOrigin: "0 0",
+          willChange: "transform",
         }}
       >
         {projects.map((project) => (
           <ProjectContainer key={project.id} project={project} />
         ))}
       </div>
+
+      {/* Empty state */}
+      {projects.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <div className="text-zinc-600 text-lg font-light mb-2">
+              No projects yet
+            </div>
+            <div className="text-zinc-700 text-sm">
+              Click <span className="text-zinc-500">+ Add Project</span> in the
+              toolbar to get started
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
