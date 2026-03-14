@@ -4,7 +4,7 @@ import { useCanvasInteraction } from "./useCanvasInteraction";
 import { ProjectContainer } from "../containers/ProjectContainer";
 
 export function Canvas() {
-  const { viewport } = useCanvasStore();
+  const { viewport, isAnimating } = useCanvasStore();
   const { projects } = useProjectStore();
   const { handleWheel, handleMouseDown } = useCanvasInteraction();
 
@@ -19,6 +19,8 @@ export function Canvas() {
           transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
           transformOrigin: "0 0",
           willChange: "transform",
+          filter: isAnimating ? "blur(1.5px)" : "none",
+          transition: "filter 0.15s ease",
         }}
       >
         {projects.map((project) => (
