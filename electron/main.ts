@@ -1,8 +1,12 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
+import { fileURLToPath } from "url";
 import { PtyManager } from "./pty-manager";
 import { ProjectScanner } from "./project-scanner";
 import { StatePersistence } from "./state-persistence";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 const ptyManager = new PtyManager();
