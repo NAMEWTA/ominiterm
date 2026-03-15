@@ -11,6 +11,8 @@ interface Props {
   pinned: boolean;
   onPin: () => void;
   onClose: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 export function DiffCard({
@@ -20,6 +22,8 @@ export function DiffCard({
   pinned,
   onPin,
   onClose,
+  onMouseEnter,
+  onMouseLeave,
 }: Props) {
   const [stat, setStat] = useState("");
   const [diff, setDiff] = useState("");
@@ -152,6 +156,8 @@ export function DiffCard({
         transform: justPinned ? "scale(1.02)" : "scale(1)",
       }}
       onMouseDown={(e) => e.stopPropagation()}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {/* Header */}
       <div

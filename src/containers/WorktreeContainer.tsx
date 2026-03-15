@@ -15,6 +15,8 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
   const [showDiff, setShowDiff] = useState(false);
   const [diffPinned, setDiffPinned] = useState(false);
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const diffCardHovered = useRef(false);
   const { toggleWorktreeCollapse, addTerminal, updateWorktreeSize } =
     useProjectStore();
 
@@ -80,11 +82,22 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
       }}
       onMouseEnter={() => {
         if (diffPinned) return;
+        if (leaveTimeout.current) {
+          clearTimeout(leaveTimeout.current);
+          leaveTimeout.current = null;
+        }
         hoverTimeout.current = setTimeout(() => setShowDiff(true), 400);
       }}
       onMouseLeave={() => {
-        if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-        if (!diffPinned) setShowDiff(false);
+        if (hoverTimeout.current) {
+          clearTimeout(hoverTimeout.current);
+          hoverTimeout.current = null;
+        }
+        if (!diffPinned) {
+          leaveTimeout.current = setTimeout(() => {
+            if (!diffCardHovered.current) setShowDiff(false);
+          }, 300);
+        }
       }}
     >
       {/* Title bar */}
@@ -191,6 +204,19 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
           onClose={() => {
             setDiffPinned(false);
             setShowDiff(false);
+          }}
+          onMouseEnter={() => {
+            diffCardHovered.current = true;
+            if (leaveTimeout.current) {
+              clearTimeout(leaveTimeout.current);
+              leaveTimeout.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            diffCardHovered.current = false;
+            if (!diffPinned) {
+              leaveTimeout.current = setTimeout(() => setShowDiff(false), 300);
+            }
           }}
         />
       )}
