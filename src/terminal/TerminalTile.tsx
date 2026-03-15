@@ -9,6 +9,7 @@ import { useDrag } from "../hooks/useDrag";
 import { useResize } from "../hooks/useResize";
 import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
 import { useThemeStore, XTERM_THEMES } from "../stores/themeStore";
+import { useT } from "../i18n/useT";
 
 interface Props {
   projectId: string;
@@ -52,6 +53,7 @@ export function TerminalTile({
   } = useProjectStore();
 
   const { notify } = useNotificationStore();
+  const t = useT();
   const config = TYPE_CONFIG[terminal.type];
 
   // Clamp within worktree content area (padding=10, titleBar=36)
@@ -115,7 +117,7 @@ export function TerminalTile({
     if (!containerRef.current || terminal.minimized) return;
 
     if (!window.termcanvas) {
-      notify("error", "Terminal API not available. Not running in Electron.");
+      notify("error", t.terminal_api_unavailable);
       return;
     }
 
@@ -241,7 +243,7 @@ export function TerminalTile({
         window.termcanvas.terminal.resize(id, cols, rows);
       })
       .catch((err) => {
-        notify("error", `Failed to create PTY for "${terminal.title}": ${err}`);
+        notify("error", t.failed_create_pty(terminal.title, err));
         updateTerminalStatus(projectId, worktreeId, terminal.id, "error");
         xterm.write(
           `\r\n\x1b[31m[Error] Failed to create terminal: ${err}\x1b[0m\r\n`,
@@ -259,9 +261,7 @@ export function TerminalTile({
     const removeExit = window.termcanvas.terminal.onExit(
       (id: number, exitCode: number) => {
         if (id === ptyId) {
-          xterm.write(
-            `\r\n\x1b[33m[Process exited with code ${exitCode}]\x1b[0m\r\n`,
-          );
+          xterm.write(t.process_exited(exitCode));
           updateTerminalStatus(
             projectId,
             worktreeId,
@@ -270,7 +270,7 @@ export function TerminalTile({
           );
           notify(
             exitCode === 0 ? "info" : "warn",
-            `Terminal "${terminal.title}" exited with code ${exitCode}.`,
+            t.terminal_exited(terminal.title, exitCode),
           );
         }
       },
