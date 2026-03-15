@@ -168,8 +168,22 @@ export function DiffCard({
     };
     setLoading(true);
     fetchDiff();
-    const interval = setInterval(fetchDiff, 3000);
-    return () => clearInterval(interval);
+
+    // Re-fetch when terminal activity occurs in this worktree (debounced)
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleActivity = (e: Event) => {
+      if ((e as CustomEvent).detail !== worktreePath) return;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchDiff, 2000);
+    };
+    window.addEventListener("termcanvas:worktree-activity", handleActivity);
+    return () => {
+      window.removeEventListener(
+        "termcanvas:worktree-activity",
+        handleActivity,
+      );
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   }, [worktreePath]);
 
   useEffect(() => {

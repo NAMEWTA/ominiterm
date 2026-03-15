@@ -217,6 +217,12 @@ export function TerminalTile({
         if (id === ptyId) {
           xterm.write(data);
 
+          window.dispatchEvent(
+            new CustomEvent("termcanvas:worktree-activity", {
+              detail: worktreePath,
+            }),
+          );
+
           // Track output activity for status detection
           if (currentStatus !== "active") {
             currentStatus = "active";
