@@ -23,6 +23,8 @@ export const zh = {
   open: "打开",
   no_projects: "暂无项目",
   status_running: "运行中",
+  status_active: "工作中",
+  status_waiting: "待关注",
   status_done: "完成",
   status_error: "错误",
   status_idle: "启动中",

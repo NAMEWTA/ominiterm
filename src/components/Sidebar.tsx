@@ -8,6 +8,8 @@ import type { TerminalStatus, TerminalType } from "../types";
 
 const STATUS_COLOR: Record<TerminalStatus, string> = {
   running: "#50e3c2",
+  active: "#50e3c2",
+  waiting: "#f5a623",
   success: "#50e3c2",
   error: "#ee0000",
   idle: "#444",
@@ -35,6 +37,8 @@ export function Sidebar() {
 
   const STATUS_LABEL: Record<TerminalStatus, string> = {
     running: t.status_running,
+    active: t.status_active,
+    waiting: t.status_waiting,
     success: t.status_done,
     error: t.status_error,
     idle: t.status_idle,
@@ -177,7 +181,7 @@ export function Sidebar() {
                         className="flex items-center gap-2 py-1"
                       >
                         <div
-                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${terminal.status === "running" || terminal.status === "idle" ? "status-pulse" : ""}`}
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${["running", "active", "waiting", "idle"].includes(terminal.status) ? "status-pulse" : ""}`}
                           style={{
                             backgroundColor: STATUS_COLOR[terminal.status],
                           }}

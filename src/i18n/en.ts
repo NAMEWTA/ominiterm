@@ -24,6 +24,8 @@ export const en = {
   open: "Open",
   no_projects: "No projects",
   status_running: "Running",
+  status_active: "Active",
+  status_waiting: "Waiting",
   status_done: "Done",
   status_error: "Error",
   status_idle: "Starting",

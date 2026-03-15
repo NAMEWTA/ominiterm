@@ -17,7 +17,13 @@ export interface Viewport {
   scale: number;
 }
 
-export type TerminalStatus = "running" | "success" | "error" | "idle";
+export type TerminalStatus =
+  | "running"
+  | "active"
+  | "waiting"
+  | "success"
+  | "error"
+  | "idle";
 
 export interface TerminalData {
   id: string;

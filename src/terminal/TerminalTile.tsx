@@ -202,10 +202,32 @@ export function TerminalTile({
         );
       });
 
+    let currentStatus: string = "running";
+    let waitingTimer: ReturnType<typeof setTimeout> | null = null;
+    const WAITING_THRESHOLD = 15_000;
+
     const removeOutput = window.termcanvas.terminal.onOutput(
       (id: number, data: string) => {
         if (id === ptyId) {
           xterm.write(data);
+
+          // Track output activity for status detection
+          if (currentStatus !== "active") {
+            currentStatus = "active";
+            updateTerminalStatus(projectId, worktreeId, terminal.id, "active");
+          }
+          if (waitingTimer) clearTimeout(waitingTimer);
+          waitingTimer = setTimeout(() => {
+            if (currentStatus === "active") {
+              currentStatus = "waiting";
+              updateTerminalStatus(
+                projectId,
+                worktreeId,
+                terminal.id,
+                "waiting",
+              );
+            }
+          }, WAITING_THRESHOLD);
         }
       },
     );
@@ -213,6 +235,8 @@ export function TerminalTile({
     const removeExit = window.termcanvas.terminal.onExit(
       (id: number, exitCode: number) => {
         if (id === ptyId) {
+          if (waitingTimer) clearTimeout(waitingTimer);
+          currentStatus = exitCode === 0 ? "success" : "error";
           xterm.write(t.process_exited(exitCode));
           updateTerminalStatus(
             projectId,
@@ -234,6 +258,7 @@ export function TerminalTile({
     resizeObserver.observe(containerRef.current);
 
     cleanupRef.current = () => {
+      if (waitingTimer) clearTimeout(waitingTimer);
       unregisterTerminal(terminal.id);
       resizeObserver.disconnect();
       removeOutput();
