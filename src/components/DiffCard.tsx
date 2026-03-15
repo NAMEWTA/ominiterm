@@ -169,16 +169,24 @@ export function DiffCard({
     setLoading(true);
     fetchDiff();
 
-    // Re-fetch on terminal activity in this worktree (already throttled at source)
+    // Layer 1: Watch .git/HEAD + .git/index for structural git changes
+    window.termcanvas.git.watch(worktreePath);
+    const removeGitChanged = window.termcanvas.git.onChanged((changedPath) => {
+      if (changedPath === worktreePath) fetchDiff();
+    });
+
+    // Layer 2: Re-fetch on terminal activity (already throttled at source)
     const handleActivity = (e: Event) => {
       if ((e as CustomEvent).detail === worktreePath) fetchDiff();
     };
-    // Re-fetch on window focus (covers external tool changes)
+    // Layer 3: Re-fetch on window focus (covers external tool changes)
     const handleFocus = () => fetchDiff();
 
     window.addEventListener("termcanvas:worktree-activity", handleActivity);
     window.addEventListener("focus", handleFocus);
     return () => {
+      window.termcanvas.git.unwatch(worktreePath);
+      removeGitChanged();
       window.removeEventListener(
         "termcanvas:worktree-activity",
         handleActivity,

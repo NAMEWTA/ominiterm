@@ -61,6 +61,20 @@ contextBridge.exposeInMainWorld("termcanvas", {
         }[];
       }>,
   },
+  git: {
+    watch: (worktreePath: string) =>
+      ipcRenderer.invoke("git:watch", worktreePath),
+    unwatch: (worktreePath: string) =>
+      ipcRenderer.invoke("git:unwatch", worktreePath),
+    onChanged: (callback: (worktreePath: string) => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        worktreePath: string,
+      ) => callback(worktreePath);
+      ipcRenderer.on("git:changed", listener);
+      return () => ipcRenderer.removeListener("git:changed", listener);
+    },
+  },
   state: {
     load: () => ipcRenderer.invoke("state:load"),
     save: (state: unknown) => ipcRenderer.invoke("state:save", state),

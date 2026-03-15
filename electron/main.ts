@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import { PtyManager } from "./pty-manager";
 import { ProjectScanner } from "./project-scanner";
 import { StatePersistence } from "./state-persistence";
+import { GitFileWatcher } from "./git-watcher";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,7 @@ let forceClose = false;
 const ptyManager = new PtyManager();
 const projectScanner = new ProjectScanner();
 const statePersistence = new StatePersistence();
+const gitWatcher = new GitFileWatcher();
 
 function createWindow() {
   const isMac = process.platform === "darwin";
@@ -268,6 +270,17 @@ function setupIpc() {
     return projectScanner.listWorktrees(dirPath);
   });
 
+  // Git file watcher IPC (Layer 1 of DiffCard refresh)
+  ipcMain.handle("git:watch", (_event, worktreePath: string) => {
+    gitWatcher.watch(worktreePath, () => {
+      mainWindow?.webContents.send("git:changed", worktreePath);
+    });
+  });
+
+  ipcMain.handle("git:unwatch", (_event, worktreePath: string) => {
+    gitWatcher.unwatch(worktreePath);
+  });
+
   // State IPC
   ipcMain.handle("state:load", () => {
     return statePersistence.load();
@@ -302,6 +315,7 @@ function setupIpc() {
   // Close flow
   ipcMain.on("app:close-confirmed", () => {
     ptyManager.destroyAll();
+    gitWatcher.unwatchAll();
     forceClose = true;
     if (mainWindow) {
       mainWindow.close();

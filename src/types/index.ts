@@ -104,6 +104,11 @@ export interface TermCanvasAPI {
       }[];
     }>;
   };
+  git: {
+    watch: (worktreePath: string) => Promise<void>;
+    unwatch: (worktreePath: string) => Promise<void>;
+    onChanged: (callback: (worktreePath: string) => void) => () => void;
+  };
   state: {
     load: () => Promise<CanvasState | null>;
     save: (state: unknown) => Promise<void>;
