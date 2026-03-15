@@ -5,7 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { NotificationToast } from "./components/NotificationToast";
 import { DrawingPanel } from "./toolbar/DrawingPanel";
 import { ShortcutHints } from "./components/ShortcutHints";
-import { useProjectStore } from "./stores/projectStore";
+import { useProjectStore, createTerminal } from "./stores/projectStore";
 import { useCanvasStore } from "./stores/canvasStore";
 import { useDrawingStore } from "./stores/drawingStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -238,6 +238,93 @@ export function App() {
   useKeyboardShortcuts();
   const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
     useCloseHandler();
+
+  useEffect(() => {
+    const api = {
+      getProjects: () => {
+        const { projects } = useProjectStore.getState();
+        return JSON.parse(
+          JSON.stringify(
+            projects.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              path: p.path,
+              collapsed: p.collapsed,
+              worktrees: p.worktrees.map((w: any) => ({
+                id: w.id,
+                name: w.name,
+                path: w.path,
+                terminals: w.terminals.map((t: any) => ({
+                  id: t.id,
+                  title: t.title,
+                  type: t.type,
+                  status: t.status,
+                  ptyId: t.ptyId,
+                  span: t.span,
+                })),
+              })),
+            })),
+          ),
+        );
+      },
+
+      addProject: (projectData: any) => {
+        useProjectStore.getState().addProject(projectData);
+        return true;
+      },
+
+      removeProject: (projectId: string) => {
+        useProjectStore.getState().removeProject(projectId);
+        return true;
+      },
+
+      addTerminal: (projectId: string, worktreeId: string, type: string) => {
+        const terminal = createTerminal(type as any);
+        useProjectStore.getState().addTerminal(projectId, worktreeId, terminal);
+        return JSON.parse(JSON.stringify(terminal));
+      },
+
+      removeTerminal: (
+        projectId: string,
+        worktreeId: string,
+        terminalId: string,
+      ) => {
+        useProjectStore
+          .getState()
+          .removeTerminal(projectId, worktreeId, terminalId);
+        return true;
+      },
+
+      getTerminal: (terminalId: string) => {
+        const { projects } = useProjectStore.getState();
+        for (const p of projects) {
+          for (const w of p.worktrees) {
+            const t = w.terminals.find((t: any) => t.id === terminalId);
+            if (t)
+              return JSON.parse(
+                JSON.stringify({
+                  id: t.id,
+                  title: t.title,
+                  type: t.type,
+                  status: t.status,
+                  ptyId: t.ptyId,
+                  span: t.span,
+                  projectId: p.id,
+                  worktreeId: w.id,
+                  worktreePath: w.path,
+                }),
+              );
+          }
+        }
+        return null;
+      },
+    };
+
+    (window as any).__tcApi = api;
+    return () => {
+      delete (window as any).__tcApi;
+    };
+  }, []);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[var(--bg)] text-[var(--text-primary)]">
