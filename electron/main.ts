@@ -20,6 +20,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -27,6 +28,10 @@ function createWindow() {
     },
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 12, y: 16 },
+  });
+
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
