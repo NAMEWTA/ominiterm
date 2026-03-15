@@ -40,7 +40,12 @@ export class PtyManager {
   }
 
   resize(id: number, cols: number, rows: number) {
-    this.instances.get(id)?.resize(cols, rows);
+    try {
+      this.instances.get(id)?.resize(cols, rows);
+    } catch {
+      // PTY fd may already be invalid after process exit
+      this.instances.delete(id);
+    }
   }
 
   onData(id: number, callback: (data: string) => void) {
@@ -48,7 +53,10 @@ export class PtyManager {
   }
 
   onExit(id: number, callback: (exitCode: number) => void) {
-    this.instances.get(id)?.onExit(({ exitCode }) => callback(exitCode));
+    this.instances.get(id)?.onExit(({ exitCode }) => {
+      this.instances.delete(id);
+      callback(exitCode);
+    });
   }
 
   destroy(id: number) {
