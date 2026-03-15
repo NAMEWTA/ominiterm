@@ -57,6 +57,9 @@ contextBridge.exposeInMainWorld("termcanvas", {
           additions: number;
           deletions: number;
           binary: boolean;
+          isImage: boolean;
+          imageOld: string | null;
+          imageNew: string | null;
         }[];
       }>,
     onWorktreesChanged: (

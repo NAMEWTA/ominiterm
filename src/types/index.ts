@@ -101,6 +101,9 @@ export interface TermCanvasAPI {
         additions: number;
         deletions: number;
         binary: boolean;
+        isImage: boolean;
+        imageOld: string | null;
+        imageNew: string | null;
       }[];
     }>;
     watch: (dirPath: string) => void;

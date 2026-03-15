@@ -163,6 +163,16 @@ function setupIpc() {
         cwd: worktreePath,
         encoding: "utf-8",
       });
+      const imageExts = new Set([
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+        ".webp",
+        ".bmp",
+        ".ico",
+      ]);
       const files = numstat
         .trim()
         .split("\n")
@@ -170,11 +180,57 @@ function setupIpc() {
         .map((line: string) => {
           const [add, del, name] = line.split("\t");
           const binary = add === "-";
+          const ext = path.extname(name).toLowerCase();
+          const isImage = binary && imageExts.has(ext);
+
+          let imageOld: string | null = null;
+          let imageNew: string | null = null;
+
+          if (isImage) {
+            const mimeMap: Record<string, string> = {
+              ".png": "image/png",
+              ".jpg": "image/jpeg",
+              ".jpeg": "image/jpeg",
+              ".gif": "image/gif",
+              ".svg": "image/svg+xml",
+              ".webp": "image/webp",
+              ".bmp": "image/bmp",
+              ".ico": "image/x-icon",
+            };
+            const mime = mimeMap[ext] ?? "image/png";
+
+            // Try reading old version from HEAD
+            try {
+              const oldBuf = execSync(`git show HEAD:${name}`, {
+                cwd: worktreePath,
+                encoding: "buffer",
+                maxBuffer: 5 * 1024 * 1024,
+              }) as unknown as Buffer;
+              imageOld = `data:${mime};base64,${oldBuf.toString("base64")}`;
+            } catch {
+              // File is new (not in HEAD)
+            }
+
+            // Try reading current version from working tree
+            try {
+              const filePath = path.join(worktreePath, name);
+              if (fs.existsSync(filePath)) {
+                const newBuf = fs.readFileSync(filePath);
+                imageNew = `data:${mime};base64,${newBuf.toString("base64")}`;
+              }
+            } catch {
+              // File was deleted
+            }
+          }
+
           return {
             name,
             additions: binary ? 0 : parseInt(add, 10),
             deletions: binary ? 0 : parseInt(del, 10),
             binary,
+            isImage,
+            imageOld,
+            imageNew,
           };
         });
       return { diff, files };

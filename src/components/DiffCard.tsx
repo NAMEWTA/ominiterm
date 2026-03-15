@@ -6,6 +6,9 @@ interface FileInfo {
   additions: number;
   deletions: number;
   binary: boolean;
+  isImage: boolean;
+  imageOld: string | null;
+  imageNew: string | null;
 }
 
 interface FileDiff {
@@ -42,6 +45,9 @@ function parseDiff(raw: string, files: FileInfo[]): FileDiff[] {
       additions: 0,
       deletions: 0,
       binary: false,
+      isImage: false,
+      imageOld: null,
+      imageNew: null,
     };
     // Everything after the header is the diff content
     const content = lines.slice(1).join("\n");
@@ -338,7 +344,55 @@ export function DiffCard({
               {/* Expanded diff */}
               {expandedFile === fd.file.name && (
                 <div className="bg-[var(--bg)] border-y border-[var(--border)] overflow-x-auto">
-                  {fd.file.binary ? (
+                  {fd.file.isImage ? (
+                    <div className="px-3 py-3 flex items-start gap-3">
+                      {fd.file.imageOld && (
+                        <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+                          <span className="text-[10px] text-[var(--red)]">
+                            Removed
+                          </span>
+                          <img
+                            src={fd.file.imageOld}
+                            alt="old"
+                            className="max-w-full max-h-40 rounded border border-[var(--border)] object-contain"
+                            style={{
+                              background:
+                                "repeating-conic-gradient(var(--border) 0% 25%, transparent 0% 50%) 50% / 12px 12px",
+                            }}
+                          />
+                        </div>
+                      )}
+                      {fd.file.imageOld && fd.file.imageNew && (
+                        <span className="text-[var(--text-muted)] self-center text-lg">
+                          →
+                        </span>
+                      )}
+                      {fd.file.imageNew && (
+                        <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+                          <span
+                            className="text-[10px]"
+                            style={{ color: "var(--cyan)" }}
+                          >
+                            {fd.file.imageOld ? "New" : "Added"}
+                          </span>
+                          <img
+                            src={fd.file.imageNew}
+                            alt="new"
+                            className="max-w-full max-h-40 rounded border border-[var(--border)] object-contain"
+                            style={{
+                              background:
+                                "repeating-conic-gradient(var(--border) 0% 25%, transparent 0% 50%) 50% / 12px 12px",
+                            }}
+                          />
+                        </div>
+                      )}
+                      {!fd.file.imageOld && !fd.file.imageNew && (
+                        <div className="text-[var(--text-muted)] text-center w-full py-2">
+                          Image file changed
+                        </div>
+                      )}
+                    </div>
+                  ) : fd.file.binary ? (
                     <div className="px-3 py-3 text-[var(--text-muted)] text-center">
                       Binary file changed
                     </div>
