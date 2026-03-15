@@ -77,4 +77,13 @@ export const zh = {
   shortcut_next_terminal: "下一终端",
   shortcut_prev_terminal: "上一终端",
   shortcut_clear_focus: "取消聚焦",
+
+  // Settings page
+  settings_general: "通用",
+  settings_shortcuts: "快捷键",
+  theme_dark: "深色",
+  theme_light: "浅色",
+  shortcuts_reset: "恢复默认",
+  shortcuts_press_hint: "按下快捷键…",
+  shortcuts_conflict: "与其他快捷键冲突",
 } as const;

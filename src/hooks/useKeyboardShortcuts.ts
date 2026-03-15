@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { useProjectStore, createTerminal } from "../stores/projectStore";
 import { useCanvasStore } from "../stores/canvasStore";
+import { useShortcutStore, matchesShortcut } from "../stores/shortcutStore";
 import {
   computeGridCols,
   computeTerminalPosition,
-  computeWorktreeSize,
   TERMINAL_W,
   TERMINAL_H,
   WT_PAD,
@@ -91,28 +91,23 @@ function zoomToTerminal(
 }
 
 export function useKeyboardShortcuts() {
+  const shortcuts = useShortcutStore((s) => s.shortcuts);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-
-      // Escape — close modals, clear focus
-      if (e.key === "Escape") {
+      if (matchesShortcut(e, shortcuts.clearFocus)) {
         useProjectStore.getState().clearFocus();
         return;
       }
 
-      if (!isMod) return;
-
-      // Cmd+B — toggle sidebar
-      if (e.key === "b") {
+      if (matchesShortcut(e, shortcuts.toggleSidebar)) {
         e.preventDefault();
         const store = useCanvasStore.getState();
         store.setSidebarCollapsed(!store.sidebarCollapsed);
         return;
       }
 
-      // Cmd+T — new terminal in focused worktree
-      if (e.key === "t") {
+      if (matchesShortcut(e, shortcuts.newTerminal)) {
         e.preventDefault();
         const { focusedProjectId, focusedWorktreeId, addTerminal } =
           useProjectStore.getState();
@@ -123,8 +118,7 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd+] — focus next terminal + zoom
-      if (e.key === "]") {
+      if (matchesShortcut(e, shortcuts.nextTerminal)) {
         e.preventDefault();
         const list = getAllTerminals();
         if (list.length === 0) return;
@@ -137,8 +131,7 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd+[ — focus prev terminal + zoom
-      if (e.key === "[") {
+      if (matchesShortcut(e, shortcuts.prevTerminal)) {
         e.preventDefault();
         const list = getAllTerminals();
         if (list.length === 0) return;
@@ -154,5 +147,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [shortcuts]);
 }

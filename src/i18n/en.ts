@@ -79,6 +79,15 @@ export const en = {
   shortcut_next_terminal: "Next terminal",
   shortcut_prev_terminal: "Prev terminal",
   shortcut_clear_focus: "Clear focus",
+
+  // Settings page
+  settings_general: "General",
+  settings_shortcuts: "Shortcuts",
+  theme_dark: "Dark",
+  theme_light: "Light",
+  shortcuts_reset: "Reset to defaults",
+  shortcuts_press_hint: "Press shortcut\u2026",
+  shortcuts_conflict: "Conflicts with another shortcut",
 } as const;
 
 export type TranslationKey = keyof typeof en;
