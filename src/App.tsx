@@ -35,6 +35,7 @@ function migrateProjects(projects: unknown[]): ProjectData[] {
         focused: t.focused ?? false,
         ptyId: null,
         status: "idle",
+        span: t.span ?? { cols: 1, rows: 1 },
         scrollback: t.scrollback,
         sessionId: t.sessionId,
       })),

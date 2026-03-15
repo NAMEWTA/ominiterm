@@ -33,6 +33,7 @@ export interface TerminalData {
   focused: boolean;
   ptyId: number | null;
   status: TerminalStatus;
+  span: { cols: number; rows: number };
   scrollback?: string;
   sessionId?: string;
 }

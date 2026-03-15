@@ -64,6 +64,12 @@ interface ProjectStore {
     terminalId: string,
     sessionId: string,
   ) => void;
+  updateTerminalSpan: (
+    projectId: string,
+    worktreeId: string,
+    terminalId: string,
+    span: { cols: number; rows: number },
+  ) => void;
   reorderTerminal: (
     projectId: string,
     worktreeId: string,
@@ -85,6 +91,15 @@ export function generateId(): string {
   return `${Date.now()}-${++idCounter}`;
 }
 
+const DEFAULT_SPAN: Record<TerminalType, { cols: number; rows: number }> = {
+  shell: { cols: 1, rows: 1 },
+  claude: { cols: 2, rows: 1 },
+  codex: { cols: 2, rows: 1 },
+  kimi: { cols: 2, rows: 1 },
+  gemini: { cols: 2, rows: 1 },
+  opencode: { cols: 2, rows: 1 },
+};
+
 export function createTerminal(
   type: TerminalType = "shell",
   title?: string,
@@ -97,6 +112,7 @@ export function createTerminal(
     focused: false,
     ptyId: null,
     status: "idle",
+    span: DEFAULT_SPAN[type],
   };
 }
 
@@ -430,6 +446,19 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         worktreeId,
         terminalId,
         (t) => ({ ...t, sessionId }),
+      ),
+    })),
+
+  updateTerminalSpan: (projectId, worktreeId, terminalId, span) =>
+    set((state) => ({
+      projects: resolveOverlaps(
+        mapTerminals(
+          state.projects,
+          projectId,
+          worktreeId,
+          terminalId,
+          (t) => ({ ...t, span }),
+        ),
       ),
     })),
 
