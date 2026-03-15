@@ -152,9 +152,11 @@ export function DiffCard({
     [projects],
   );
 
-  // Compute non-overlapping Y for all cards, avoiding other DiffCards + project bounds
+  // Compute non-overlapping positions: push right past projects, push down past other DiffCards
   const allResolved = resolveAllCardPositions(cards, obstacles);
-  const resolvedY = allResolved[worktreeId] ?? pos.y;
+  const resolved = allResolved[worktreeId] ?? { x: pos.x, y: pos.y };
+  const resolvedX = resolved.x;
+  const resolvedY = resolved.y;
 
   useEffect(() => {
     if (!window.termcanvas) return;
@@ -253,7 +255,7 @@ export function DiffCard({
   // Connection line endpoints: worktree right edge → DiffCard left edge
   const lineX1 = anchorX;
   const lineY1 = anchorY + 20;
-  const lineX2 = pos.x;
+  const lineX2 = resolvedX;
   const lineY2 = resolvedY + 20;
   const lineSvgLeft = Math.min(lineX1, lineX2);
   const lineSvgTop = Math.min(lineY1, lineY2);
@@ -286,7 +288,7 @@ export function DiffCard({
       <div
         className="absolute rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex flex-col"
         style={{
-          left: pos.x,
+          left: resolvedX,
           top: resolvedY,
           width: size.w,
           height: size.h,

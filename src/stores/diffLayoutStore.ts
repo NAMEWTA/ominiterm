@@ -36,33 +36,45 @@ interface Rect {
 }
 
 /**
- * Resolve non-overlapping Y positions for all registered DiffCards.
- * Processes top-to-bottom by anchor Y, pushing cards down to avoid:
- *   1. Previously resolved DiffCards
- *   2. Immovable obstacles (e.g. project container bounds)
+ * Resolve non-overlapping positions for all registered DiffCards.
+ *   - Obstacles (project containers): push card RIGHT past the obstacle
+ *   - Other DiffCards: push card DOWN below the other card
  */
 export function resolveAllCardPositions(
   cards: Record<string, DiffCardEntry>,
   obstacles: Rect[] = [],
-): Record<string, number> {
+): Record<string, { x: number; y: number }> {
   const entries = Object.entries(cards).sort(([, a], [, b]) => a.y - b.y);
-  // Seed with obstacles as immovable rects
-  const resolved: Rect[] = obstacles.map((o) => ({ ...o }));
-  const result: Record<string, number> = {};
+  const resolvedCards: Rect[] = [];
+  const result: Record<string, { x: number; y: number }> = {};
 
   for (const [id, card] of entries) {
+    let x = card.x;
     let y = card.y;
-    for (const prev of resolved) {
-      // Check horizontal overlap
-      if (card.x < prev.x + prev.w && card.x + card.w > prev.x) {
-        // Check vertical overlap against resolved position
+
+    // Push right to avoid project containers
+    for (const obs of obstacles) {
+      if (
+        x < obs.x + obs.w + CARD_GAP &&
+        x + card.w > obs.x &&
+        y < obs.y + obs.h &&
+        y + card.h > obs.y
+      ) {
+        x = obs.x + obs.w + CARD_GAP;
+      }
+    }
+
+    // Push down to avoid other DiffCards
+    for (const prev of resolvedCards) {
+      if (x < prev.x + prev.w && x + card.w > prev.x) {
         if (y < prev.y + prev.h + CARD_GAP && y + card.h > prev.y - CARD_GAP) {
           y = prev.y + prev.h + CARD_GAP;
         }
       }
     }
-    resolved.push({ x: card.x, y, w: card.w, h: card.h });
-    result[id] = y;
+
+    resolvedCards.push({ x, y, w: card.w, h: card.h });
+    result[id] = { x, y };
   }
 
   return result;
