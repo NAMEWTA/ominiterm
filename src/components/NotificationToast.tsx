@@ -1,24 +1,9 @@
 import { useNotificationStore } from "../stores/notificationStore";
 
 const typeConfig = {
-  error: {
-    border: "border-[#ee0000]/30",
-    text: "text-[#ff4444]",
-    label: "Error",
-    dot: "bg-[#ee0000]",
-  },
-  warn: {
-    border: "border-[#f5a623]/30",
-    text: "text-[#f5a623]",
-    label: "Warning",
-    dot: "bg-[#f5a623]",
-  },
-  info: {
-    border: "border-[#333]",
-    text: "text-[#888]",
-    label: "Info",
-    dot: "bg-[#666]",
-  },
+  error: { color: "#ee0000", label: "Error" },
+  warn: { color: "#f5a623", label: "Warning" },
+  info: { color: "#888", label: "Info" },
 };
 
 export function NotificationToast() {
@@ -33,15 +18,20 @@ export function NotificationToast() {
         return (
           <div
             key={n.id}
-            className={`rounded-lg border px-4 py-3 bg-[#111] shadow-lg text-sm flex items-start gap-3 animate-[slideIn_0.2s_ease-out] ${config.border}`}
+            className="rounded-md border border-[#222] px-4 py-3 bg-[#111] flex items-start gap-3 animate-[slideIn_0.2s_ease-out]"
           >
             <div
-              className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${config.dot}`}
+              className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
+              style={{ backgroundColor: config.color }}
             />
             <div className="flex-1 min-w-0">
               <div
-                className={`text-[10px] font-medium uppercase tracking-wider mb-0.5 opacity-70 ${config.text}`}
-                style={{ fontFamily: '"Geist Mono", monospace' }}
+                className="text-[11px] font-medium uppercase tracking-wider mb-0.5"
+                style={{
+                  color: config.color,
+                  fontFamily: '"Geist Mono", monospace',
+                  opacity: 0.7,
+                }}
               >
                 {config.label}
               </div>
@@ -50,7 +40,7 @@ export function NotificationToast() {
               </span>
             </div>
             <button
-              className="shrink-0 text-[#444] hover:text-[#ededed] transition-colors p-0.5"
+              className="shrink-0 text-[#333] hover:text-[#ededed] transition-colors duration-150 p-0.5"
               onClick={() => dismiss(n.id)}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
