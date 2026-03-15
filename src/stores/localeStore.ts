@@ -3,7 +3,7 @@ import { create } from "zustand";
 export type Locale = "en" | "zh";
 
 function detectLocale(): Locale {
-  const saved = localStorage.getItem("termcanvas-locale") as Locale | null;
+  const saved = localStorage.getItem("termcanvas-locale");
   if (saved === "en" || saved === "zh") return saved;
   return navigator.language.startsWith("zh") ? "zh" : "en";
 }
