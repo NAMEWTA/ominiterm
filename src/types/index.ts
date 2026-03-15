@@ -28,6 +28,7 @@ export interface TerminalData {
   focused: boolean;
   ptyId: number | null;
   status: TerminalStatus;
+  scrollback?: string;
   sessionId?: string;
 }
 

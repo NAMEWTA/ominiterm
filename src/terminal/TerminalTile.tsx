@@ -1,11 +1,13 @@
 import { useEffect, useRef, useCallback } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { SerializeAddon } from "@xterm/addon-serialize";
 import type { TerminalData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { useNotificationStore } from "../stores/notificationStore";
 import { useDrag } from "../hooks/useDrag";
 import { useResize } from "../hooks/useResize";
+import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
 
 interface Props {
   projectId: string;
@@ -111,13 +113,21 @@ export function TerminalTile({
     });
 
     const fitAddon = new FitAddon();
+    const serializeAddon = new SerializeAddon();
     xterm.loadAddon(fitAddon);
+    xterm.loadAddon(serializeAddon);
     xterm.open(containerRef.current);
+
+    // Restore scrollback from previous session
+    if (terminal.scrollback) {
+      xterm.write(terminal.scrollback);
+    }
 
     requestAnimationFrame(() => fitAddon.fit());
 
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
+    registerTerminal(terminal.id, xterm, serializeAddon);
 
     let ptyId: number | null = null;
 
@@ -182,6 +192,7 @@ export function TerminalTile({
     resizeObserver.observe(containerRef.current);
 
     cleanupRef.current = () => {
+      unregisterTerminal(terminal.id);
       resizeObserver.disconnect();
       removeOutput();
       removeExit();
