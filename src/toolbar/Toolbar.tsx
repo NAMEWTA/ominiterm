@@ -2,27 +2,9 @@ import { useCallback } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useProjectStore, generateId } from "../stores/projectStore";
 import { useNotificationStore } from "../stores/notificationStore";
-import { useDrawingStore, type DrawingTool } from "../stores/drawingStore";
 import { useThemeStore } from "../stores/themeStore";
 
 const noDrag = { WebkitAppRegion: "no-drag" } as React.CSSProperties;
-
-const drawingTools: { id: DrawingTool; label: string; icon: string }[] = [
-  { id: "select", label: "Select", icon: "↖" },
-  { id: "pen", label: "Pen", icon: "✎" },
-  { id: "text", label: "Text", icon: "T" },
-  { id: "rect", label: "Rect", icon: "□" },
-  { id: "arrow", label: "Arrow", icon: "→" },
-];
-
-const drawingColors = [
-  "#ededed",
-  "#0070f3",
-  "#ee0000",
-  "#f5a623",
-  "#7928ca",
-  "#50e3c2",
-];
 
 function isElectron(): boolean {
   return typeof window !== "undefined" && !!window.termcanvas;
@@ -36,8 +18,6 @@ export function Toolbar() {
   const { viewport, setViewport, resetViewport } = useCanvasStore();
   const { projects, addProject } = useProjectStore();
   const { notify } = useNotificationStore();
-  const { tool, color, setTool, setColor, clearAll, elements } =
-    useDrawingStore();
   const { theme, toggleTheme } = useThemeStore();
 
   const handleAddProject = useCallback(async () => {
@@ -161,49 +141,6 @@ export function Toolbar() {
       >
         Open
       </button>
-
-      {/* ── Drawing tools ── */}
-      <div className="flex items-center gap-0.5 ml-2" style={noDrag}>
-        {drawingTools.map((t) => (
-          <button
-            key={t.id}
-            className={`px-2 py-1 rounded-md text-[13px] transition-colors duration-150 active:scale-[0.97] ${
-              tool === t.id
-                ? "bg-[var(--border)] text-[var(--text-primary)]"
-                : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]"
-            }`}
-            onClick={() => setTool(t.id)}
-            title={t.label}
-          >
-            {t.icon}
-          </button>
-        ))}
-      </div>
-
-      {/* Drawing colors */}
-      <div className="flex items-center gap-1" style={noDrag}>
-        {drawingColors.map((c) => (
-          <button
-            key={c}
-            className="w-4 h-4 rounded-full transition-all duration-150"
-            style={{
-              backgroundColor: c,
-              outline:
-                color === c ? "1.5px solid #ededed" : "1.5px solid transparent",
-              outlineOffset: 1,
-            }}
-            onClick={() => setColor(c)}
-          />
-        ))}
-        {elements.length > 0 && (
-          <button
-            className="ml-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--red)] transition-colors duration-150"
-            onClick={clearAll}
-          >
-            Clear
-          </button>
-        )}
-      </div>
 
       <div className="flex-1" />
 

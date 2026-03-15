@@ -3,6 +3,7 @@ import { Canvas } from "./canvas/Canvas";
 import { Toolbar } from "./toolbar/Toolbar";
 import { Sidebar } from "./components/Sidebar";
 import { NotificationToast } from "./components/NotificationToast";
+import { DrawingPanel } from "./toolbar/DrawingPanel";
 import { useProjectStore } from "./stores/projectStore";
 import { useCanvasStore } from "./stores/canvasStore";
 import { useDrawingStore } from "./stores/drawingStore";
@@ -205,6 +206,7 @@ export function App() {
       <Toolbar />
       <Sidebar />
       <Canvas />
+      <DrawingPanel />
       <NotificationToast />
       {showCloseDialog && (
         <CloseDialog
