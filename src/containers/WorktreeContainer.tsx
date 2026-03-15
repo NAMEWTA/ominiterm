@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useMemo } from "react";
 import type { WorktreeData } from "../types";
 import { useProjectStore, createTerminal } from "../stores/projectStore";
 import { TerminalTile } from "../terminal/TerminalTile";
@@ -18,6 +18,20 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
     const terminal = createTerminal("shell");
     addTerminal(projectId, worktree.id, terminal);
   }, [projectId, worktree.id, addTerminal]);
+
+  // Calculate content area min height from terminal bounding box
+  const contentMinH = useMemo(() => {
+    if (worktree.terminals.length === 0) return 60;
+    let maxBottom = 0;
+    for (const t of worktree.terminals) {
+      if (t.minimized) {
+        maxBottom = Math.max(maxBottom, t.position.y + 30);
+      } else {
+        maxBottom = Math.max(maxBottom, t.position.y + (t.size.h || 320));
+      }
+    }
+    return Math.max(60, maxBottom);
+  }, [worktree.terminals]);
 
   const handleResize = useResize(
     worktree.size.w,
@@ -91,7 +105,10 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
 
       {/* Terminals */}
       {!worktree.collapsed && (
-        <div className="p-2.5 relative overflow-auto" style={{ minHeight: 60 }}>
+        <div
+          className="p-2.5 relative overflow-hidden"
+          style={{ minHeight: contentMinH }}
+        >
           {worktree.terminals.map((terminal) => (
             <TerminalTile
               key={terminal.id}
