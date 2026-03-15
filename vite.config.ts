@@ -28,11 +28,34 @@ function buildPreload(): Plugin {
   };
 }
 
+function buildCli(): Plugin {
+  const opts = {
+    entryPoints: ["cli/termcanvas.ts"],
+    outfile: "dist-cli/termcanvas.js",
+    format: "esm" as const,
+    platform: "node" as const,
+    bundle: true,
+    banner: { js: "#!/usr/bin/env node" },
+  };
+  return {
+    name: "build-cli",
+    async buildStart() {
+      if (this.meta.watchMode) {
+        const ctx = await esbuildCtx(opts);
+        await ctx.watch();
+      } else {
+        await esbuild(opts);
+      }
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     buildPreload(),
+    buildCli(),
     electron([
       {
         entry: "electron/main.ts",
