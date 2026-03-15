@@ -6,6 +6,7 @@ import type {
   TerminalType,
   TerminalStatus,
 } from "../types";
+import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
 
 interface ProjectStore {
   projects: ProjectData[];
@@ -125,13 +126,83 @@ function mapTerminals(
   );
 }
 
+const OVERLAP_GAP = 40;
+
+function getProjectBounds(p: ProjectData) {
+  if (p.worktrees.length === 0) {
+    return {
+      x: p.position.x,
+      y: p.position.y,
+      w: 340,
+      h: PROJ_TITLE_H + PROJ_PAD + 60 + PROJ_PAD,
+    };
+  }
+  let maxW = 300;
+  let totalH = 0;
+  for (const wt of p.worktrees) {
+    const wtSize = computeWorktreeSize(wt.terminals.length);
+    maxW = Math.max(maxW, wt.position.x + wtSize.w);
+    totalH = Math.max(totalH, wt.position.y + wtSize.h);
+  }
+  return {
+    x: p.position.x,
+    y: p.position.y,
+    w: Math.max(340, maxW + PROJ_PAD * 2),
+    h: p.collapsed
+      ? PROJ_TITLE_H + 8
+      : PROJ_TITLE_H + PROJ_PAD + totalH + PROJ_PAD,
+  };
+}
+
+function rectsOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+  gap: number,
+): boolean {
+  return (
+    a.x < b.x + b.w + gap &&
+    a.x + a.w + gap > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
+}
+
+function resolveOverlaps(projects: ProjectData[]): ProjectData[] {
+  // Build mutable position map, keyed by project id
+  const positions = new Map(projects.map((p) => [p.id, { ...p.position }]));
+
+  // Sort by x so we sweep left-to-right
+  const sorted = [...projects].sort(
+    (a, b) => positions.get(a.id)!.x - positions.get(b.id)!.x,
+  );
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const curr = sorted[i];
+    const prevPos = positions.get(prev.id)!;
+    const currPos = positions.get(curr.id)!;
+
+    const prevBounds = getProjectBounds({ ...prev, position: prevPos });
+    const currBounds = getProjectBounds({ ...curr, position: currPos });
+
+    if (rectsOverlap(prevBounds, currBounds, OVERLAP_GAP)) {
+      // Push current project to the right edge of previous + gap
+      currPos.x = prevBounds.x + prevBounds.w + OVERLAP_GAP;
+    }
+  }
+
+  return projects.map((p) => ({ ...p, position: positions.get(p.id)! }));
+}
+
 export const useProjectStore = create<ProjectStore>((set) => ({
   projects: [],
   focusedProjectId: null,
   focusedWorktreeId: null,
 
   addProject: (project) =>
-    set((state) => ({ projects: [...state.projects, project] })),
+    set((state) => ({
+      projects: resolveOverlaps([...state.projects, project]),
+    })),
 
   removeProject: (projectId) =>
     set((state) => ({
@@ -139,11 +210,12 @@ export const useProjectStore = create<ProjectStore>((set) => ({
     })),
 
   updateProjectPosition: (projectId, x, y) =>
-    set((state) => ({
-      projects: state.projects.map((p) =>
+    set((state) => {
+      const updated = state.projects.map((p) =>
         p.id !== projectId ? p : { ...p, position: { x, y } },
-      ),
-    })),
+      );
+      return { projects: resolveOverlaps(updated) };
+    }),
 
   toggleProjectCollapse: (projectId) =>
     set((state) => ({
