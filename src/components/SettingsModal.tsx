@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocaleStore } from "../stores/localeStore";
-import { useThemeStore } from "../stores/themeStore";
 import {
   useShortcutStore,
   formatShortcut,
@@ -73,7 +72,6 @@ function ShortcutRow({
 
 export function SettingsModal({ onClose }: Props) {
   const { locale, setLocale } = useLocaleStore();
-  const { theme, toggleTheme } = useThemeStore();
   const { shortcuts, setShortcut, resetAll } = useShortcutStore();
   const t = useT();
   const [tab, setTab] = useState<Tab>("general");
@@ -199,27 +197,6 @@ export function SettingsModal({ onClose }: Props) {
                     onClick={() => setLocale("en")}
                   >
                     English
-                  </button>
-                </div>
-              </div>
-
-              {/* Theme */}
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] text-[var(--text-secondary)]">
-                  {t.theme}
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    className={theme === "dark" ? activeBtn : inactiveBtn}
-                    onClick={() => theme !== "dark" && toggleTheme()}
-                  >
-                    {t.theme_dark}
-                  </button>
-                  <button
-                    className={theme === "light" ? activeBtn : inactiveBtn}
-                    onClick={() => theme !== "light" && toggleTheme()}
-                  >
-                    {t.theme_light}
                   </button>
                 </div>
               </div>
