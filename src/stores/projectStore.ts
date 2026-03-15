@@ -4,6 +4,7 @@ import type {
   WorktreeData,
   TerminalData,
   TerminalType,
+  TerminalStatus,
 } from "../types";
 
 interface ProjectStore {
@@ -69,6 +70,12 @@ interface ProjectStore {
     worktreeId: string,
     terminalId: string,
   ) => void;
+  updateTerminalStatus: (
+    projectId: string,
+    worktreeId: string,
+    terminalId: string,
+    status: TerminalStatus,
+  ) => void;
   setFocusedTerminal: (terminalId: string | null) => void;
 
   setProjects: (projects: ProjectData[]) => void;
@@ -92,6 +99,7 @@ export function createTerminal(
     minimized: false,
     focused: false,
     ptyId: null,
+    status: "idle",
   };
 }
 
@@ -308,6 +316,17 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         worktreeId,
         terminalId,
         (t) => ({ ...t, minimized: !t.minimized }),
+      ),
+    })),
+
+  updateTerminalStatus: (projectId, worktreeId, terminalId, status) =>
+    set((state) => ({
+      projects: mapTerminals(
+        state.projects,
+        projectId,
+        worktreeId,
+        terminalId,
+        (t) => ({ ...t, status }),
       ),
     })),
 

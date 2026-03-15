@@ -16,6 +16,8 @@ export interface Viewport {
   scale: number;
 }
 
+export type TerminalStatus = "running" | "success" | "error" | "idle";
+
 export interface TerminalData {
   id: string;
   title: string;
@@ -25,6 +27,7 @@ export interface TerminalData {
   minimized: boolean;
   focused: boolean;
   ptyId: number | null;
+  status: TerminalStatus;
   sessionId?: string;
 }
 
