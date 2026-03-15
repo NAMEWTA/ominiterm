@@ -4,12 +4,14 @@ import { useProjectStore } from "../stores/projectStore";
 import { WorktreeContainer } from "./WorktreeContainer";
 import { useDrag } from "../hooks/useDrag";
 import { useResize } from "../hooks/useResize";
+import { useT } from "../i18n/useT";
 
 interface Props {
   project: ProjectData;
 }
 
 export function ProjectContainer({ project }: Props) {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const {
     updateProjectPosition,
@@ -80,7 +82,7 @@ export function ProjectContainer({ project }: Props) {
           className="text-[11px] font-medium text-[#0070f3]"
           style={{ fontFamily: '"Geist Mono", monospace' }}
         >
-          Project
+          {t.project_label}
         </span>
         <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
           {project.name}
