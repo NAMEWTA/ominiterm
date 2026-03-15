@@ -37,8 +37,13 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
     worktree.size.w,
     worktree.size.h,
     useCallback(
-      (w: number, h: number) =>
-        updateWorktreeSize(projectId, worktree.id, w, h),
+      (w: number, h: number) => {
+        if (containerRef.current) {
+          w = Math.max(w, containerRef.current.scrollWidth);
+          h = Math.max(h, containerRef.current.scrollHeight);
+        }
+        updateWorktreeSize(projectId, worktree.id, w, h);
+      },
       [projectId, worktree.id, updateWorktreeSize],
     ),
     300,
