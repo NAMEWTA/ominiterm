@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useProjectStore, generateId } from "../stores/projectStore";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useNotificationStore } from "../stores/notificationStore";
+import { useT } from "../i18n/useT";
 import type { TerminalStatus, TerminalType } from "../types";
 
 const STATUS_COLOR: Record<TerminalStatus, string> = {
@@ -9,13 +10,6 @@ const STATUS_COLOR: Record<TerminalStatus, string> = {
   success: "#50e3c2",
   error: "#ee0000",
   idle: "#444",
-};
-
-const STATUS_LABEL: Record<TerminalStatus, string> = {
-  running: "Running",
-  success: "Done",
-  error: "Error",
-  idle: "Starting",
 };
 
 const TYPE_LABEL: Record<TerminalType, string> = {
@@ -32,6 +26,14 @@ export function Sidebar() {
   const { projects, addProject } = useProjectStore();
   const { viewport, animateTo } = useCanvasStore();
   const { notify } = useNotificationStore();
+  const t = useT();
+
+  const STATUS_LABEL: Record<TerminalStatus, string> = {
+    running: t.status_running,
+    success: t.status_done,
+    error: t.status_error,
+    idle: t.status_idle,
+  };
 
   const handleAddProject = useCallback(async () => {
     if (!window.termcanvas) return;
@@ -39,7 +41,7 @@ export function Sidebar() {
     try {
       dirPath = await window.termcanvas.project.selectDirectory();
     } catch (err) {
-      notify("error", `Failed to open directory picker: ${err}`);
+      notify("error", t.error_dir_picker(err));
       return;
     }
     if (!dirPath) return;
@@ -47,11 +49,11 @@ export function Sidebar() {
     try {
       info = await window.termcanvas.project.scan(dirPath);
     } catch (err) {
-      notify("error", `Failed to scan project: ${err}`);
+      notify("error", t.error_scan(err));
       return;
     }
     if (!info) {
-      notify("warn", `"${dirPath}" is not a git repository.`);
+      notify("warn", t.error_not_git(dirPath));
       return;
     }
     addProject({
@@ -72,11 +74,8 @@ export function Sidebar() {
         terminals: [],
       })),
     });
-    notify(
-      "info",
-      `Added "${info.name}" with ${info.worktrees.length} worktree(s).`,
-    );
-  }, [addProject, viewport, notify]);
+    notify("info", t.info_added_project(info.name, info.worktrees.length));
+  }, [addProject, viewport, notify, t]);
 
   const handleOpenWorkspace = useCallback(async () => {
     if (!window.termcanvas) return;
@@ -126,20 +125,20 @@ export function Sidebar() {
             className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider px-1"
             style={{ fontFamily: '"Geist Mono", monospace' }}
           >
-            Projects
+            {t.projects}
           </span>
           <div className="flex gap-1">
             <button
               className="flex-1 px-2 py-1 rounded-md text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors duration-150 border border-[var(--border)]"
               onClick={handleAddProject}
             >
-              + Add
+              {t.add}
             </button>
             <button
               className="flex-1 px-2 py-1 rounded-md text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors duration-150 border border-[var(--border)]"
               onClick={handleOpenWorkspace}
             >
-              Open
+              {t.open}
             </button>
           </div>
         </div>
@@ -158,20 +157,25 @@ export function Sidebar() {
                 </button>
                 {terminals.length > 0 && (
                   <div className="px-4 flex flex-col gap-px">
-                    {terminals.map((t) => (
-                      <div key={t.id} className="flex items-center gap-2 py-1">
+                    {terminals.map((terminal) => (
+                      <div
+                        key={terminal.id}
+                        className="flex items-center gap-2 py-1"
+                      >
                         <div
-                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.status === "running" || t.status === "idle" ? "status-pulse" : ""}`}
-                          style={{ backgroundColor: STATUS_COLOR[t.status] }}
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${terminal.status === "running" || terminal.status === "idle" ? "status-pulse" : ""}`}
+                          style={{
+                            backgroundColor: STATUS_COLOR[terminal.status],
+                          }}
                         />
                         <span
                           className="text-[11px] text-[var(--text-muted)] truncate"
                           style={{ fontFamily: '"Geist Mono", monospace' }}
                         >
-                          {TYPE_LABEL[t.type]}
+                          {TYPE_LABEL[terminal.type]}
                         </span>
                         <span className="text-[11px] text-[var(--text-faint)] ml-auto shrink-0">
-                          {STATUS_LABEL[t.status]}
+                          {STATUS_LABEL[terminal.status]}
                         </span>
                       </div>
                     ))}
@@ -182,7 +186,7 @@ export function Sidebar() {
           })}
           {projects.length === 0 && (
             <div className="px-4 py-4 text-[11px] text-[var(--text-faint)]">
-              No projects
+              {t.no_projects}
             </div>
           )}
         </div>
