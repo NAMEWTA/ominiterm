@@ -34,7 +34,7 @@ function migrateProjects(projects: unknown[]): ProjectData[] {
         minimized: t.minimized ?? false,
         focused: t.focused ?? false,
         ptyId: null,
-        status: t.status ?? "idle",
+        status: "idle",
         scrollback: t.scrollback,
         sessionId: t.sessionId,
       })),
@@ -96,13 +96,19 @@ function useWorktreeWatcher() {
   useEffect(() => {
     if (!window.termcanvas) return;
 
+    const rescanAll = () => {
+      for (const p of projects) {
+        window.termcanvas.project
+          .rescanWorktrees(p.path)
+          .then((worktrees) => syncWorktrees(p.path, worktrees));
+      }
+    };
+
     for (const p of projects) {
       window.termcanvas.project.watch(p.path);
-      // Initial sync to clean up stale worktrees from persisted state
-      window.termcanvas.project
-        .rescanWorktrees(p.path)
-        .then((worktrees) => syncWorktrees(p.path, worktrees));
     }
+    // Initial sync to clean up stale worktrees from persisted state
+    rescanAll();
 
     const unsubscribe = window.termcanvas.project.onWorktreesChanged(
       (dirPath, worktrees) => {
@@ -110,8 +116,12 @@ function useWorktreeWatcher() {
       },
     );
 
+    // Rescan on window focus as fallback for unreliable fs.watch
+    window.addEventListener("focus", rescanAll);
+
     return () => {
       unsubscribe();
+      window.removeEventListener("focus", rescanAll);
       for (const p of projects) {
         window.termcanvas.project.unwatch(p.path);
       }

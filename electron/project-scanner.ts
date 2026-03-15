@@ -135,7 +135,8 @@ export class ProjectScanner {
 
     // Polling fallback: fs.watch can miss events on macOS.
     // Check every 5s if worktree count changed.
-    this.lastWorktreeCount.set(dirPath, this.listWorktrees(dirPath).length);
+    const initial = this.listWorktrees(dirPath);
+    this.lastWorktreeCount.set(dirPath, initial.length);
     const poller = setInterval(() => {
       const worktrees = this.listWorktrees(dirPath);
       const prev = this.lastWorktreeCount.get(dirPath) ?? 0;
