@@ -6,15 +6,28 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "terminal",
     "canvas",
     "electron",
-    "worktree"
+    "worktree",
+    "git",
+    "xterm",
+    "infinite-canvas",
+    "developer-tools"
   ],
-  "author": "",
+  "author": "blueberrycongee",
+  "homepage": "https://github.com/blueberrycongee/termcanvas",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blueberrycongee/termcanvas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/blueberrycongee/termcanvas/issues"
+  },
   "license": "MIT",
   "type": "module",
   "dependencies": {
