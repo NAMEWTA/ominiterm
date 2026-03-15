@@ -1,9 +1,9 @@
-import { useCallback, useRef, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { ProjectData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { WorktreeContainer } from "./WorktreeContainer";
 import { useDrag } from "../hooks/useDrag";
-import { useResize } from "../hooks/useResize";
+import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
 import { useT } from "../i18n/useT";
 
 interface Props {
@@ -12,10 +12,8 @@ interface Props {
 
 export function ProjectContainer({ project }: Props) {
   const t = useT();
-  const containerRef = useRef<HTMLDivElement>(null);
   const {
     updateProjectPosition,
-    updateProjectSize,
     toggleProjectCollapse,
     removeProject,
     bringToFront,
@@ -30,44 +28,31 @@ export function ProjectContainer({ project }: Props) {
     ),
   );
 
-  const childMinW = useMemo(() => {
-    if (project.worktrees.length === 0) return 340;
-    const maxWtW = Math.max(...project.worktrees.map((wt) => wt.size.w || 300));
-    return Math.max(340, maxWtW + 24 + 2);
+  const computedSize = useMemo(() => {
+    if (project.worktrees.length === 0)
+      return { w: 340, h: PROJ_TITLE_H + PROJ_PAD + 60 + PROJ_PAD };
+    let maxW = 300;
+    let totalH = 0;
+    for (const wt of project.worktrees) {
+      const wtSize = computeWorktreeSize(wt.terminals.length);
+      maxW = Math.max(maxW, wt.position.x + wtSize.w);
+      totalH = Math.max(totalH, wt.position.y + wtSize.h);
+    }
+    return {
+      w: maxW + PROJ_PAD * 2,
+      h: PROJ_TITLE_H + PROJ_PAD + totalH + PROJ_PAD,
+    };
   }, [project.worktrees]);
-
-  const childMinH = useMemo(() => {
-    if (project.worktrees.length === 0) return 120;
-    const totalH = project.worktrees.reduce(
-      (sum, wt) => sum + (wt.size.h || 200),
-      0,
-    );
-    const gaps = (project.worktrees.length - 1) * 8;
-    return Math.max(120, totalH + gaps + 24 + 36 + 2);
-  }, [project.worktrees]);
-
-  const handleResize = useResize(
-    project.size.w,
-    project.size.h,
-    useCallback(
-      (w: number, h: number) => updateProjectSize(project.id, w, h),
-      [project.id, updateProjectSize],
-    ),
-    childMinW,
-    childMinH,
-    containerRef,
-  );
 
   return (
     <div
-      ref={containerRef}
       className="absolute panel"
       style={{
         left: project.position.x,
         top: project.position.y,
-        width: project.size.w > 0 ? project.size.w : undefined,
+        width: project.collapsed ? 340 : computedSize.w,
+        height: project.collapsed ? undefined : computedSize.h,
         minWidth: 340,
-        height: project.size.h > 0 ? project.size.h : undefined,
         zIndex: project.zIndex ?? 0,
       }}
       onMouseDown={() => bringToFront(project.id)}
@@ -142,26 +127,6 @@ export function ProjectContainer({ project }: Props) {
           ))}
         </div>
       )}
-
-      {/* Resize handle */}
-      <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity duration-150"
-        onMouseDown={handleResize}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          className="text-[var(--text-faint)]"
-        >
-          <path
-            d="M14 14L8 14M14 14L14 8"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
     </div>
   );
 }
