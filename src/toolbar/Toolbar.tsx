@@ -135,13 +135,29 @@ export function Toolbar() {
         TermCanvas
       </span>
 
-      {/* Add project */}
+      {/* Actions */}
       <button
         className={`${btn} border border-[#222]`}
         style={noDrag}
         onClick={handleAddProject}
       >
         Add Project
+      </button>
+      <button
+        className={btn}
+        style={noDrag}
+        onClick={async () => {
+          if (!window.termcanvas) return;
+          const data = await window.termcanvas.workspace.open();
+          if (data) {
+            // Dispatch custom event for App to handle
+            window.dispatchEvent(
+              new CustomEvent("termcanvas:open-workspace", { detail: data }),
+            );
+          }
+        }}
+      >
+        Open
       </button>
 
       {/* ── Drawing tools ── */}

@@ -86,6 +86,18 @@ function useStatePersistence() {
   }, []);
 }
 
+function useWorkspaceOpen() {
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const data = (e as CustomEvent<string>).detail;
+      restoreFromData(data);
+    };
+    window.addEventListener("termcanvas:open-workspace", handler);
+    return () =>
+      window.removeEventListener("termcanvas:open-workspace", handler);
+  }, []);
+}
+
 function useCloseHandler() {
   const [showCloseDialog, setShowCloseDialog] = useState(false);
 
@@ -175,6 +187,7 @@ function CloseDialog({
 export function App() {
   useWorktreeWatcher();
   useStatePersistence();
+  useWorkspaceOpen();
   const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
     useCloseHandler();
 
