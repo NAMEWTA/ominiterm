@@ -11,11 +11,6 @@ export interface Position {
   y: number;
 }
 
-export interface Size {
-  w: number;
-  h: number;
-}
-
 export interface Viewport {
   x: number;
   y: number;
@@ -28,8 +23,6 @@ export interface TerminalData {
   id: string;
   title: string;
   type: TerminalType;
-  position: Position;
-  size: Size;
   minimized: boolean;
   focused: boolean;
   ptyId: number | null;
@@ -43,7 +36,6 @@ export interface WorktreeData {
   name: string;
   path: string;
   position: Position;
-  size: Size;
   collapsed: boolean;
   terminals: TerminalData[];
 }
@@ -53,7 +45,6 @@ export interface ProjectData {
   name: string;
   path: string;
   position: Position;
-  size: Size;
   collapsed: boolean;
   zIndex: number;
   worktrees: WorktreeData[];

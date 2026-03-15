@@ -3,6 +3,7 @@ import { useProjectStore, generateId } from "../stores/projectStore";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useNotificationStore } from "../stores/notificationStore";
 import { useT } from "../i18n/useT";
+import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
 import type { TerminalStatus, TerminalType } from "../types";
 
 const STATUS_COLOR: Record<TerminalStatus, string> = {
@@ -61,7 +62,6 @@ export function Sidebar() {
       name: info.name,
       path: info.path,
       position: { x: 100 - viewport.x, y: 100 - viewport.y },
-      size: { w: 620, h: Math.max(250, info.worktrees.length * 360 + 60) },
       collapsed: false,
       zIndex: 0,
       worktrees: info.worktrees.map((wt, i) => ({
@@ -69,7 +69,6 @@ export function Sidebar() {
         name: wt.branch,
         path: wt.path,
         position: { x: 0, y: i * 360 },
-        size: { w: 580, h: 340 },
         collapsed: false,
         terminals: [],
       })),
@@ -92,10 +91,21 @@ export function Sidebar() {
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
 
+      let maxW = 300;
+      let totalH = 0;
+      for (const wt of project.worktrees) {
+        const wtSize = computeWorktreeSize(wt.terminals.length);
+        maxW = Math.max(maxW, wt.position.x + wtSize.w);
+        totalH = Math.max(totalH, wt.position.y + wtSize.h);
+      }
+      const projW = Math.max(340, maxW + PROJ_PAD * 2);
+      const projH = Math.max(
+        PROJ_TITLE_H + PROJ_PAD + 60 + PROJ_PAD,
+        PROJ_TITLE_H + PROJ_PAD + totalH + PROJ_PAD,
+      );
+
       const padding = 80;
       const toolbarH = 44;
-      const projW = project.size.w || 620;
-      const projH = project.size.h || 400;
       const viewW = window.innerWidth - padding * 2;
       const viewH = window.innerHeight - toolbarH - padding * 2;
       const scale = Math.min(1, viewW / projW, viewH / projH);

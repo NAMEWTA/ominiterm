@@ -13,7 +13,6 @@ interface ProjectStore {
   addProject: (project: ProjectData) => void;
   removeProject: (projectId: string) => void;
   updateProjectPosition: (projectId: string, x: number, y: number) => void;
-  updateProjectSize: (projectId: string, w: number, h: number) => void;
   toggleProjectCollapse: (projectId: string) => void;
   bringToFront: (projectId: string) => void;
 
@@ -22,12 +21,6 @@ interface ProjectStore {
     worktreeId: string,
     x: number,
     y: number,
-  ) => void;
-  updateWorktreeSize: (
-    projectId: string,
-    worktreeId: string,
-    w: number,
-    h: number,
   ) => void;
   toggleWorktreeCollapse: (projectId: string, worktreeId: string) => void;
   syncWorktrees: (
@@ -44,20 +37,6 @@ interface ProjectStore {
     projectId: string,
     worktreeId: string,
     terminalId: string,
-  ) => void;
-  updateTerminalPosition: (
-    projectId: string,
-    worktreeId: string,
-    terminalId: string,
-    x: number,
-    y: number,
-  ) => void;
-  updateTerminalSize: (
-    projectId: string,
-    worktreeId: string,
-    terminalId: string,
-    w: number,
-    h: number,
   ) => void;
   updateTerminalPtyId: (
     projectId: string,
@@ -82,6 +61,12 @@ interface ProjectStore {
     terminalId: string,
     sessionId: string,
   ) => void;
+  reorderTerminal: (
+    projectId: string,
+    worktreeId: string,
+    terminalId: string,
+    newIndex: number,
+  ) => void;
   setFocusedTerminal: (terminalId: string | null) => void;
 
   setProjects: (projects: ProjectData[]) => void;
@@ -100,8 +85,6 @@ export function createTerminal(
     id: generateId(),
     title: title ?? (type === "shell" ? "Terminal" : type),
     type,
-    position: { x: 0, y: 0 },
-    size: { w: 540, h: 260 },
     minimized: false,
     focused: false,
     ptyId: null,
@@ -153,13 +136,6 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       ),
     })),
 
-  updateProjectSize: (projectId, w, h) =>
-    set((state) => ({
-      projects: state.projects.map((p) =>
-        p.id !== projectId ? p : { ...p, size: { w, h } },
-      ),
-    })),
-
   toggleProjectCollapse: (projectId) =>
     set((state) => ({
       projects: state.projects.map((p) =>
@@ -191,20 +167,6 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       ),
     })),
 
-  updateWorktreeSize: (projectId, worktreeId, w, h) =>
-    set((state) => ({
-      projects: state.projects.map((p) =>
-        p.id !== projectId
-          ? p
-          : {
-              ...p,
-              worktrees: p.worktrees.map((wt) =>
-                wt.id !== worktreeId ? wt : { ...wt, size: { w, h } },
-              ),
-            },
-      ),
-    })),
-
   syncWorktrees: (projectPath, worktrees) =>
     set((state) => ({
       projects: state.projects.map((p) => {
@@ -223,7 +185,6 @@ export const useProjectStore = create<ProjectStore>((set) => ({
             name: wt.branch,
             path: wt.path,
             position: { x: 0, y: 0 },
-            size: { w: p.size.w > 0 ? p.size.w - 40 : 580, h: 0 },
             collapsed: false,
             terminals: [],
           };
@@ -281,28 +242,6 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       ),
     })),
 
-  updateTerminalPosition: (projectId, worktreeId, terminalId, x, y) =>
-    set((state) => ({
-      projects: mapTerminals(
-        state.projects,
-        projectId,
-        worktreeId,
-        terminalId,
-        (t) => ({ ...t, position: { x, y } }),
-      ),
-    })),
-
-  updateTerminalSize: (projectId, worktreeId, terminalId, w, h) =>
-    set((state) => ({
-      projects: mapTerminals(
-        state.projects,
-        projectId,
-        worktreeId,
-        terminalId,
-        (t) => ({ ...t, size: { w, h } }),
-      ),
-    })),
-
   updateTerminalPtyId: (projectId, worktreeId, terminalId, ptyId) =>
     set((state) => ({
       projects: mapTerminals(
@@ -344,6 +283,28 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         worktreeId,
         terminalId,
         (t) => ({ ...t, sessionId }),
+      ),
+    })),
+
+  reorderTerminal: (projectId, worktreeId, terminalId, newIndex) =>
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id !== projectId
+          ? p
+          : {
+              ...p,
+              worktrees: p.worktrees.map((w) => {
+                if (w.id !== worktreeId) return w;
+                const terminals = [...w.terminals];
+                const oldIndex = terminals.findIndex(
+                  (t) => t.id === terminalId,
+                );
+                if (oldIndex === -1 || oldIndex === newIndex) return w;
+                const [moved] = terminals.splice(oldIndex, 1);
+                terminals.splice(newIndex, 0, moved);
+                return { ...w, terminals };
+              }),
+            },
       ),
     })),
 
