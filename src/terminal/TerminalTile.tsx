@@ -47,6 +47,7 @@ export function TerminalTile({
     updateTerminalPtyId,
     updateTerminalSize,
     updateTerminalPosition,
+    updateTerminalStatus,
     setFocusedTerminal,
   } = useProjectStore();
 
@@ -134,6 +135,7 @@ export function TerminalTile({
       .then((id) => {
         ptyId = id;
         updateTerminalPtyId(projectId, worktreeId, terminal.id, id);
+        updateTerminalStatus(projectId, worktreeId, terminal.id, "running");
 
         xterm.onData((data) => {
           window.termcanvas.terminal.input(id, data);
@@ -149,6 +151,7 @@ export function TerminalTile({
       })
       .catch((err) => {
         notify("error", `Failed to create PTY for "${terminal.title}": ${err}`);
+        updateTerminalStatus(projectId, worktreeId, terminal.id, "error");
         xterm.write(
           `\r\n\x1b[31m[Error] Failed to create terminal: ${err}\x1b[0m\r\n`,
         );
@@ -167,6 +170,12 @@ export function TerminalTile({
         if (id === ptyId) {
           xterm.write(
             `\r\n\x1b[33m[Process exited with code ${exitCode}]\x1b[0m\r\n`,
+          );
+          updateTerminalStatus(
+            projectId,
+            worktreeId,
+            terminal.id,
+            exitCode === 0 ? "success" : "error",
           );
           notify(
             exitCode === 0 ? "info" : "warn",
