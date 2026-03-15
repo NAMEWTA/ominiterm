@@ -52,14 +52,14 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
 
   return (
     <div
-      className="absolute rounded-md"
+      className="absolute"
       style={{
         left: worktree.position.x,
         top: worktree.position.y,
         width: computedSize.w,
         height: worktree.collapsed ? undefined : computedSize.h,
         minWidth: 300,
-        border: "1px solid var(--border)",
+        borderLeft: "2px solid var(--border)",
       }}
       onMouseEnter={() => {
         if (diffPinned) return;
