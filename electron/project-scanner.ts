@@ -16,6 +16,8 @@ interface ProjectInfo {
 
 export class ProjectScanner {
   private watchers = new Map<string, FSWatcher>();
+  private pollers = new Map<string, ReturnType<typeof setInterval>>();
+  private lastWorktreeCount = new Map<string, number>();
 
   scan(dirPath: string): ProjectInfo | null {
     try {
@@ -119,7 +121,10 @@ export class ProjectScanner {
       try {
         const watcher = watch(absGitDir, (_event, filename) => {
           if (filename === "worktrees") {
-            debouncedScan();
+            // Scan immediately then upgrade watcher to .git/worktrees
+            const worktrees = this.listWorktrees(dirPath);
+            onChange(worktrees);
+            this.startWatching(dirPath, onChange);
           }
         });
         this.watchers.set(dirPath, watcher);
@@ -127,6 +132,19 @@ export class ProjectScanner {
         // Ignore - directory may not exist
       }
     }
+
+    // Polling fallback: fs.watch can miss events on macOS.
+    // Check every 5s if worktree count changed.
+    this.lastWorktreeCount.set(dirPath, this.listWorktrees(dirPath).length);
+    const poller = setInterval(() => {
+      const worktrees = this.listWorktrees(dirPath);
+      const prev = this.lastWorktreeCount.get(dirPath) ?? 0;
+      if (worktrees.length !== prev) {
+        this.lastWorktreeCount.set(dirPath, worktrees.length);
+        onChange(worktrees);
+      }
+    }, 5000);
+    this.pollers.set(dirPath, poller);
   }
 
   stopWatching(dirPath: string) {
@@ -135,6 +153,12 @@ export class ProjectScanner {
       watcher.close();
       this.watchers.delete(dirPath);
     }
+    const poller = this.pollers.get(dirPath);
+    if (poller) {
+      clearInterval(poller);
+      this.pollers.delete(dirPath);
+    }
+    this.lastWorktreeCount.delete(dirPath);
   }
 
   stopAllWatching() {
