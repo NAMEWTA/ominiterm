@@ -1,4 +1,6 @@
 import http from "http";
+import { execSync } from "child_process";
+import path from "path";
 import type { BrowserWindow } from "electron";
 import type { PtyManager } from "./pty-manager";
 import type { ProjectScanner } from "./project-scanner";
@@ -102,6 +104,13 @@ export class ApiServer {
     if (method === "DELETE" && pathname.match(/^\/terminal\/[^/]+$/)) {
       const id = pathname.split("/")[2];
       return this.terminalDestroy(id);
+    }
+
+    // Diff
+    if (method === "GET" && pathname.startsWith("/diff/")) {
+      const worktreePath = decodeURIComponent(pathname.slice("/diff/".length));
+      const summary = url.searchParams.has("summary");
+      return this.getDiff(worktreePath, summary);
     }
 
     // State
@@ -291,6 +300,43 @@ export class ApiServer {
       `window.__tcApi.removeTerminal(${JSON.stringify(terminal.projectId)}, ${JSON.stringify(terminal.worktreeId)}, ${JSON.stringify(terminalId)})`,
     );
     return { ok: true };
+  }
+
+  private getDiff(worktreePath: string, summary: boolean) {
+    try {
+      if (summary) {
+        const numstat = execSync("git diff HEAD --numstat", {
+          cwd: worktreePath,
+          encoding: "utf-8",
+        });
+        const files = numstat
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+          .map((line: string) => {
+            const [add, del, name] = line.split("\t");
+            const binary = add === "-";
+            return {
+              name,
+              additions: binary ? 0 : parseInt(add, 10),
+              deletions: binary ? 0 : parseInt(del, 10),
+              binary,
+            };
+          });
+        return { worktree: worktreePath, files };
+      }
+
+      const diff = execSync("git diff HEAD", {
+        cwd: worktreePath,
+        encoding: "utf-8",
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      return { worktree: worktreePath, diff };
+    } catch (err: any) {
+      throw Object.assign(new Error(`Failed to get diff: ${err.message}`), {
+        status: 400,
+      });
+    }
   }
 
   private async getState() {

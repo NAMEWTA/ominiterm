@@ -156,12 +156,36 @@ async function main() {
           "Usage: termcanvas terminal <create|list|input|status|output|destroy> [args]",
         );
       }
+    } else if (group === "diff" && command) {
+      const worktreePath = command;
+      const summary = rest.includes("--summary");
+      const query = summary ? "?summary" : "";
+      const result = await request(
+        "GET",
+        `/diff/${encodeURIComponent(worktreePath)}${query}`,
+      );
+      if (jsonFlag) {
+        console.log(JSON.stringify(result, null, 2));
+      } else if (summary) {
+        if (result.files.length === 0) {
+          console.log("No changes.");
+        } else {
+          for (const f of result.files) {
+            const stat = f.binary
+              ? "binary"
+              : `+${f.additions} -${f.deletions}`;
+            console.log(`${stat}\t${f.name}`);
+          }
+        }
+      } else {
+        console.log(result.diff);
+      }
     } else if (group === "state") {
       const state = await request("GET", "/state");
       console.log(JSON.stringify(state, null, 2));
     } else {
       console.log(
-        "Usage: termcanvas <project|terminal|state> <command> [args]",
+        "Usage: termcanvas <project|terminal|diff|state> <command> [args]",
       );
       console.log("");
       console.log("Commands:");
@@ -186,6 +210,7 @@ async function main() {
       console.log(
         "  terminal destroy <id>                       Destroy terminal",
       );
+      console.log("  diff <worktree-path> [--summary]            Get git diff");
       console.log(
         "  state                                       Full canvas state",
       );
