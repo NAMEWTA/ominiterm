@@ -9,6 +9,8 @@ import type {
 
 interface ProjectStore {
   projects: ProjectData[];
+  focusedProjectId: string | null;
+  focusedWorktreeId: string | null;
 
   addProject: (project: ProjectData) => void;
   removeProject: (projectId: string) => void;
@@ -68,6 +70,11 @@ interface ProjectStore {
     newIndex: number,
   ) => void;
   setFocusedTerminal: (terminalId: string | null) => void;
+  setFocusedWorktree: (
+    projectId: string | null,
+    worktreeId: string | null,
+  ) => void;
+  clearFocus: () => void;
 
   setProjects: (projects: ProjectData[]) => void;
 }
@@ -120,6 +127,8 @@ function mapTerminals(
 
 export const useProjectStore = create<ProjectStore>((set) => ({
   projects: [],
+  focusedProjectId: null,
+  focusedWorktreeId: null,
 
   addProject: (project) =>
     set((state) => ({ projects: [...state.projects, project] })),
@@ -309,15 +318,57 @@ export const useProjectStore = create<ProjectStore>((set) => ({
     })),
 
   setFocusedTerminal: (terminalId) =>
+    set((state) => {
+      let projectId: string | null = null;
+      let worktreeId: string | null = null;
+      if (terminalId) {
+        for (const p of state.projects) {
+          for (const w of p.worktrees) {
+            if (w.terminals.some((t) => t.id === terminalId)) {
+              projectId = p.id;
+              worktreeId = w.id;
+            }
+          }
+        }
+      }
+      return {
+        focusedProjectId: projectId,
+        focusedWorktreeId: worktreeId,
+        projects: state.projects.map((p) => ({
+          ...p,
+          worktrees: p.worktrees.map((w) => ({
+            ...w,
+            terminals: w.terminals.map((t) => ({
+              ...t,
+              focused: t.id === terminalId,
+            })),
+          })),
+        })),
+      };
+    }),
+
+  setFocusedWorktree: (projectId, worktreeId) =>
     set((state) => ({
+      focusedProjectId: projectId,
+      focusedWorktreeId: worktreeId,
       projects: state.projects.map((p) => ({
         ...p,
         worktrees: p.worktrees.map((w) => ({
           ...w,
-          terminals: w.terminals.map((t) => ({
-            ...t,
-            focused: t.id === terminalId,
-          })),
+          terminals: w.terminals.map((t) => ({ ...t, focused: false })),
+        })),
+      })),
+    })),
+
+  clearFocus: () =>
+    set((state) => ({
+      focusedProjectId: null,
+      focusedWorktreeId: null,
+      projects: state.projects.map((p) => ({
+        ...p,
+        worktrees: p.worktrees.map((w) => ({
+          ...w,
+          terminals: w.terminals.map((t) => ({ ...t, focused: false })),
         })),
       })),
     })),

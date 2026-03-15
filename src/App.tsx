@@ -7,6 +7,7 @@ import { DrawingPanel } from "./toolbar/DrawingPanel";
 import { useProjectStore } from "./stores/projectStore";
 import { useCanvasStore } from "./stores/canvasStore";
 import { useDrawingStore } from "./stores/drawingStore";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { serializeAllTerminals } from "./terminal/terminalRegistry";
 import { useT } from "./i18n/useT";
 import type { ProjectData } from "./types";
@@ -233,6 +234,7 @@ export function App() {
   useWorktreeWatcher();
   useStatePersistence();
   useWorkspaceOpen();
+  useKeyboardShortcuts();
   const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
     useCloseHandler();
 

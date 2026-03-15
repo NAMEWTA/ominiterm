@@ -17,6 +17,11 @@ export function Canvas() {
       className={`fixed inset-0 overflow-hidden canvas-bg ${isDrawing ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"}`}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          useProjectStore.getState().clearFocus();
+        }
+      }}
     >
       <div
         id="canvas-layer"

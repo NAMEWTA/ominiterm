@@ -304,7 +304,7 @@ export function TerminalTile({
   return (
     <div
       ref={tileRef}
-      className="absolute terminal-tile rounded-md border border-[var(--border)] bg-[var(--bg)] overflow-hidden flex flex-col"
+      className={`absolute terminal-tile rounded-md border bg-[var(--bg)] overflow-hidden flex flex-col ${terminal.focused ? "border-[var(--accent)]" : "border-[var(--border)]"}`}
       style={{
         left: gridX + (isDragging ? dragOffsetX : 0),
         top: gridY + (isDragging ? dragOffsetY : 0),

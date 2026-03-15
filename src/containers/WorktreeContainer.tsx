@@ -42,6 +42,8 @@ export function WorktreeContainer({
     addTerminal,
     updateWorktreePosition,
     reorderTerminal,
+    setFocusedWorktree,
+    focusedWorktreeId,
   } = useProjectStore();
 
   const handleDrag = useDrag(
@@ -182,8 +184,9 @@ export function WorktreeContainer({
         width: computedSize.w,
         height: worktree.collapsed ? undefined : computedSize.h,
         minWidth: 300,
-        borderLeft: "2px solid var(--border)",
+        borderLeft: `2px solid ${focusedWorktreeId === worktree.id ? "var(--accent)" : "var(--border)"}`,
       }}
+      onClick={() => setFocusedWorktree(projectId, worktree.id)}
       onMouseEnter={() => {
         if (diffPinned) return;
         if (leaveTimeout.current) {
