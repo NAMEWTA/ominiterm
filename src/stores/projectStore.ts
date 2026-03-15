@@ -219,8 +219,10 @@ export const useProjectStore = create<ProjectStore>((set) => ({
 
   toggleProjectCollapse: (projectId) =>
     set((state) => ({
-      projects: state.projects.map((p) =>
-        p.id !== projectId ? p : { ...p, collapsed: !p.collapsed },
+      projects: resolveOverlaps(
+        state.projects.map((p) =>
+          p.id !== projectId ? p : { ...p, collapsed: !p.collapsed },
+        ),
       ),
     })),
 
@@ -236,90 +238,99 @@ export const useProjectStore = create<ProjectStore>((set) => ({
 
   updateWorktreePosition: (projectId, worktreeId, x, y) =>
     set((state) => ({
-      projects: state.projects.map((p) =>
-        p.id !== projectId
-          ? p
-          : {
-              ...p,
-              worktrees: p.worktrees.map((w) =>
-                w.id !== worktreeId ? w : { ...w, position: { x, y } },
-              ),
-            },
+      projects: resolveOverlaps(
+        state.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : {
+                ...p,
+                worktrees: p.worktrees.map((w) =>
+                  w.id !== worktreeId ? w : { ...w, position: { x, y } },
+                ),
+              },
+        ),
       ),
     })),
 
   syncWorktrees: (projectPath, worktrees) =>
     set((state) => ({
-      projects: state.projects.map((p) => {
-        if (p.path !== projectPath) return p;
-        // Keep existing worktrees that still exist, add new ones
-        const existingByPath = new Map(p.worktrees.map((w) => [w.path, w]));
-        const synced = worktrees.map((wt) => {
-          const existing = existingByPath.get(wt.path);
-          if (existing) {
-            // Keep existing state (terminals, size, etc), update branch name
-            return { ...existing, name: wt.branch };
-          }
-          // New worktree
-          return {
-            id: generateId(),
-            name: wt.branch,
-            path: wt.path,
-            position: { x: 0, y: 0 },
-            collapsed: false,
-            terminals: [],
-          };
-        });
-        return { ...p, worktrees: synced };
-      }),
+      projects: resolveOverlaps(
+        state.projects.map((p) => {
+          if (p.path !== projectPath) return p;
+          const existingByPath = new Map(p.worktrees.map((w) => [w.path, w]));
+          const synced = worktrees.map((wt) => {
+            const existing = existingByPath.get(wt.path);
+            if (existing) {
+              return { ...existing, name: wt.branch };
+            }
+            return {
+              id: generateId(),
+              name: wt.branch,
+              path: wt.path,
+              position: { x: 0, y: 0 },
+              collapsed: false,
+              terminals: [],
+            };
+          });
+          return { ...p, worktrees: synced };
+        }),
+      ),
     })),
 
   toggleWorktreeCollapse: (projectId, worktreeId) =>
     set((state) => ({
-      projects: state.projects.map((p) =>
-        p.id !== projectId
-          ? p
-          : {
-              ...p,
-              worktrees: p.worktrees.map((w) =>
-                w.id !== worktreeId ? w : { ...w, collapsed: !w.collapsed },
-              ),
-            },
+      projects: resolveOverlaps(
+        state.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : {
+                ...p,
+                worktrees: p.worktrees.map((w) =>
+                  w.id !== worktreeId ? w : { ...w, collapsed: !w.collapsed },
+                ),
+              },
+        ),
       ),
     })),
 
   addTerminal: (projectId, worktreeId, terminal) =>
     set((state) => ({
-      projects: state.projects.map((p) =>
-        p.id !== projectId
-          ? p
-          : {
-              ...p,
-              worktrees: p.worktrees.map((w) =>
-                w.id !== worktreeId
-                  ? w
-                  : { ...w, terminals: [...w.terminals, terminal] },
-              ),
-            },
+      projects: resolveOverlaps(
+        state.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : {
+                ...p,
+                worktrees: p.worktrees.map((w) =>
+                  w.id !== worktreeId
+                    ? w
+                    : { ...w, terminals: [...w.terminals, terminal] },
+                ),
+              },
+        ),
       ),
     })),
 
   removeTerminal: (projectId, worktreeId, terminalId) =>
     set((state) => ({
-      projects: state.projects.map((p) =>
-        p.id !== projectId
-          ? p
-          : {
-              ...p,
-              worktrees: p.worktrees.map((w) =>
-                w.id !== worktreeId
-                  ? w
-                  : {
-                      ...w,
-                      terminals: w.terminals.filter((t) => t.id !== terminalId),
-                    },
-              ),
-            },
+      projects: resolveOverlaps(
+        state.projects.map((p) =>
+          p.id !== projectId
+            ? p
+            : {
+                ...p,
+                worktrees: p.worktrees.map((w) =>
+                  w.id !== worktreeId
+                    ? w
+                    : {
+                        ...w,
+                        terminals: w.terminals.filter(
+                          (t) => t.id !== terminalId,
+                        ),
+                      },
+                ),
+              },
+        ),
       ),
     })),
 

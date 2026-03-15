@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
+import { useDiffLayoutStore, resolveCardY } from "../stores/diffLayoutStore";
 import { useT } from "../i18n/useT";
 
 interface FileInfo {
@@ -98,6 +99,7 @@ function ChangeBar({
 }
 
 export function DiffCard({
+  worktreeId,
   worktreePath,
   anchorX,
   anchorY,
@@ -127,6 +129,18 @@ export function DiffCard({
     origH: number;
   } | null>(null);
   const hasDragged = useRef(false);
+
+  const { register, unregister } = useDiffLayoutStore();
+  const cards = useDiffLayoutStore((s) => s.cards);
+
+  // Register this card's anchor position and size
+  useEffect(() => {
+    register(worktreeId, { x: pos.x, y: pos.y, w: size.w, h: size.h });
+    return () => unregister(worktreeId);
+  }, [worktreeId, pos.x, pos.y, size.w, size.h, register, unregister]);
+
+  // Compute non-overlapping Y
+  const resolvedY = resolveCardY(cards, worktreeId);
 
   useEffect(() => {
     if (!window.termcanvas) return;
@@ -222,244 +236,289 @@ export function DiffCard({
   const totalAdd = fileDiffs.reduce((s, f) => s + f.file.additions, 0);
   const totalDel = fileDiffs.reduce((s, f) => s + f.file.deletions, 0);
 
+  // Connection line endpoints: worktree right edge → DiffCard left edge
+  const lineX1 = anchorX;
+  const lineY1 = anchorY + 20;
+  const lineX2 = pos.x;
+  const lineY2 = resolvedY + 20;
+  const lineSvgLeft = Math.min(lineX1, lineX2);
+  const lineSvgTop = Math.min(lineY1, lineY2);
+  const lineSvgW = Math.abs(lineX2 - lineX1) || 1;
+  const lineSvgH = Math.abs(lineY2 - lineY1) || 1;
+
   return (
-    <div
-      className="absolute rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex flex-col"
-      style={{
-        left: pos.x,
-        top: pos.y,
-        width: size.w,
-        height: size.h,
-        opacity: pinned ? 1 : 0.85,
-        transition: justPinned
-          ? "transform 150ms ease, opacity 150ms ease"
-          : "opacity 150ms ease",
-        transform: justPinned ? "scale(1.02)" : "scale(1)",
-      }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing select-none shrink-0"
-        onMouseDown={handleDragStart}
+    <>
+      <svg
+        className="absolute pointer-events-none"
+        style={{
+          left: lineSvgLeft,
+          top: lineSvgTop,
+          overflow: "visible",
+        }}
+        width={lineSvgW}
+        height={lineSvgH}
       >
-        <span
-          className="text-[11px] font-medium text-[var(--accent)]"
-          style={{ fontFamily: '"Geist Mono", monospace' }}
+        <line
+          x1={lineX1 - lineSvgLeft}
+          y1={lineY1 - lineSvgTop}
+          x2={lineX2 - lineSvgLeft}
+          y2={lineY2 - lineSvgTop}
+          stroke="var(--text-muted)"
+          strokeWidth="1.5"
+          strokeDasharray={pinned ? "none" : "4 3"}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <div
+        className="absolute rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex flex-col"
+        style={{
+          left: pos.x,
+          top: resolvedY,
+          width: size.w,
+          height: size.h,
+          opacity: pinned ? 1 : 0.85,
+          transition: justPinned
+            ? "transform 150ms ease, opacity 150ms ease"
+            : "opacity 150ms ease",
+          transform: justPinned ? "scale(1.02)" : "scale(1)",
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center gap-2 px-3 py-2 cursor-grab active:cursor-grabbing select-none shrink-0"
+          onMouseDown={handleDragStart}
         >
-          {t.diff}
-        </span>
-        {!loading && (
-          <span className="text-[11px] text-[var(--text-muted)]">
-            {t.file_count(fileDiffs.length)}
-            <span className="ml-1.5" style={{ color: "var(--cyan)" }}>
-              +{totalAdd}
-            </span>
-            <span className="ml-1" style={{ color: "var(--red)" }}>
-              -{totalDel}
-            </span>
-          </span>
-        )}
-        <div className="flex-1" />
-        {pinned && (
-          <button
-            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-150 p-0.5"
-            onClick={onClose}
+          <span
+            className="text-[11px] font-medium text-[var(--accent)]"
+            style={{ fontFamily: '"Geist Mono", monospace' }}
           >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            {t.diff}
+          </span>
+          {!loading && (
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {t.file_count(fileDiffs.length)}
+              <span className="ml-1.5" style={{ color: "var(--cyan)" }}>
+                +{totalAdd}
+              </span>
+              <span className="ml-1" style={{ color: "var(--red)" }}>
+                -{totalDel}
+              </span>
+            </span>
+          )}
+          <div className="flex-1" />
+          {pinned && (
+            <button
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-150 p-0.5"
+              onClick={onClose}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path
+                  d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* File list + inline diffs */}
+        <div
+          className="flex-1 overflow-auto min-h-0"
+          style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11 }}
+        >
+          {loading ? (
+            <div className="text-[var(--text-muted)] py-8 text-center">
+              {t.loading}
+            </div>
+          ) : fileDiffs.length === 0 ? (
+            <div className="text-[var(--text-muted)] py-8 text-center">
+              {t.no_changes}
+            </div>
+          ) : (
+            fileDiffs.map((fd) => (
+              <div key={fd.file.name}>
+                {/* File header */}
+                <button
+                  className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors duration-150 text-left"
+                  onClick={() =>
+                    setExpandedFile(
+                      expandedFile === fd.file.name ? null : fd.file.name,
+                    )
+                  }
+                >
+                  <svg
+                    width="8"
+                    height="8"
+                    viewBox="0 0 8 8"
+                    fill="none"
+                    className={`shrink-0 transition-transform duration-150 ${expandedFile === fd.file.name ? "rotate-90" : ""}`}
+                  >
+                    <path
+                      d="M2 1L6 4L2 7"
+                      stroke="var(--text-muted)"
+                      strokeWidth="1.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="text-[var(--text-primary)] truncate flex-1">
+                    {fd.file.name}
+                  </span>
+                  {fd.file.binary ? (
+                    <span className="text-[var(--text-muted)] text-[11px] shrink-0">
+                      {t.binary_label}
+                    </span>
+                  ) : (
+                    <>
+                      <span
+                        className="shrink-0"
+                        style={{ color: "var(--cyan)" }}
+                      >
+                        +{fd.file.additions}
+                      </span>
+                      <span
+                        className="shrink-0"
+                        style={{ color: "var(--red)" }}
+                      >
+                        -{fd.file.deletions}
+                      </span>
+                      <ChangeBar
+                        additions={fd.file.additions}
+                        deletions={fd.file.deletions}
+                      />
+                    </>
+                  )}
+                </button>
+
+                {/* Expanded diff */}
+                {expandedFile === fd.file.name && (
+                  <div className="bg-[var(--bg)] border-y border-[var(--border)] overflow-x-auto">
+                    {fd.file.isImage ? (
+                      <div className="px-3 py-3 flex items-start gap-3">
+                        {fd.file.imageOld && (
+                          <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+                            <span className="text-[11px] text-[var(--red)]">
+                              {t.removed}
+                            </span>
+                            <img
+                              src={fd.file.imageOld}
+                              alt="old"
+                              className="max-w-full max-h-40 rounded border border-[var(--border)] object-contain"
+                              style={{
+                                background:
+                                  "repeating-conic-gradient(var(--border) 0% 25%, transparent 0% 50%) 50% / 12px 12px",
+                              }}
+                            />
+                          </div>
+                        )}
+                        {fd.file.imageOld && fd.file.imageNew && (
+                          <span className="text-[13px] text-[var(--text-muted)] self-center">
+                            →
+                          </span>
+                        )}
+                        {fd.file.imageNew && (
+                          <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+                            <span
+                              className="text-[11px]"
+                              style={{ color: "var(--cyan)" }}
+                            >
+                              {fd.file.imageOld ? t.file_new : t.added}
+                            </span>
+                            <img
+                              src={fd.file.imageNew}
+                              alt="new"
+                              className="max-w-full max-h-40 rounded border border-[var(--border)] object-contain"
+                              style={{
+                                background:
+                                  "repeating-conic-gradient(var(--border) 0% 25%, transparent 0% 50%) 50% / 12px 12px",
+                              }}
+                            />
+                          </div>
+                        )}
+                        {!fd.file.imageOld && !fd.file.imageNew && (
+                          <div className="text-[var(--text-muted)] text-center w-full py-2">
+                            {t.image_changed}
+                          </div>
+                        )}
+                      </div>
+                    ) : fd.file.binary ? (
+                      <div className="px-3 py-3 text-[var(--text-muted)] text-center">
+                        {t.binary_changed}
+                      </div>
+                    ) : (
+                      <pre className="px-3 py-1 leading-relaxed">
+                        {fd.hunks
+                          .join("\n")
+                          .split("\n")
+                          .map((line, i) => {
+                            let color = "var(--text-secondary)";
+                            let bg = "transparent";
+                            if (
+                              line.startsWith("+") &&
+                              !line.startsWith("+++")
+                            ) {
+                              color = "var(--cyan)";
+                              bg = "rgba(80, 227, 194, 0.06)";
+                            } else if (
+                              line.startsWith("-") &&
+                              !line.startsWith("---")
+                            ) {
+                              color = "var(--red)";
+                              bg = "rgba(238, 0, 0, 0.06)";
+                            } else if (line.startsWith("@@")) {
+                              color = "var(--accent)";
+                            } else if (
+                              line.startsWith("index ") ||
+                              line.startsWith("---") ||
+                              line.startsWith("+++")
+                            ) {
+                              color = "var(--text-muted)";
+                            }
+                            return (
+                              <div
+                                key={i}
+                                style={{ color, backgroundColor: bg }}
+                              >
+                                {line || " "}
+                              </div>
+                            );
+                          })}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Resize handle */}
+        {pinned && (
+          <div
+            className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity duration-150"
+            onMouseDown={handleResizeStart}
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              className="text-[var(--text-faint)]"
+            >
               <path
-                d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5"
+                d="M11 11L6 11M11 11L11 6"
                 stroke="currentColor"
-                strokeWidth="1.2"
+                strokeWidth="1"
                 strokeLinecap="round"
               />
             </svg>
-          </button>
+          </div>
         )}
       </div>
-
-      {/* File list + inline diffs */}
-      <div
-        className="flex-1 overflow-auto min-h-0"
-        style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11 }}
-      >
-        {loading ? (
-          <div className="text-[var(--text-muted)] py-8 text-center">
-            {t.loading}
-          </div>
-        ) : fileDiffs.length === 0 ? (
-          <div className="text-[var(--text-muted)] py-8 text-center">
-            {t.no_changes}
-          </div>
-        ) : (
-          fileDiffs.map((fd) => (
-            <div key={fd.file.name}>
-              {/* File header */}
-              <button
-                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--surface-hover)] transition-colors duration-150 text-left"
-                onClick={() =>
-                  setExpandedFile(
-                    expandedFile === fd.file.name ? null : fd.file.name,
-                  )
-                }
-              >
-                <svg
-                  width="8"
-                  height="8"
-                  viewBox="0 0 8 8"
-                  fill="none"
-                  className={`shrink-0 transition-transform duration-150 ${expandedFile === fd.file.name ? "rotate-90" : ""}`}
-                >
-                  <path
-                    d="M2 1L6 4L2 7"
-                    stroke="var(--text-muted)"
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="text-[var(--text-primary)] truncate flex-1">
-                  {fd.file.name}
-                </span>
-                {fd.file.binary ? (
-                  <span className="text-[var(--text-muted)] text-[11px] shrink-0">
-                    {t.binary_label}
-                  </span>
-                ) : (
-                  <>
-                    <span className="shrink-0" style={{ color: "var(--cyan)" }}>
-                      +{fd.file.additions}
-                    </span>
-                    <span className="shrink-0" style={{ color: "var(--red)" }}>
-                      -{fd.file.deletions}
-                    </span>
-                    <ChangeBar
-                      additions={fd.file.additions}
-                      deletions={fd.file.deletions}
-                    />
-                  </>
-                )}
-              </button>
-
-              {/* Expanded diff */}
-              {expandedFile === fd.file.name && (
-                <div className="bg-[var(--bg)] border-y border-[var(--border)] overflow-x-auto">
-                  {fd.file.isImage ? (
-                    <div className="px-3 py-3 flex items-start gap-3">
-                      {fd.file.imageOld && (
-                        <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <span className="text-[11px] text-[var(--red)]">
-                            {t.removed}
-                          </span>
-                          <img
-                            src={fd.file.imageOld}
-                            alt="old"
-                            className="max-w-full max-h-40 rounded border border-[var(--border)] object-contain"
-                            style={{
-                              background:
-                                "repeating-conic-gradient(var(--border) 0% 25%, transparent 0% 50%) 50% / 12px 12px",
-                            }}
-                          />
-                        </div>
-                      )}
-                      {fd.file.imageOld && fd.file.imageNew && (
-                        <span className="text-[13px] text-[var(--text-muted)] self-center">
-                          →
-                        </span>
-                      )}
-                      {fd.file.imageNew && (
-                        <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                          <span
-                            className="text-[11px]"
-                            style={{ color: "var(--cyan)" }}
-                          >
-                            {fd.file.imageOld ? t.file_new : t.added}
-                          </span>
-                          <img
-                            src={fd.file.imageNew}
-                            alt="new"
-                            className="max-w-full max-h-40 rounded border border-[var(--border)] object-contain"
-                            style={{
-                              background:
-                                "repeating-conic-gradient(var(--border) 0% 25%, transparent 0% 50%) 50% / 12px 12px",
-                            }}
-                          />
-                        </div>
-                      )}
-                      {!fd.file.imageOld && !fd.file.imageNew && (
-                        <div className="text-[var(--text-muted)] text-center w-full py-2">
-                          {t.image_changed}
-                        </div>
-                      )}
-                    </div>
-                  ) : fd.file.binary ? (
-                    <div className="px-3 py-3 text-[var(--text-muted)] text-center">
-                      {t.binary_changed}
-                    </div>
-                  ) : (
-                    <pre className="px-3 py-1 leading-relaxed">
-                      {fd.hunks
-                        .join("\n")
-                        .split("\n")
-                        .map((line, i) => {
-                          let color = "var(--text-secondary)";
-                          let bg = "transparent";
-                          if (line.startsWith("+") && !line.startsWith("+++")) {
-                            color = "var(--cyan)";
-                            bg = "rgba(80, 227, 194, 0.06)";
-                          } else if (
-                            line.startsWith("-") &&
-                            !line.startsWith("---")
-                          ) {
-                            color = "var(--red)";
-                            bg = "rgba(238, 0, 0, 0.06)";
-                          } else if (line.startsWith("@@")) {
-                            color = "var(--accent)";
-                          } else if (
-                            line.startsWith("index ") ||
-                            line.startsWith("---") ||
-                            line.startsWith("+++")
-                          ) {
-                            color = "var(--text-muted)";
-                          }
-                          return (
-                            <div key={i} style={{ color, backgroundColor: bg }}>
-                              {line || " "}
-                            </div>
-                          );
-                        })}
-                    </pre>
-                  )}
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Resize handle */}
-      {pinned && (
-        <div
-          className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity duration-150"
-          onMouseDown={handleResizeStart}
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            className="text-[var(--text-faint)]"
-          >
-            <path
-              d="M11 11L6 11M11 11L11 6"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-      )}
-    </div>
+    </>
   );
 }

@@ -331,23 +331,6 @@ export function WorktreeContainer({
           const absY = projectPosition.y + PROJ_TITLE_H + worktree.position.y;
           return createPortal(
             <>
-              <svg
-                className="absolute pointer-events-none"
-                style={{ left: absX, top: absY, overflow: "visible" }}
-                width="16"
-                height="40"
-              >
-                <line
-                  x1={0}
-                  y1={20}
-                  x2={16}
-                  y2={20}
-                  stroke="var(--border)"
-                  strokeWidth="1"
-                  strokeDasharray={diffPinned ? "none" : "3 3"}
-                  className="transition-all duration-150"
-                />
-              </svg>
               <DiffCard
                 worktreeId={worktree.id}
                 worktreePath={worktree.path}
