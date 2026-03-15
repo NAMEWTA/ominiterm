@@ -33,21 +33,31 @@ export function WorktreeContainer({ projectId, worktree }: Props) {
     return Math.max(60, maxBottom);
   }, [worktree.terminals]);
 
+  // padding=10 each side + titleBar~36 + border
+  const childMinW = useMemo(() => {
+    if (worktree.terminals.length === 0) return 300;
+    let maxRight = 0;
+    for (const t of worktree.terminals) {
+      maxRight = Math.max(maxRight, t.position.x + t.size.w);
+    }
+    return Math.max(300, maxRight + 20 + 2); // padding + border
+  }, [worktree.terminals]);
+
+  const childMinH = useMemo(() => {
+    if (worktree.terminals.length === 0) return 100;
+    return Math.max(100, contentMinH + 36 + 20 + 2); // content + title + padding + border
+  }, [contentMinH]);
+
   const handleResize = useResize(
     worktree.size.w,
     worktree.size.h,
     useCallback(
-      (w: number, h: number) => {
-        if (containerRef.current) {
-          w = Math.max(w, containerRef.current.scrollWidth);
-          h = Math.max(h, containerRef.current.scrollHeight);
-        }
-        updateWorktreeSize(projectId, worktree.id, w, h);
-      },
+      (w: number, h: number) =>
+        updateWorktreeSize(projectId, worktree.id, w, h),
       [projectId, worktree.id, updateWorktreeSize],
     ),
-    300,
-    100,
+    childMinW,
+    childMinH,
     containerRef,
   );
 

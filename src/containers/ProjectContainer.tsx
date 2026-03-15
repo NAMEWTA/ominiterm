@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useMemo } from "react";
 import type { ProjectData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { WorktreeContainer } from "./WorktreeContainer";
@@ -28,22 +28,31 @@ export function ProjectContainer({ project }: Props) {
     ),
   );
 
+  // padding=12 each side + gap=12 between worktrees + titleBar~40
+  const childMinW = useMemo(() => {
+    if (project.worktrees.length === 0) return 340;
+    const maxWtW = Math.max(...project.worktrees.map((wt) => wt.size.w || 300));
+    return Math.max(340, maxWtW + 24 + 2); // padding + border
+  }, [project.worktrees]);
+
+  const childMinH = useMemo(() => {
+    if (project.worktrees.length === 0) return 120;
+    const totalH = project.worktrees.reduce((sum, wt) => {
+      return sum + (wt.size.h || 200);
+    }, 0);
+    const gaps = (project.worktrees.length - 1) * 12;
+    return Math.max(120, totalH + gaps + 24 + 40 + 2); // padding + title + border
+  }, [project.worktrees]);
+
   const handleResize = useResize(
     project.size.w,
     project.size.h,
     useCallback(
-      (w: number, h: number) => {
-        // Clamp to content size so parent always covers children
-        if (containerRef.current) {
-          w = Math.max(w, containerRef.current.scrollWidth);
-          h = Math.max(h, containerRef.current.scrollHeight);
-        }
-        updateProjectSize(project.id, w, h);
-      },
+      (w: number, h: number) => updateProjectSize(project.id, w, h),
       [project.id, updateProjectSize],
     ),
-    340,
-    120,
+    childMinW,
+    childMinH,
     containerRef,
   );
 
