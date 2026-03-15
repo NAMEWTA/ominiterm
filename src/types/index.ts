@@ -82,6 +82,7 @@ export interface TermCanvasAPI {
   session: {
     getCodexLatest: () => Promise<string | null>;
     getClaudeByPid: (pid: number) => Promise<string | null>;
+    getKimiLatest: (cwd: string) => Promise<string | null>;
   };
   project: {
     selectDirectory: () => Promise<string | null>;

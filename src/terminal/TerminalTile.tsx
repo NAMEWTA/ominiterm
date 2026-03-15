@@ -135,23 +135,53 @@ export function TerminalTile({
 
     let ptyId: number | null = null;
 
-    // Build PTY options based on terminal type and session state
+    // CLI config: how to launch and resume each terminal type
+    const CLI_CONFIG: Record<
+      string,
+      | {
+          shell: string;
+          resumeArgs: (id: string) => string[];
+          newArgs: string[];
+        }
+      | undefined
+    > = {
+      claude: {
+        shell: "claude",
+        resumeArgs: (id) => ["--resume", id],
+        newArgs: [],
+      },
+      codex: {
+        shell: "codex",
+        resumeArgs: (id) => ["resume", id],
+        newArgs: [],
+      },
+      kimi: {
+        shell: "kimi",
+        resumeArgs: (id) => ["-S", id],
+        newArgs: [],
+      },
+      gemini: {
+        shell: "gemini",
+        resumeArgs: (id) => ["--resume", id],
+        newArgs: [],
+      },
+      opencode: {
+        shell: "opencode",
+        resumeArgs: (id) => ["-s", id],
+        newArgs: [],
+      },
+    };
+
     const ptyOptions: { cwd: string; shell?: string; args?: string[] } = {
       cwd: worktreePath,
     };
 
-    if (terminal.type === "codex" && terminal.sessionId) {
-      ptyOptions.shell = "codex";
-      ptyOptions.args = ["resume", terminal.sessionId];
-    } else if (terminal.type === "codex") {
-      ptyOptions.shell = "codex";
-      ptyOptions.args = [];
-    } else if (terminal.type === "claude" && terminal.sessionId) {
-      ptyOptions.shell = "claude";
-      ptyOptions.args = ["--resume", terminal.sessionId];
-    } else if (terminal.type === "claude") {
-      ptyOptions.shell = "claude";
-      ptyOptions.args = [];
+    const cliCfg = CLI_CONFIG[terminal.type];
+    if (cliCfg) {
+      ptyOptions.shell = cliCfg.shell;
+      ptyOptions.args = terminal.sessionId
+        ? cliCfg.resumeArgs(terminal.sessionId)
+        : cliCfg.newArgs;
     }
 
     window.termcanvas.terminal
@@ -162,7 +192,7 @@ export function TerminalTile({
         updateTerminalStatus(projectId, worktreeId, terminal.id, "running");
 
         // Capture session ID for future resume
-        if (!terminal.sessionId && terminal.type !== "shell") {
+        if (!terminal.sessionId && cliCfg) {
           setTimeout(async () => {
             let sid: string | null = null;
             if (terminal.type === "codex") {
@@ -172,7 +202,10 @@ export function TerminalTile({
               if (pid) {
                 sid = await window.termcanvas.session.getClaudeByPid(pid);
               }
+            } else if (terminal.type === "kimi") {
+              sid = await window.termcanvas.session.getKimiLatest(worktreePath);
             }
+            // opencode/gemini: session ID captured when available
             if (sid) {
               updateTerminalSessionId(projectId, worktreeId, terminal.id, sid);
             }

@@ -112,6 +112,26 @@ function setupIpc() {
     }
   });
 
+  ipcMain.handle("session:get-kimi-latest", (_event, cwd: string) => {
+    try {
+      // Kimi stores sessions under ~/.kimi/sessions/{cwd_hash}/{session_uuid}/
+      const sessionsDir = path.join(os.homedir(), ".kimi", "sessions");
+      if (!fs.existsSync(sessionsDir)) return null;
+      // Find the project hash dir by checking which contains sessions for this cwd
+      const hashDirs = fs.readdirSync(sessionsDir);
+      for (const hashDir of hashDirs.reverse()) {
+        const fullPath = path.join(sessionsDir, hashDir);
+        const uuids = fs.readdirSync(fullPath);
+        if (uuids.length > 0) {
+          return uuids[uuids.length - 1]; // Latest session UUID
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
+
   // Project IPC
   ipcMain.handle("project:select-directory", async () => {
     const result = await dialog.showOpenDialog(mainWindow!, {

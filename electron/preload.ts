@@ -37,6 +37,10 @@ contextBridge.exposeInMainWorld("termcanvas", {
       ipcRenderer.invoke("session:get-claude-by-pid", pid) as Promise<
         string | null
       >,
+    getKimiLatest: (cwd: string) =>
+      ipcRenderer.invoke("session:get-kimi-latest", cwd) as Promise<
+        string | null
+      >,
   },
   project: {
     selectDirectory: () => ipcRenderer.invoke("project:select-directory"),
