@@ -2,15 +2,41 @@ import { useCallback } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useProjectStore, generateId } from "../stores/projectStore";
 import { useNotificationStore } from "../stores/notificationStore";
+import { useDrawingStore, type DrawingTool } from "../stores/drawingStore";
+
+const noDrag = { WebkitAppRegion: "no-drag" } as React.CSSProperties;
+
+const drawingTools: { id: DrawingTool; label: string; icon: string }[] = [
+  { id: "select", label: "Select", icon: "↖" },
+  { id: "pen", label: "Pen", icon: "✎" },
+  { id: "text", label: "Text", icon: "T" },
+  { id: "rect", label: "Rect", icon: "□" },
+  { id: "arrow", label: "Arrow", icon: "→" },
+];
+
+const drawingColors = [
+  "#ededed",
+  "#0070f3",
+  "#ee0000",
+  "#f5a623",
+  "#7928ca",
+  "#50e3c2",
+];
 
 function isElectron(): boolean {
   return typeof window !== "undefined" && !!window.termcanvas;
 }
 
+// Shared button style
+const btn =
+  "px-2 py-1 rounded-md text-[13px] text-[#888] hover:text-[#ededed] hover:bg-[#111] transition-colors duration-150 active:scale-[0.97]";
+
 export function Toolbar() {
   const { viewport, setViewport, resetViewport } = useCanvasStore();
   const { projects, addProject } = useProjectStore();
   const { notify } = useNotificationStore();
+  const { tool, color, setTool, setColor, clearAll, elements } =
+    useDrawingStore();
 
   const handleAddProject = useCallback(async () => {
     if (!isElectron()) {
@@ -96,94 +122,101 @@ export function Toolbar() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 h-11 toolbar flex items-center pr-4 gap-4 z-50"
+      className="fixed top-0 left-0 right-0 h-11 flex items-center pr-4 gap-3 z-50 bg-[#0a0a0a] border-b border-[#222]"
       style={
         { paddingLeft: 80, WebkitAppRegion: "drag" } as React.CSSProperties
       }
     >
-      {/* App branding - after macOS traffic lights */}
-      <div
-        className="flex items-center gap-2"
-        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+      {/* Branding */}
+      <span
+        className="text-[13px] font-medium text-[#ededed] tracking-tight"
+        style={noDrag}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <rect
-            x="1"
-            y="1"
-            width="14"
-            height="14"
-            rx="3"
-            stroke="#ededed"
-            strokeWidth="1.5"
-          />
-          <path
-            d="M5 8L7 10L11 6"
-            stroke="#ededed"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <span className="text-[13px] font-medium tracking-tight text-[#ededed]">
-          TermCanvas
-        </span>
-      </div>
+        TermCanvas
+      </span>
 
-      <div className="h-4 w-px bg-[#333]" />
-
-      {/* Actions */}
+      {/* Add project */}
       <button
-        className="btn-geist"
-        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+        className={`${btn} border border-[#222]`}
+        style={noDrag}
         onClick={handleAddProject}
       >
         Add Project
       </button>
 
-      {/* Spacer */}
+      {/* ── Drawing tools ── */}
+      <div className="flex items-center gap-0.5 ml-2" style={noDrag}>
+        {drawingTools.map((t) => (
+          <button
+            key={t.id}
+            className={`px-2 py-1 rounded-md text-[13px] transition-colors duration-150 active:scale-[0.97] ${
+              tool === t.id
+                ? "bg-[#222] text-[#ededed]"
+                : "text-[#444] hover:text-[#ededed] hover:bg-[#111]"
+            }`}
+            onClick={() => setTool(t.id)}
+            title={t.label}
+          >
+            {t.icon}
+          </button>
+        ))}
+      </div>
+
+      {/* Drawing colors */}
+      <div className="flex items-center gap-1" style={noDrag}>
+        {drawingColors.map((c) => (
+          <button
+            key={c}
+            className="w-4 h-4 rounded-full transition-all duration-150"
+            style={{
+              backgroundColor: c,
+              outline:
+                color === c ? "1.5px solid #ededed" : "1.5px solid transparent",
+              outlineOffset: 1,
+            }}
+            onClick={() => setColor(c)}
+          />
+        ))}
+        {elements.length > 0 && (
+          <button
+            className="ml-1 text-[11px] text-[#444] hover:text-[#ee0000] transition-colors duration-150"
+            onClick={clearAll}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <div className="flex-1" />
 
-      {/* Zoom controls */}
-      <div
-        className="flex items-center gap-0 border border-[#333] rounded-md overflow-hidden"
-        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-      >
+      {/* ── Zoom controls ── */}
+      <div className="flex items-center gap-0.5" style={noDrag}>
         <button
-          className="text-[#888] hover:text-[#ededed] hover:bg-[#1a1a1a] transition-colors px-2.5 py-1 text-xs"
+          className={btn}
           onClick={() =>
             setViewport({ scale: Math.max(0.1, viewport.scale * 0.9) })
           }
         >
-          -
+          −
         </button>
-        <div className="w-px h-5 bg-[#333]" />
         <span
-          className="text-[12px] text-[#888] w-12 text-center tabular-nums px-1 py-1"
+          className="text-[11px] text-[#888] w-10 text-center tabular-nums"
           style={{ fontFamily: '"Geist Mono", monospace' }}
         >
           {zoomPercent}%
         </span>
-        <div className="w-px h-5 bg-[#333]" />
         <button
-          className="text-[#888] hover:text-[#ededed] hover:bg-[#1a1a1a] transition-colors px-2.5 py-1 text-xs"
+          className={btn}
           onClick={() =>
             setViewport({ scale: Math.min(2, viewport.scale * 1.1) })
           }
         >
           +
         </button>
-        <div className="w-px h-5 bg-[#333]" />
-        <button
-          className="text-[#888] hover:text-[#ededed] hover:bg-[#1a1a1a] transition-colors px-2.5 py-1 text-[11px]"
-          onClick={resetViewport}
-        >
+        <button className={btn} onClick={resetViewport}>
           Reset
         </button>
-        <div className="w-px h-5 bg-[#333]" />
-        <button
-          className="text-[#888] hover:text-[#ededed] hover:bg-[#1a1a1a] transition-colors px-2.5 py-1 text-[11px]"
-          onClick={handleFitAll}
-        >
+        <button className={btn} onClick={handleFitAll}>
           Fit
         </button>
       </div>
