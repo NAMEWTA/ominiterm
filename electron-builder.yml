@@ -1,0 +1,37 @@
+appId: com.blueberrycongee.termcanvas
+productName: TermCanvas
+copyright: Copyright © 2026 blueberrycongee
+
+directories:
+  output: out
+  buildResources: build
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+
+linux:
+  category: Development
+  target:
+    - AppImage
+    - deb
+
+win:
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
