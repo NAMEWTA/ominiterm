@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { watch, type FSWatcher } from "fs";
+import { existsSync, watch, type FSWatcher } from "fs";
 import path from "path";
 
 interface WorktreeInfo {
@@ -38,7 +38,7 @@ export class ProjectScanner {
       });
 
       const worktrees: WorktreeInfo[] = [];
-      let current: Partial<WorktreeInfo> = {};
+      let current: Partial<WorktreeInfo> & { prunable?: boolean } = {};
 
       for (const line of output.split("\n")) {
         if (line.startsWith("worktree ")) {
@@ -48,8 +48,10 @@ export class ProjectScanner {
           current.branch = ref.replace("refs/heads/", "");
         } else if (line === "bare") {
           current.branch = "(bare)";
+        } else if (line.startsWith("prunable")) {
+          current.prunable = true;
         } else if (line === "") {
-          if (current.path) {
+          if (current.path && !current.prunable && existsSync(current.path)) {
             worktrees.push({
               path: current.path,
               branch: current.branch ?? "(detached)",

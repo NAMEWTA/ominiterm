@@ -96,6 +96,10 @@ function useWorktreeWatcher() {
 
     for (const p of projects) {
       window.termcanvas.project.watch(p.path);
+      // Initial sync to clean up stale worktrees from persisted state
+      window.termcanvas.project
+        .rescanWorktrees(p.path)
+        .then((worktrees) => syncWorktrees(p.path, worktrees));
     }
 
     const unsubscribe = window.termcanvas.project.onWorktreesChanged(

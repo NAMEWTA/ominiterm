@@ -1,4 +1,5 @@
 import * as pty from "node-pty";
+import fs from "fs";
 import os from "os";
 
 export interface PtyCreateOptions {
@@ -12,6 +13,10 @@ export class PtyManager {
   private nextId = 1;
 
   create(options: PtyCreateOptions): number {
+    if (!fs.existsSync(options.cwd)) {
+      throw new Error(`Directory does not exist: ${options.cwd}`);
+    }
+
     const defaultShell =
       options.shell ??
       (os.platform() === "win32"
