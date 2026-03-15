@@ -179,7 +179,7 @@ export function DrawingPanel() {
 
         {/* Color dots */}
         <div
-          className={`flex ${vertical ? "flex-row justify-center" : "flex-row"} gap-1 ${vertical ? "px-1 py-1" : "py-1 px-0.5"}`}
+          className={`flex ${vertical ? "flex-col items-center" : "flex-row"} gap-1 ${vertical ? "py-0.5 px-1" : "py-1 px-0.5"}`}
         >
           {colors.map((c) => (
             <button
