@@ -37,8 +37,8 @@ function setupIpc() {
   // Terminal IPC
   ipcMain.handle(
     "terminal:create",
-    (_event, options: { cwd: string; shell?: string }) => {
-      const ptyId = ptyManager.create(options.cwd, options.shell);
+    (_event, options: { cwd: string; shell?: string; args?: string[] }) => {
+      const ptyId = ptyManager.create(options);
       ptyManager.onData(ptyId, (data: string) => {
         mainWindow?.webContents.send("terminal:output", ptyId, data);
       });
@@ -62,6 +62,10 @@ function setupIpc() {
 
   ipcMain.handle("terminal:destroy", (_event, ptyId: number) => {
     ptyManager.destroy(ptyId);
+  });
+
+  ipcMain.handle("terminal:get-pid", (_event, ptyId: number) => {
+    return ptyManager.getPid(ptyId) ?? null;
   });
 
   // Project IPC

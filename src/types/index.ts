@@ -61,8 +61,13 @@ export interface CanvasState {
 // Preload API types
 export interface TermCanvasAPI {
   terminal: {
-    create: (options: { cwd: string; shell?: string }) => Promise<number>;
+    create: (options: {
+      cwd: string;
+      shell?: string;
+      args?: string[];
+    }) => Promise<number>;
     destroy: (ptyId: number) => Promise<void>;
+    getPid: (ptyId: number) => Promise<number | null>;
     input: (ptyId: number, data: string) => void;
     resize: (ptyId: number, cols: number, rows: number) => void;
     onOutput: (callback: (ptyId: number, data: string) => void) => () => void;

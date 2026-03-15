@@ -1,28 +1,38 @@
 import * as pty from "node-pty";
 import os from "os";
 
+export interface PtyCreateOptions {
+  cwd: string;
+  shell?: string;
+  args?: string[];
+}
+
 export class PtyManager {
   private instances = new Map<number, pty.IPty>();
   private nextId = 1;
 
-  create(cwd: string, shell?: string): number {
+  create(options: PtyCreateOptions): number {
     const defaultShell =
-      shell ??
+      options.shell ??
       (os.platform() === "win32"
         ? "powershell.exe"
         : (process.env.SHELL ?? "/bin/zsh"));
 
-    const ptyProcess = pty.spawn(defaultShell, [], {
+    const ptyProcess = pty.spawn(defaultShell, options.args ?? [], {
       name: "xterm-256color",
       cols: 80,
       rows: 24,
-      cwd,
+      cwd: options.cwd,
       env: process.env as Record<string, string>,
     });
 
     const id = this.nextId++;
     this.instances.set(id, ptyProcess);
     return id;
+  }
+
+  getPid(id: number): number | undefined {
+    return this.instances.get(id)?.pid;
   }
 
   write(id: number, data: string) {

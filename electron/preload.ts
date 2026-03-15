@@ -2,9 +2,11 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("termcanvas", {
   terminal: {
-    create: (options: { cwd: string; shell?: string }) =>
+    create: (options: { cwd: string; shell?: string; args?: string[] }) =>
       ipcRenderer.invoke("terminal:create", options),
     destroy: (ptyId: number) => ipcRenderer.invoke("terminal:destroy", ptyId),
+    getPid: (ptyId: number) =>
+      ipcRenderer.invoke("terminal:get-pid", ptyId) as Promise<number | null>,
     input: (ptyId: number, data: string) =>
       ipcRenderer.send("terminal:input", ptyId, data),
     resize: (ptyId: number, cols: number, rows: number) =>
