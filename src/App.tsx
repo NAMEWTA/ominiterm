@@ -4,6 +4,7 @@ import { Toolbar } from "./toolbar/Toolbar";
 import { Sidebar } from "./components/Sidebar";
 import { NotificationToast } from "./components/NotificationToast";
 import { DrawingPanel } from "./toolbar/DrawingPanel";
+import { ShortcutHints } from "./components/ShortcutHints";
 import { useProjectStore } from "./stores/projectStore";
 import { useCanvasStore } from "./stores/canvasStore";
 import { useDrawingStore } from "./stores/drawingStore";
@@ -244,6 +245,7 @@ export function App() {
       <Sidebar />
       <Canvas />
       <DrawingPanel />
+      <ShortcutHints />
       <NotificationToast />
       {showCloseDialog && (
         <CloseDialog

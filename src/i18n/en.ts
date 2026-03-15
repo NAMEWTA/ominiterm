@@ -72,6 +72,13 @@ export const en = {
   tool_arrow: "Arrow",
   layout_horizontal: "Horizontal layout",
   layout_vertical: "Vertical layout",
+
+  // ShortcutHints
+  shortcut_toggle_sidebar: "Toggle sidebar",
+  shortcut_new_terminal: "New terminal",
+  shortcut_next_terminal: "Next terminal",
+  shortcut_prev_terminal: "Prev terminal",
+  shortcut_clear_focus: "Clear focus",
 } as const;
 
 export type TranslationKey = keyof typeof en;

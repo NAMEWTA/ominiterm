@@ -70,4 +70,11 @@ export const zh = {
   tool_arrow: "箭头",
   layout_horizontal: "横向布局",
   layout_vertical: "纵向布局",
+
+  // ShortcutHints
+  shortcut_toggle_sidebar: "切换侧栏",
+  shortcut_new_terminal: "新建终端",
+  shortcut_next_terminal: "下一终端",
+  shortcut_prev_terminal: "上一终端",
+  shortcut_clear_focus: "取消聚焦",
 } as const;
