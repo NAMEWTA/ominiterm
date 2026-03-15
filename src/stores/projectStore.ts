@@ -61,6 +61,12 @@ interface ProjectStore {
     terminalId: string,
     sessionId: string,
   ) => void;
+  reorderTerminal: (
+    projectId: string,
+    worktreeId: string,
+    terminalId: string,
+    newIndex: number,
+  ) => void;
   setFocusedTerminal: (terminalId: string | null) => void;
 
   setProjects: (projects: ProjectData[]) => void;
@@ -277,6 +283,28 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         worktreeId,
         terminalId,
         (t) => ({ ...t, sessionId }),
+      ),
+    })),
+
+  reorderTerminal: (projectId, worktreeId, terminalId, newIndex) =>
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id !== projectId
+          ? p
+          : {
+              ...p,
+              worktrees: p.worktrees.map((w) => {
+                if (w.id !== worktreeId) return w;
+                const terminals = [...w.terminals];
+                const oldIndex = terminals.findIndex(
+                  (t) => t.id === terminalId,
+                );
+                if (oldIndex === -1 || oldIndex === newIndex) return w;
+                const [moved] = terminals.splice(oldIndex, 1);
+                terminals.splice(newIndex, 0, moved);
+                return { ...w, terminals };
+              }),
+            },
       ),
     })),
 
