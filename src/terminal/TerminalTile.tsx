@@ -5,9 +5,8 @@ import { SerializeAddon } from "@xterm/addon-serialize";
 import type { TerminalData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { useNotificationStore } from "../stores/notificationStore";
-import { useDrag } from "../hooks/useDrag";
-import { useResize } from "../hooks/useResize";
 import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
+import { TERMINAL_W, TERMINAL_H } from "../layout";
 import { useThemeStore, XTERM_THEMES } from "../stores/themeStore";
 import { useT } from "../i18n/useT";
 
@@ -16,7 +15,8 @@ interface Props {
   worktreeId: string;
   worktreePath: string;
   terminal: TerminalData;
-  worktreeSize: { w: number; h: number };
+  gridX: number;
+  gridY: number;
 }
 
 const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
@@ -33,7 +33,8 @@ export function TerminalTile({
   worktreeId,
   worktreePath,
   terminal,
-  worktreeSize,
+  gridX,
+  gridY,
 }: Props) {
   const tileRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,8 +46,6 @@ export function TerminalTile({
     removeTerminal,
     toggleTerminalMinimize,
     updateTerminalPtyId,
-    updateTerminalSize,
-    updateTerminalPosition,
     updateTerminalStatus,
     updateTerminalSessionId,
     setFocusedTerminal,
@@ -55,63 +54,6 @@ export function TerminalTile({
   const { notify } = useNotificationStore();
   const t = useT();
   const config = TYPE_CONFIG[terminal.type];
-
-  // Clamp within worktree content area (padding=10, titleBar=36)
-  const wtPad = 10;
-  const wtTitleH = 36;
-  const wtAvailW = (worktreeSize.w || 580) - wtPad * 2;
-  const wtAvailH = (worktreeSize.h || 340) - wtTitleH - wtPad;
-  const tW = terminal.size.w;
-  const tH = terminal.size.h;
-
-  const handleDrag = useDrag(
-    terminal.position.x,
-    terminal.position.y,
-    useCallback(
-      (x: number, y: number) => {
-        x = Math.max(0, Math.min(x, wtAvailW - tW));
-        y = Math.max(0, Math.min(y, wtAvailH - tH));
-        updateTerminalPosition(projectId, worktreeId, terminal.id, x, y);
-      },
-      [
-        projectId,
-        worktreeId,
-        terminal.id,
-        updateTerminalPosition,
-        wtAvailW,
-        wtAvailH,
-        tW,
-        tH,
-      ],
-    ),
-  );
-
-  const handleResize = useResize(
-    terminal.size.w,
-    terminal.size.h,
-    useCallback(
-      (w: number, h: number) => {
-        const maxW = wtAvailW - terminal.position.x;
-        const maxH = wtAvailH - terminal.position.y;
-        w = Math.min(w, maxW);
-        h = Math.min(h, maxH);
-        updateTerminalSize(projectId, worktreeId, terminal.id, w, h);
-      },
-      [
-        projectId,
-        worktreeId,
-        terminal.id,
-        updateTerminalSize,
-        wtAvailW,
-        wtAvailH,
-        terminal.position.x,
-        terminal.position.y,
-      ],
-    ),
-    260,
-    80,
-    tileRef,
-  );
 
   useEffect(() => {
     if (!containerRef.current || terminal.minimized) return;
@@ -330,18 +272,15 @@ export function TerminalTile({
       ref={tileRef}
       className="absolute terminal-tile rounded-md border border-[var(--border)] bg-[var(--bg)] overflow-hidden flex flex-col"
       style={{
-        left: terminal.position.x,
-        top: terminal.position.y,
-        width: terminal.size.w,
-        height: terminal.minimized ? "auto" : terminal.size.h,
+        left: gridX,
+        top: gridY,
+        width: TERMINAL_W,
+        height: terminal.minimized ? "auto" : TERMINAL_H,
       }}
       onClick={() => setFocusedTerminal(terminal.id)}
     >
       {/* Title bar */}
-      <div
-        className="flex items-center gap-2 px-3 py-2 select-none shrink-0 cursor-grab active:cursor-grabbing"
-        onMouseDown={handleDrag}
-      >
+      <div className="flex items-center gap-2 px-3 py-2 select-none shrink-0">
         <span
           className="text-[11px] font-medium"
           style={{ color: config.color, fontFamily: '"Geist Mono", monospace' }}
@@ -405,28 +344,6 @@ export function TerminalTile({
       {/* Terminal content */}
       {!terminal.minimized && (
         <div ref={containerRef} className="flex-1 min-h-0 p-1" />
-      )}
-
-      {/* Resize handle */}
-      {!terminal.minimized && (
-        <div
-          className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
-          onMouseDown={handleResize}
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            className="text-[var(--text-muted)]"
-          >
-            <path
-              d="M11 11L6 11M11 11L11 6"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
       )}
     </div>
   );
