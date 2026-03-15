@@ -3,14 +3,18 @@ import { useProjectStore } from "../stores/projectStore";
 import { useCanvasStore } from "../stores/canvasStore";
 import type { TerminalStatus, TerminalType } from "../types";
 
-const STATUS_CONFIG: Record<
-  TerminalStatus,
-  { color: string; label: string; pulse: boolean }
-> = {
-  running: { color: "#50e3c2", label: "Running", pulse: true },
-  success: { color: "#50e3c2", label: "Done", pulse: false },
-  error: { color: "#ee0000", label: "Error", pulse: false },
-  idle: { color: "#666", label: "Starting", pulse: true },
+const STATUS_COLOR: Record<TerminalStatus, string> = {
+  running: "#50e3c2",
+  success: "#50e3c2",
+  error: "#ee0000",
+  idle: "#444",
+};
+
+const STATUS_LABEL: Record<TerminalStatus, string> = {
+  running: "Running",
+  success: "Done",
+  error: "Error",
+  idle: "Starting",
 };
 
 const TYPE_LABEL: Record<TerminalType, string> = {
@@ -35,7 +39,6 @@ export function Sidebar() {
       const projH = project.size.h || 400;
       const viewW = window.innerWidth - padding * 2;
       const viewH = window.innerHeight - toolbarH - padding * 2;
-
       const scale = Math.min(1, viewW / projW, viewH / projH);
 
       const centerX =
@@ -51,75 +54,67 @@ export function Sidebar() {
 
   return (
     <div className="fixed left-0 z-40 flex" style={{ top: 44 }}>
-      {/* Sidebar panel */}
       <div
-        className="h-full flex flex-col border-r border-[#333] bg-[#0a0a0a] transition-[width] duration-200 overflow-hidden"
+        className="flex flex-col bg-[#0a0a0a] transition-[width] duration-200 overflow-hidden"
         style={{
-          width: collapsed ? 0 : 220,
+          width: collapsed ? 0 : 200,
           height: "calc(100vh - 44px)",
         }}
       >
-        <div className="px-3 py-2.5 border-b border-[#333] shrink-0">
+        <div className="px-4 py-3 shrink-0">
           <span
-            className="text-[11px] font-medium text-[#666] uppercase tracking-wider"
+            className="text-[11px] font-medium text-[#444] uppercase tracking-wider"
             style={{ fontFamily: '"Geist Mono", monospace' }}
           >
             Projects
           </span>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-1">
+        <div className="flex-1 overflow-y-auto">
           {projects.map((project) => {
             const terminals = project.worktrees.flatMap((wt) => wt.terminals);
             return (
-              <div key={project.id} className="mb-1">
+              <div key={project.id} className="mb-2">
                 <button
-                  className="w-full text-left px-3 py-2 text-[13px] text-[#888] hover:text-[#ededed] hover:bg-[#111] transition-colors truncate"
+                  className="group w-full text-left px-4 py-1.5 text-[13px] text-[#888] hover:text-[#ededed] transition-colors duration-150 truncate relative"
                   onClick={() => handleFocus(project.id)}
                 >
+                  <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-[#0070f3] opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
                   {project.name}
                 </button>
                 {terminals.length > 0 && (
-                  <div className="px-3 pb-1 flex flex-col gap-0.5">
-                    {terminals.map((t) => {
-                      const status = STATUS_CONFIG[t.status];
-                      return (
+                  <div className="px-4 flex flex-col gap-px">
+                    {terminals.map((t) => (
+                      <div key={t.id} className="flex items-center gap-2 py-1">
                         <div
-                          key={t.id}
-                          className="flex items-center gap-2 py-0.5"
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.status === "running" || t.status === "idle" ? "status-pulse" : ""}`}
+                          style={{ backgroundColor: STATUS_COLOR[t.status] }}
+                        />
+                        <span
+                          className="text-[11px] text-[#444] truncate"
+                          style={{ fontFamily: '"Geist Mono", monospace' }}
                         >
-                          <div
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.pulse ? "status-pulse" : ""}`}
-                            style={{ backgroundColor: status.color }}
-                          />
-                          <span
-                            className="text-[11px] text-[#555] truncate"
-                            style={{
-                              fontFamily: '"Geist Mono", monospace',
-                            }}
-                          >
-                            {TYPE_LABEL[t.type]}
-                          </span>
-                          <span className="text-[10px] text-[#444] ml-auto shrink-0">
-                            {status.label}
-                          </span>
-                        </div>
-                      );
-                    })}
+                          {TYPE_LABEL[t.type]}
+                        </span>
+                        <span className="text-[11px] text-[#333] ml-auto shrink-0">
+                          {STATUS_LABEL[t.status]}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             );
           })}
           {projects.length === 0 && (
-            <div className="px-3 py-4 text-[12px] text-[#444]">No projects</div>
+            <div className="px-4 py-4 text-[11px] text-[#333]">No projects</div>
           )}
         </div>
       </div>
 
-      {/* Toggle button */}
+      {/* Toggle */}
       <button
-        className="self-start mt-2 ml-1 p-1.5 rounded-md text-[#666] hover:text-[#ededed] hover:bg-[#111] transition-colors border border-[#333] bg-[#0a0a0a]"
+        className="self-start mt-2 ml-1 p-1.5 rounded-md text-[#444] hover:text-[#ededed] hover:bg-[#111] transition-colors duration-150"
         onClick={() => setCollapsed(!collapsed)}
       >
         <svg
