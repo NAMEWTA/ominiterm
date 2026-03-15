@@ -103,9 +103,10 @@ export function TerminalTile({
     xterm.loadAddon(serializeAddon);
     xterm.open(containerRef.current);
 
-    // Let Cmd/Ctrl key combos propagate to the app shortcut handler
+    // Let Cmd key combos propagate to the app shortcut handler
+    // (Ctrl must still reach xterm for terminal signals like Ctrl+C)
     xterm.attachCustomKeyEventHandler((e) => {
-      if (e.type === "keydown" && (e.metaKey || e.ctrlKey)) return false;
+      if (e.type === "keydown" && e.metaKey) return false;
       return true;
     });
 
@@ -371,7 +372,10 @@ export function TerminalTile({
         boxShadow: isDragging ? "0 8px 32px rgba(0,0,0,0.3)" : undefined,
         transform: isDragging ? "scale(1.02)" : undefined,
       }}
-      onClick={() => setFocusedTerminal(terminal.id)}
+      onClick={(e) => {
+        e.stopPropagation();
+        setFocusedTerminal(terminal.id);
+      }}
       onWheel={(e) => e.stopPropagation()}
     >
       {/* Title bar */}
