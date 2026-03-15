@@ -8,6 +8,7 @@ import { PtyManager } from "./pty-manager";
 import { ProjectScanner } from "./project-scanner";
 import { StatePersistence, TERMCANVAS_DIR } from "./state-persistence";
 import { GitFileWatcher } from "./git-watcher";
+import { ApiServer } from "./api-server";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,11 @@ const ptyManager = new PtyManager();
 const projectScanner = new ProjectScanner();
 const statePersistence = new StatePersistence();
 const gitWatcher = new GitFileWatcher();
+const apiServer = new ApiServer({
+  getWindow: () => mainWindow,
+  ptyManager,
+  projectScanner,
+});
 
 function createWindow() {
   const isMac = process.platform === "darwin";
@@ -82,8 +88,15 @@ function createWindow() {
 
   // Intercept close to ask user about saving (only after page loads)
   let rendererReady = false;
-  mainWindow.webContents.on("did-finish-load", () => {
+  mainWindow.webContents.on("did-finish-load", async () => {
     rendererReady = true;
+    try {
+      const port = await apiServer.start();
+      writePortFile(port);
+      console.log(`[TermCanvas API] http://127.0.0.1:${port}`);
+    } catch (err) {
+      console.error("[TermCanvas API] Failed to start:", err);
+    }
   });
   mainWindow.on("close", (e) => {
     if (forceClose || !mainWindow || !rendererReady) return;
@@ -358,6 +371,7 @@ app.whenReady().then(() => {
 });
 
 app.on("will-quit", () => {
+  apiServer.stop();
   cleanupPortFile();
 });
 
