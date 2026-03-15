@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Canvas } from "./canvas/Canvas";
 import { Toolbar } from "./toolbar/Toolbar";
 import { Sidebar } from "./components/Sidebar";
@@ -7,6 +7,49 @@ import { useProjectStore } from "./stores/projectStore";
 import { useCanvasStore } from "./stores/canvasStore";
 import { useDrawingStore } from "./stores/drawingStore";
 import { serializeAllTerminals } from "./terminal/terminalRegistry";
+
+function snapshotState(): string {
+  const scrollbacks = serializeAllTerminals();
+  const projects = useProjectStore.getState().projects.map((p) => ({
+    ...p,
+    worktrees: p.worktrees.map((wt) => ({
+      ...wt,
+      terminals: wt.terminals.map((t) => ({
+        ...t,
+        scrollback: scrollbacks[t.id] ?? t.scrollback ?? undefined,
+        ptyId: null,
+      })),
+    })),
+  }));
+
+  return JSON.stringify(
+    {
+      version: 1,
+      viewport: useCanvasStore.getState().viewport,
+      projects,
+      drawings: useDrawingStore.getState().elements,
+    },
+    null,
+    2,
+  );
+}
+
+function restoreFromData(raw: string) {
+  try {
+    const data = JSON.parse(raw);
+    if (data.viewport) {
+      useCanvasStore.getState().setViewport(data.viewport);
+    }
+    if (data.projects && Array.isArray(data.projects)) {
+      useProjectStore.getState().setProjects(data.projects);
+    }
+    if (data.drawings && Array.isArray(data.drawings)) {
+      useDrawingStore.setState({ elements: data.drawings });
+    }
+  } catch {
+    // Invalid data, ignore
+  }
+}
 
 function useWorktreeWatcher() {
   const { projects, syncWorktrees } = useProjectStore();
@@ -34,77 +77,106 @@ function useWorktreeWatcher() {
 }
 
 function useStatePersistence() {
-  const { setProjects } = useProjectStore();
-  const { setViewport } = useCanvasStore();
-
-  // Load state on mount
+  // Load saved state on mount
   useEffect(() => {
     if (!window.termcanvas) return;
-
     window.termcanvas.state.load().then((saved) => {
-      if (!saved) return;
-      const state = saved as {
-        viewport?: { x: number; y: number; scale: number };
-        projects?: unknown[];
-        drawings?: unknown[];
-      };
-
-      if (state.viewport) {
-        setViewport(state.viewport);
-      }
-      if (state.projects && Array.isArray(state.projects)) {
-        setProjects(
-          state.projects as ReturnType<
-            typeof useProjectStore.getState
-          >["projects"],
-        );
-      }
-      if (state.drawings && Array.isArray(state.drawings)) {
-        useDrawingStore.setState({
-          elements: state.drawings as ReturnType<
-            typeof useDrawingStore.getState
-          >["elements"],
-        });
-      }
+      if (saved) restoreFromData(JSON.stringify(saved));
     });
   }, []);
+}
 
-  // Save state on beforeunload
+function useCloseHandler() {
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
+
   useEffect(() => {
     if (!window.termcanvas) return;
 
-    const save = () => {
-      // Snapshot scrollback from all live terminals
-      const scrollbacks = serializeAllTerminals();
-      const projects = useProjectStore.getState().projects.map((p) => ({
-        ...p,
-        worktrees: p.worktrees.map((wt) => ({
-          ...wt,
-          terminals: wt.terminals.map((t) => ({
-            ...t,
-            scrollback: scrollbacks[t.id] ?? t.scrollback ?? undefined,
-            ptyId: null, // PTY sessions can't persist
-          })),
-        })),
-      }));
+    const unsubscribe = window.termcanvas.app.onBeforeClose(() => {
+      setShowCloseDialog(true);
+    });
 
-      const state = {
-        viewport: useCanvasStore.getState().viewport,
-        projects,
-        drawings: useDrawingStore.getState().elements,
-      };
-
-      window.termcanvas.state.save(state);
-    };
-
-    window.addEventListener("beforeunload", save);
-    return () => window.removeEventListener("beforeunload", save);
+    return unsubscribe;
   }, []);
+
+  const handleSave = useCallback(async () => {
+    const data = snapshotState();
+    const saved = await window.termcanvas.workspace.save(data);
+    if (saved) {
+      // Also save to auto-restore location
+      window.termcanvas.state.save(JSON.parse(data));
+      window.termcanvas.app.confirmClose();
+    } else {
+      // User cancelled the save dialog, stay open
+      setShowCloseDialog(false);
+    }
+  }, []);
+
+  const handleDiscard = useCallback(() => {
+    // Clear the auto-restore state
+    window.termcanvas.state.save({
+      viewport: { x: 0, y: 0, scale: 1 },
+      projects: [],
+    });
+    window.termcanvas.app.confirmClose();
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    setShowCloseDialog(false);
+  }, []);
+
+  return { showCloseDialog, handleSave, handleDiscard, handleCancel };
+}
+
+function CloseDialog({
+  onSave,
+  onDiscard,
+  onCancel,
+}: {
+  onSave: () => void;
+  onDiscard: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+      <div className="bg-[#111] border border-[#222] rounded-lg p-6 max-w-sm w-full mx-4">
+        <h2 className="text-[15px] font-medium text-[#ededed] mb-2">
+          Save workspace?
+        </h2>
+        <p className="text-[13px] text-[#888] mb-6">
+          Save your projects, terminals, and drawings to a file so you can
+          restore them later.
+        </p>
+        <div className="flex gap-2 justify-end">
+          <button
+            className="px-3 py-1.5 rounded-md text-[13px] text-[#888] hover:text-[#ededed] hover:bg-[#222] transition-colors duration-150"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-3 py-1.5 rounded-md text-[13px] text-[#ee0000] hover:bg-[#220000] transition-colors duration-150"
+            onClick={onDiscard}
+          >
+            Don't Save
+          </button>
+          <button
+            className="px-3 py-1.5 rounded-md text-[13px] text-[#ededed] bg-[#0070f3] hover:bg-[#005cc5] transition-colors duration-150"
+            onClick={onSave}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function App() {
   useWorktreeWatcher();
   useStatePersistence();
+  const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
+    useCloseHandler();
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a] text-[#ededed]">
@@ -112,6 +184,13 @@ export function App() {
       <Sidebar />
       <Canvas />
       <NotificationToast />
+      {showCloseDialog && (
+        <CloseDialog
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+          onCancel={handleCancel}
+        />
+      )}
     </div>
   );
 }

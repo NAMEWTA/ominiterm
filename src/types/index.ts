@@ -98,7 +98,7 @@ export interface TermCanvasAPI {
   };
   state: {
     load: () => Promise<CanvasState | null>;
-    save: (state: CanvasState) => Promise<void>;
+    save: (state: unknown) => Promise<void>;
   };
   workspace: {
     save: (data: string) => Promise<boolean>;
