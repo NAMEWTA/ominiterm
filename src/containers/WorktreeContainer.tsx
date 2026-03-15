@@ -57,8 +57,53 @@ export function WorktreeContainer({ projectId, worktree, parentSize }: Props) {
 
   const handleNewTerminal = useCallback(() => {
     const terminal = createTerminal("shell");
+
+    // Find non-overlapping position: stack below existing terminals
+    const pad = 10;
+    const titleH = 36;
+    let maxBottom = 0;
+    for (const t of worktree.terminals) {
+      maxBottom = Math.max(
+        maxBottom,
+        t.position.y + (t.minimized ? 30 : t.size.h),
+      );
+    }
+    const newY = worktree.terminals.length > 0 ? maxBottom + 8 : 0;
+    terminal.position = { x: 0, y: newY };
+
+    // Check if worktree needs to grow
+    const neededH = titleH + pad + newY + terminal.size.h + pad;
+    if (neededH > (worktree.size.h || 340)) {
+      updateWorktreeSize(
+        projectId,
+        worktree.id,
+        worktree.size.w || 580,
+        neededH,
+      );
+
+      // Check if project needs to grow too
+      const wtBottom = worktree.position.y + neededH;
+      const projectTitleH = 40;
+      const projectPad = 12;
+      const neededProjectH = projectTitleH + projectPad + wtBottom + projectPad;
+      if (neededProjectH > (parentSize.h || 400)) {
+        useProjectStore
+          .getState()
+          .updateProjectSize(projectId, parentSize.w || 620, neededProjectH);
+      }
+    }
+
     addTerminal(projectId, worktree.id, terminal);
-  }, [projectId, worktree.id, addTerminal]);
+  }, [
+    projectId,
+    worktree.id,
+    worktree.terminals,
+    worktree.size,
+    worktree.position,
+    parentSize,
+    addTerminal,
+    updateWorktreeSize,
+  ]);
 
   const contentMinH = useMemo(() => {
     if (worktree.terminals.length === 0) return 60;
