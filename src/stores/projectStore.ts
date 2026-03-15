@@ -128,7 +128,7 @@ function mapTerminals(
 
 const OVERLAP_GAP = 40;
 
-function getProjectBounds(p: ProjectData) {
+export function getProjectBounds(p: ProjectData) {
   if (p.worktrees.length === 0) {
     return {
       x: p.position.x,

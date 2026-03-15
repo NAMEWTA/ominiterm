@@ -1,6 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
-import { useDiffLayoutStore, resolveCardY } from "../stores/diffLayoutStore";
+import {
+  useDiffLayoutStore,
+  resolveAllCardPositions,
+} from "../stores/diffLayoutStore";
+import { useProjectStore, getProjectBounds } from "../stores/projectStore";
 import { useT } from "../i18n/useT";
 
 interface FileInfo {
@@ -19,6 +23,7 @@ interface FileDiff {
 }
 
 interface Props {
+  projectId: string;
   worktreeId: string;
   worktreePath: string;
   anchorX: number;
@@ -99,6 +104,7 @@ function ChangeBar({
 }
 
 export function DiffCard({
+  projectId,
   worktreeId,
   worktreePath,
   anchorX,
@@ -139,8 +145,16 @@ export function DiffCard({
     return () => unregister(worktreeId);
   }, [worktreeId, pos.x, pos.y, size.w, size.h, register, unregister]);
 
-  // Compute non-overlapping Y
-  const resolvedY = resolveCardY(cards, worktreeId);
+  // Collect all project bounds as obstacles for DiffCard deconfliction
+  const projects = useProjectStore((s) => s.projects);
+  const obstacles = useMemo(
+    () => projects.map((p) => getProjectBounds(p)),
+    [projects],
+  );
+
+  // Compute non-overlapping Y for all cards, avoiding other DiffCards + project bounds
+  const allResolved = resolveAllCardPositions(cards, obstacles);
+  const resolvedY = allResolved[worktreeId] ?? pos.y;
 
   useEffect(() => {
     if (!window.termcanvas) return;

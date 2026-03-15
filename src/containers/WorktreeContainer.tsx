@@ -1,7 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Position, WorktreeData } from "../types";
-import { useProjectStore, createTerminal } from "../stores/projectStore";
+import {
+  useProjectStore,
+  createTerminal,
+  getProjectBounds,
+} from "../stores/projectStore";
 import { TerminalTile } from "../terminal/TerminalTile";
 import { useDrag } from "../hooks/useDrag";
 import { DiffCard } from "../components/DiffCard";
@@ -326,12 +330,18 @@ export function WorktreeContainer({
         (() => {
           const portalTarget = document.getElementById("canvas-layer");
           if (!portalTarget) return null;
-          const absX =
-            projectPosition.x + PROJ_PAD + worktree.position.x + computedSize.w;
+          const project = useProjectStore
+            .getState()
+            .projects.find((p) => p.id === projectId);
+          const projectW = project
+            ? getProjectBounds(project).w
+            : PROJ_PAD + worktree.position.x + computedSize.w;
+          const absX = projectPosition.x + projectW;
           const absY = projectPosition.y + PROJ_TITLE_H + worktree.position.y;
           return createPortal(
             <>
               <DiffCard
+                projectId={projectId}
                 worktreeId={worktree.id}
                 worktreePath={worktree.path}
                 anchorX={absX}
