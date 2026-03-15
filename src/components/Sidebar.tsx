@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useProjectStore, generateId } from "../stores/projectStore";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useNotificationStore } from "../stores/notificationStore";
@@ -31,7 +31,10 @@ export function Sidebar() {
     animateTo,
     sidebarCollapsed: collapsed,
     setSidebarCollapsed: setCollapsed,
+    sidebarWidth,
+    setSidebarWidth,
   } = useCanvasStore();
+  const prevWidthRef = useRef(sidebarWidth);
   const { notify } = useNotificationStore();
   const t = useT();
 
@@ -94,6 +97,55 @@ export function Sidebar() {
     }
   }, []);
 
+  const COLLAPSE_THRESHOLD = 80;
+  const MIN_WIDTH = 140;
+  const MAX_WIDTH = 400;
+
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+
+      const handleMove = (ev: MouseEvent) => {
+        const newWidth = ev.clientX;
+        if (newWidth < COLLAPSE_THRESHOLD) {
+          if (!useCanvasStore.getState().sidebarCollapsed) {
+            prevWidthRef.current =
+              useCanvasStore.getState().sidebarWidth || 200;
+            setCollapsed(true);
+          }
+        } else {
+          const clamped = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth));
+          setCollapsed(false);
+          setSidebarWidth(clamped);
+        }
+      };
+
+      const handleUp = () => {
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("mouseup", handleUp);
+      };
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", handleUp);
+    },
+    [setCollapsed, setSidebarWidth],
+  );
+
+  const handleResizeDoubleClick = useCallback(() => {
+    if (collapsed) {
+      setCollapsed(false);
+      setSidebarWidth(prevWidthRef.current || 200);
+    } else {
+      prevWidthRef.current = sidebarWidth;
+      setCollapsed(true);
+    }
+  }, [collapsed, sidebarWidth, setCollapsed, setSidebarWidth]);
+
   const handleFocus = useCallback(
     (projectId: string) => {
       const project = projects.find((p) => p.id === projectId);
@@ -132,10 +184,11 @@ export function Sidebar() {
   return (
     <div className="fixed left-0 z-40 flex" style={{ top: 44 }}>
       <div
-        className="flex flex-col bg-[var(--bg)] transition-[width] duration-200 overflow-hidden"
+        className="flex flex-col bg-[var(--bg)] overflow-hidden"
         style={{
-          width: collapsed ? 0 : 200,
+          width: collapsed ? 0 : sidebarWidth,
           height: "calc(100vh - 44px)",
+          transition: collapsed ? "width 0.2s ease" : undefined,
         }}
       >
         <div className="px-3 py-2 shrink-0 flex flex-col gap-1.5">
@@ -210,27 +263,13 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Toggle */}
-      <button
-        className="self-start mt-2 ml-1 p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors duration-150"
-        onClick={() => setCollapsed(!collapsed)}
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-          className={`transition-transform duration-200 ${collapsed ? "" : "rotate-180"}`}
-        >
-          <path
-            d="M5 3L9 7L5 11"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
+      {/* Resize handle */}
+      <div
+        className="w-1 cursor-col-resize shrink-0 hover:bg-[var(--accent)] transition-colors duration-150"
+        style={{ height: "calc(100vh - 44px)" }}
+        onMouseDown={handleResizeStart}
+        onDoubleClick={handleResizeDoubleClick}
+      />
     </div>
   );
 }

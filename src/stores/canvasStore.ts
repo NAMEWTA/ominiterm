@@ -5,9 +5,11 @@ interface CanvasStore {
   viewport: Viewport;
   isAnimating: boolean;
   sidebarCollapsed: boolean;
+  sidebarWidth: number;
   setViewport: (viewport: Partial<Viewport>) => void;
   resetViewport: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  setSidebarWidth: (width: number) => void;
   animateTo: (x: number, y: number, scale?: number) => void;
 }
 
@@ -18,8 +20,10 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   viewport: { ...DEFAULT_VIEWPORT },
   isAnimating: false,
   sidebarCollapsed: false,
+  sidebarWidth: 200,
 
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+  setSidebarWidth: (width) => set({ sidebarWidth: width }),
 
   setViewport: (partial) =>
     set((state) => ({
