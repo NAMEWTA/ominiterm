@@ -77,6 +77,24 @@ function setupIpc() {
     return projectScanner.scan(dirPath);
   });
 
+  ipcMain.handle("project:rescan-worktrees", (_event, dirPath: string) => {
+    return projectScanner.listWorktrees(dirPath);
+  });
+
+  ipcMain.on("project:watch", (_event, dirPath: string) => {
+    projectScanner.startWatching(dirPath, (worktrees) => {
+      mainWindow?.webContents.send(
+        "project:worktrees-changed",
+        dirPath,
+        worktrees,
+      );
+    });
+  });
+
+  ipcMain.on("project:unwatch", (_event, dirPath: string) => {
+    projectScanner.stopWatching(dirPath);
+  });
+
   // State IPC
   ipcMain.handle("state:load", () => {
     return statePersistence.load();
@@ -98,5 +116,6 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   ptyManager.destroyAll();
+  projectScanner.stopAllWatching();
   if (process.platform !== "darwin") app.quit();
 });
