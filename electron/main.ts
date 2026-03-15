@@ -178,13 +178,13 @@ function setupIpc() {
   ipcMain.handle("project:diff", (_event, worktreePath: string) => {
     try {
       const { execSync } = require("child_process");
-      const diff = execSync("git diff", {
+      // Use HEAD to show all changes (staged + unstaged) vs last commit
+      const diff = execSync("git diff HEAD", {
         cwd: worktreePath,
         encoding: "utf-8",
         maxBuffer: 10 * 1024 * 1024,
       });
-      // numstat: additions  deletions  filename per line
-      const numstat = execSync("git diff --numstat", {
+      const numstat = execSync("git diff HEAD --numstat", {
         cwd: worktreePath,
         encoding: "utf-8",
       });
