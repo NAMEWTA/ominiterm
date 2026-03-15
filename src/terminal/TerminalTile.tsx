@@ -8,6 +8,7 @@ import { useNotificationStore } from "../stores/notificationStore";
 import { useDrag } from "../hooks/useDrag";
 import { useResize } from "../hooks/useResize";
 import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
+import { useThemeStore, XTERM_THEMES } from "../stores/themeStore";
 
 interface Props {
   projectId: string;
@@ -82,30 +83,9 @@ export function TerminalTile({
       return;
     }
 
+    const currentTheme = useThemeStore.getState().theme;
     const xterm = new Terminal({
-      theme: {
-        background: "#0a0a0a",
-        foreground: "#ededed",
-        cursor: "#ededed",
-        cursorAccent: "#0a0a0a",
-        selectionBackground: "rgba(0, 112, 243, 0.3)",
-        black: "#111111",
-        red: "#ee0000",
-        green: "#0070f3",
-        yellow: "#f5a623",
-        blue: "#0070f3",
-        magenta: "#7928ca",
-        cyan: "#79ffe1",
-        white: "#ededed",
-        brightBlack: "#444444",
-        brightRed: "#ff4444",
-        brightGreen: "#50e3c2",
-        brightYellow: "#f7b955",
-        brightBlue: "#3291ff",
-        brightMagenta: "#a855f7",
-        brightCyan: "#79ffe1",
-        brightWhite: "#fafafa",
-      },
+      theme: XTERM_THEMES[currentTheme],
       fontFamily: '"Geist Mono", "SF Mono", "JetBrains Mono", Menlo, monospace',
       fontSize: 13,
       lineHeight: 1.4,
@@ -292,6 +272,16 @@ export function TerminalTile({
     updateTerminalPtyId,
     notify,
   ]);
+
+  // Update xterm theme when app theme changes
+  useEffect(() => {
+    const unsubscribe = useThemeStore.subscribe((state) => {
+      if (xtermRef.current) {
+        xtermRef.current.options.theme = XTERM_THEMES[state.theme];
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const handleClose = useCallback(() => {
     cleanupRef.current?.();
