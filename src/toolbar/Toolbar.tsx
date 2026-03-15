@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useProjectStore } from "../stores/projectStore";
+import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
 import { SettingsModal } from "../components/SettingsModal";
 import { useT } from "../i18n/useT";
 
@@ -24,10 +25,22 @@ export function Toolbar() {
       maxX = -Infinity,
       maxY = -Infinity;
     for (const p of projects) {
+      let maxW = 300;
+      let totalH = 0;
+      for (const wt of p.worktrees) {
+        const wtSize = computeWorktreeSize(wt.terminals.length);
+        maxW = Math.max(maxW, wt.position.x + wtSize.w);
+        totalH = Math.max(totalH, wt.position.y + wtSize.h);
+      }
+      const projW = Math.max(340, maxW + PROJ_PAD * 2);
+      const projH = Math.max(
+        PROJ_TITLE_H + PROJ_PAD + 60 + PROJ_PAD,
+        PROJ_TITLE_H + PROJ_PAD + totalH + PROJ_PAD,
+      );
       minX = Math.min(minX, p.position.x);
       minY = Math.min(minY, p.position.y);
-      maxX = Math.max(maxX, p.position.x + (p.size.w || 620));
-      maxY = Math.max(maxY, p.position.y + (p.size.h || 400));
+      maxX = Math.max(maxX, p.position.x + projW);
+      maxY = Math.max(maxY, p.position.y + projH);
     }
     const contentW = maxX - minX;
     const contentH = maxY - minY;

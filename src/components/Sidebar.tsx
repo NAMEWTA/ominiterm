@@ -62,7 +62,6 @@ export function Sidebar() {
       name: info.name,
       path: info.path,
       position: { x: 100 - viewport.x, y: 100 - viewport.y },
-      size: { w: 620, h: Math.max(250, info.worktrees.length * 360 + 60) },
       collapsed: false,
       zIndex: 0,
       worktrees: info.worktrees.map((wt, i) => ({
@@ -70,7 +69,6 @@ export function Sidebar() {
         name: wt.branch,
         path: wt.path,
         position: { x: 0, y: i * 360 },
-        size: { w: 580, h: 340 },
         collapsed: false,
         terminals: [],
       })),

@@ -79,8 +79,6 @@ export function createTerminal(
     id: generateId(),
     title: title ?? (type === "shell" ? "Terminal" : type),
     type,
-    position: { x: 0, y: 0 },
-    size: { w: 540, h: 260 },
     minimized: false,
     focused: false,
     ptyId: null,
@@ -181,7 +179,6 @@ export const useProjectStore = create<ProjectStore>((set) => ({
             name: wt.branch,
             path: wt.path,
             position: { x: 0, y: 0 },
-            size: { w: p.size.w > 0 ? p.size.w - 40 : 580, h: 0 },
             collapsed: false,
             terminals: [],
           };
