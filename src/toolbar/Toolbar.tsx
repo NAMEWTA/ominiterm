@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useProjectStore } from "../stores/projectStore";
+import { useThemeStore } from "../stores/themeStore";
 import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
 import { SettingsModal } from "../components/SettingsModal";
 import { useT } from "../i18n/useT";
@@ -14,6 +15,7 @@ const btn =
 export function Toolbar() {
   const { viewport, setViewport, resetViewport, animateTo } = useCanvasStore();
   const { projects } = useProjectStore();
+  const { theme, toggleTheme } = useThemeStore();
   const t = useT();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -79,6 +81,41 @@ export function Toolbar() {
 
         <div className="flex-1" />
 
+        {/* Theme toggle */}
+        <button
+          className={btn}
+          style={noDrag}
+          onClick={toggleTheme}
+          title={theme === "dark" ? t.switch_to_light : t.switch_to_dark}
+        >
+          {theme === "dark" ? (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle
+                cx="7"
+                cy="7"
+                r="2.5"
+                stroke="currentColor"
+                strokeWidth="1.4"
+              />
+              <path
+                d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M12.5 8.5a5.5 5.5 0 0 1-7-7 5.5 5.5 0 1 0 7 7Z"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </button>
+
         {/* Settings button */}
         <button
           className={btn}
@@ -87,18 +124,18 @@ export function Toolbar() {
           title={t.settings}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path
+              d="M5.7 1h2.6l.4 1.7a4.5 4.5 0 0 1 1.1.6l1.7-.5 1.3 2.2-1.3 1.2a4.5 4.5 0 0 1 0 1.2l1.3 1.2-1.3 2.3-1.7-.6a4.5 4.5 0 0 1-1.1.7L8.3 13H5.7l-.4-1.7a4.5 4.5 0 0 1-1.1-.7l-1.7.6-1.3-2.3 1.3-1.2a4.5 4.5 0 0 1 0-1.2L1.2 5.3l1.3-2.2 1.7.5a4.5 4.5 0 0 1 1.1-.6L5.7 1Z"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
             <circle
               cx="7"
               cy="7"
-              r="2"
+              r="1.8"
               stroke="currentColor"
-              strokeWidth="1.4"
-            />
-            <path
-              d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
+              strokeWidth="1.2"
             />
           </svg>
         </button>
