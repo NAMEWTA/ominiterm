@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
+import { useT } from "../i18n/useT";
 
 interface FileInfo {
   name: string;
@@ -106,6 +107,7 @@ export function DiffCard({
   onMouseEnter,
   onMouseLeave,
 }: Props) {
+  const t = useT();
   const [fileDiffs, setFileDiffs] = useState<FileDiff[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
@@ -247,11 +249,11 @@ export function DiffCard({
           className="text-[11px] font-medium text-[var(--accent)]"
           style={{ fontFamily: '"Geist Mono", monospace' }}
         >
-          Diff
+          {t.diff}
         </span>
         {!loading && (
           <span className="text-[11px] text-[var(--text-muted)]">
-            {fileDiffs.length} file{fileDiffs.length !== 1 ? "s" : ""}
+            {t.file_count(fileDiffs.length)}
             <span className="ml-1.5" style={{ color: "var(--cyan)" }}>
               +{totalAdd}
             </span>
@@ -285,11 +287,11 @@ export function DiffCard({
       >
         {loading ? (
           <div className="text-[var(--text-muted)] py-8 text-center">
-            Loading...
+            {t.loading}
           </div>
         ) : fileDiffs.length === 0 ? (
           <div className="text-[var(--text-muted)] py-8 text-center">
-            No changes
+            {t.no_changes}
           </div>
         ) : (
           fileDiffs.map((fd) => (
@@ -323,7 +325,7 @@ export function DiffCard({
                 </span>
                 {fd.file.binary ? (
                   <span className="text-[var(--text-muted)] text-[11px] shrink-0">
-                    binary
+                    {t.binary_label}
                   </span>
                 ) : (
                   <>
@@ -349,7 +351,7 @@ export function DiffCard({
                       {fd.file.imageOld && (
                         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
                           <span className="text-[11px] text-[var(--red)]">
-                            Removed
+                            {t.removed}
                           </span>
                           <img
                             src={fd.file.imageOld}
@@ -373,7 +375,7 @@ export function DiffCard({
                             className="text-[11px]"
                             style={{ color: "var(--cyan)" }}
                           >
-                            {fd.file.imageOld ? "New" : "Added"}
+                            {fd.file.imageOld ? t.file_new : t.added}
                           </span>
                           <img
                             src={fd.file.imageNew}
@@ -388,13 +390,13 @@ export function DiffCard({
                       )}
                       {!fd.file.imageOld && !fd.file.imageNew && (
                         <div className="text-[var(--text-muted)] text-center w-full py-2">
-                          Image file changed
+                          {t.image_changed}
                         </div>
                       )}
                     </div>
                   ) : fd.file.binary ? (
                     <div className="px-3 py-3 text-[var(--text-muted)] text-center">
-                      Binary file changed
+                      {t.binary_changed}
                     </div>
                   ) : (
                     <pre className="px-3 py-1 leading-relaxed">
