@@ -103,6 +103,12 @@ export function TerminalTile({
     xterm.loadAddon(serializeAddon);
     xterm.open(containerRef.current);
 
+    // Let Cmd/Ctrl key combos propagate to the app shortcut handler
+    xterm.attachCustomKeyEventHandler((e) => {
+      if (e.type === "keydown" && (e.metaKey || e.ctrlKey)) return false;
+      return true;
+    });
+
     // Re-apply theme after open() to ensure canvas paints correctly
     xterm.options.theme = XTERM_THEMES[useThemeStore.getState().theme];
 
