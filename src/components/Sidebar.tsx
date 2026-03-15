@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { useProjectStore } from "../stores/projectStore";
+import { useProjectStore, generateId } from "../stores/projectStore";
 import { useCanvasStore } from "../stores/canvasStore";
+import { useNotificationStore } from "../stores/notificationStore";
 import type { TerminalStatus, TerminalType } from "../types";
 
 const STATUS_COLOR: Record<TerminalStatus, string> = {
@@ -28,8 +29,64 @@ const TYPE_LABEL: Record<TerminalType, string> = {
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { projects } = useProjectStore();
-  const { animateTo } = useCanvasStore();
+  const { projects, addProject } = useProjectStore();
+  const { viewport, animateTo } = useCanvasStore();
+  const { notify } = useNotificationStore();
+
+  const handleAddProject = useCallback(async () => {
+    if (!window.termcanvas) return;
+    let dirPath: string | null;
+    try {
+      dirPath = await window.termcanvas.project.selectDirectory();
+    } catch (err) {
+      notify("error", `Failed to open directory picker: ${err}`);
+      return;
+    }
+    if (!dirPath) return;
+    let info: Awaited<ReturnType<typeof window.termcanvas.project.scan>>;
+    try {
+      info = await window.termcanvas.project.scan(dirPath);
+    } catch (err) {
+      notify("error", `Failed to scan project: ${err}`);
+      return;
+    }
+    if (!info) {
+      notify("warn", `"${dirPath}" is not a git repository.`);
+      return;
+    }
+    addProject({
+      id: generateId(),
+      name: info.name,
+      path: info.path,
+      position: { x: 100 - viewport.x, y: 100 - viewport.y },
+      size: { w: 620, h: 0 },
+      collapsed: false,
+      zIndex: 0,
+      worktrees: info.worktrees.map((wt) => ({
+        id: generateId(),
+        name: wt.branch,
+        path: wt.path,
+        position: { x: 0, y: 0 },
+        size: { w: 580, h: 0 },
+        collapsed: false,
+        terminals: [],
+      })),
+    });
+    notify(
+      "info",
+      `Added "${info.name}" with ${info.worktrees.length} worktree(s).`,
+    );
+  }, [addProject, viewport, notify]);
+
+  const handleOpenWorkspace = useCallback(async () => {
+    if (!window.termcanvas) return;
+    const data = await window.termcanvas.workspace.open();
+    if (data) {
+      window.dispatchEvent(
+        new CustomEvent("termcanvas:open-workspace", { detail: data }),
+      );
+    }
+  }, []);
 
   const handleFocus = useCallback(
     (projectId: string) => {
@@ -64,13 +121,27 @@ export function Sidebar() {
           height: "calc(100vh - 44px)",
         }}
       >
-        <div className="px-4 py-3 shrink-0">
+        <div className="px-3 py-2 shrink-0 flex flex-col gap-1.5">
           <span
-            className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider"
+            className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider px-1"
             style={{ fontFamily: '"Geist Mono", monospace' }}
           >
             Projects
           </span>
+          <div className="flex gap-1">
+            <button
+              className="flex-1 px-2 py-1 rounded-md text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors duration-150 border border-[var(--border)]"
+              onClick={handleAddProject}
+            >
+              + Add
+            </button>
+            <button
+              className="flex-1 px-2 py-1 rounded-md text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors duration-150 border border-[var(--border)]"
+              onClick={handleOpenWorkspace}
+            >
+              Open
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -110,7 +181,9 @@ export function Sidebar() {
             );
           })}
           {projects.length === 0 && (
-            <div className="px-4 py-4 text-[11px] text-[var(--text-faint)]">No projects</div>
+            <div className="px-4 py-4 text-[11px] text-[var(--text-faint)]">
+              No projects
+            </div>
           )}
         </div>
       </div>

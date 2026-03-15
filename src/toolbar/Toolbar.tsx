@@ -1,78 +1,17 @@
 import { useCallback } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
-import { useProjectStore, generateId } from "../stores/projectStore";
-import { useNotificationStore } from "../stores/notificationStore";
+import { useProjectStore } from "../stores/projectStore";
 import { useThemeStore } from "../stores/themeStore";
 
 const noDrag = { WebkitAppRegion: "no-drag" } as React.CSSProperties;
 
-function isElectron(): boolean {
-  return typeof window !== "undefined" && !!window.termcanvas;
-}
-
-// Shared button style
 const btn =
   "px-2 py-1 rounded-md text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors duration-150 active:scale-[0.97]";
 
 export function Toolbar() {
   const { viewport, setViewport, resetViewport } = useCanvasStore();
-  const { projects, addProject } = useProjectStore();
-  const { notify } = useNotificationStore();
+  const { projects } = useProjectStore();
   const { theme, toggleTheme } = useThemeStore();
-
-  const handleAddProject = useCallback(async () => {
-    if (!isElectron()) {
-      notify("error", "Not running in Electron. Cannot access native APIs.");
-      return;
-    }
-
-    let dirPath: string | null;
-    try {
-      dirPath = await window.termcanvas.project.selectDirectory();
-    } catch (err) {
-      notify("error", `Failed to open directory picker: ${err}`);
-      return;
-    }
-
-    if (!dirPath) return;
-
-    let info: Awaited<ReturnType<typeof window.termcanvas.project.scan>>;
-    try {
-      info = await window.termcanvas.project.scan(dirPath);
-    } catch (err) {
-      notify("error", `Failed to scan project: ${err}`);
-      return;
-    }
-
-    if (!info) {
-      notify("warn", `"${dirPath}" is not a git repository.`);
-      return;
-    }
-
-    addProject({
-      id: generateId(),
-      name: info.name,
-      path: info.path,
-      position: { x: 100 - viewport.x, y: 100 - viewport.y },
-      size: { w: 620, h: 0 },
-      collapsed: false,
-      zIndex: 0,
-      worktrees: info.worktrees.map((wt) => ({
-        id: generateId(),
-        name: wt.branch,
-        path: wt.path,
-        position: { x: 0, y: 0 },
-        size: { w: 580, h: 0 },
-        collapsed: false,
-        terminals: [],
-      })),
-    });
-
-    notify(
-      "info",
-      `Added project "${info.name}" with ${info.worktrees.length} worktree(s).`,
-    );
-  }, [addProject, viewport, notify]);
 
   const handleFitAll = useCallback(() => {
     if (projects.length === 0) return;
@@ -117,31 +56,6 @@ export function Toolbar() {
         TermCanvas
       </span>
 
-      {/* Actions */}
-      <button
-        className={`${btn} border border-[var(--border)]`}
-        style={noDrag}
-        onClick={handleAddProject}
-      >
-        Add Project
-      </button>
-      <button
-        className={btn}
-        style={noDrag}
-        onClick={async () => {
-          if (!window.termcanvas) return;
-          const data = await window.termcanvas.workspace.open();
-          if (data) {
-            // Dispatch custom event for App to handle
-            window.dispatchEvent(
-              new CustomEvent("termcanvas:open-workspace", { detail: data }),
-            );
-          }
-        }}
-      >
-        Open
-      </button>
-
       <div className="flex-1" />
 
       {/* Theme toggle */}
@@ -154,7 +68,7 @@ export function Toolbar() {
         {theme === "dark" ? "☀" : "☾"}
       </button>
 
-      {/* ── Zoom controls ── */}
+      {/* Zoom controls */}
       <div className="flex items-center gap-0.5" style={noDrag}>
         <button
           className={btn}
