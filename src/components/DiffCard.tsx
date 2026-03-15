@@ -1,18 +1,93 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
 
+interface FileInfo {
+  name: string;
+  additions: number;
+  deletions: number;
+  binary: boolean;
+}
+
+interface FileDiff {
+  file: FileInfo;
+  hunks: string[];
+}
+
 interface Props {
   worktreeId: string;
   worktreePath: string;
-  /** Anchor position in canvas coords (right edge of worktree) */
   anchorX: number;
   anchorY: number;
-  /** Whether this card is pinned (dragged out) */
   pinned: boolean;
   onPin: () => void;
   onClose: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+}
+
+function parseDiff(raw: string, files: FileInfo[]): FileDiff[] {
+  const fileMap = new Map(files.map((f) => [f.name, f]));
+  const result: FileDiff[] = [];
+  // Split by "diff --git" markers
+  const sections = raw.split(/^diff --git /m).filter(Boolean);
+
+  for (const section of sections) {
+    const lines = section.split("\n");
+    // Extract filename from "a/path b/path"
+    const header = lines[0] ?? "";
+    const match = header.match(/b\/(.+)$/);
+    const name = match?.[1] ?? "";
+    const file = fileMap.get(name) ?? {
+      name,
+      additions: 0,
+      deletions: 0,
+      binary: false,
+    };
+    // Everything after the header is the diff content
+    const content = lines.slice(1).join("\n");
+    result.push({ file, hunks: [content] });
+  }
+
+  // Add files from numstat that have no diff section (binary only)
+  for (const f of files) {
+    if (f.binary && !result.find((r) => r.file.name === f.name)) {
+      result.push({ file: f, hunks: [] });
+    }
+  }
+
+  return result;
+}
+
+function ChangeBar({
+  additions,
+  deletions,
+}: {
+  additions: number;
+  deletions: number;
+}) {
+  const total = additions + deletions;
+  if (total === 0) return null;
+  const max = 5;
+  const addBlocks = Math.round((additions / total) * max);
+  const delBlocks = max - addBlocks;
+  return (
+    <span className="inline-flex gap-px ml-1">
+      {Array.from({ length: addBlocks }, (_, i) => (
+        <span
+          key={`a${i}`}
+          className="w-1.5 h-1.5 rounded-sm"
+          style={{ backgroundColor: "var(--cyan)" }}
+        />
+      ))}
+      {Array.from({ length: delBlocks }, (_, i) => (
+        <span
+          key={`d${i}`}
+          className="w-1.5 h-1.5 rounded-sm"
+          style={{ backgroundColor: "var(--red)" }}
+        />
+      ))}
+    </span>
+  );
 }
 
 export function DiffCard({
@@ -25,11 +100,11 @@ export function DiffCard({
   onMouseEnter,
   onMouseLeave,
 }: Props) {
-  const [stat, setStat] = useState("");
-  const [diff, setDiff] = useState("");
+  const [fileDiffs, setFileDiffs] = useState<FileDiff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const [pos, setPos] = useState({ x: anchorX + 16, y: anchorY });
-  const [size, setSize] = useState({ w: 360, h: 300 });
+  const [size, setSize] = useState({ w: 400, h: 340 });
   const [justPinned, setJustPinned] = useState(false);
   const dragRef = useRef<{
     startX: number;
@@ -49,17 +124,13 @@ export function DiffCard({
     if (!window.termcanvas) return;
     setLoading(true);
     window.termcanvas.project.diff(worktreePath).then((result) => {
-      setStat(result.stat || "No changes");
-      setDiff(result.diff);
+      setFileDiffs(parseDiff(result.diff, result.files));
       setLoading(false);
     });
   }, [worktreePath]);
 
-  // Sync position with anchor when not pinned
   useEffect(() => {
-    if (!pinned) {
-      setPos({ x: anchorX + 16, y: anchorY });
-    }
+    if (!pinned) setPos({ x: anchorX + 16, y: anchorY });
   }, [anchorX, anchorY, pinned]);
 
   const handleDragStart = useCallback(
@@ -67,28 +138,26 @@ export function DiffCard({
       if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
-
       const scale = useCanvasStore.getState().viewport.scale;
       hasDragged.current = false;
-
       dragRef.current = {
         startX: e.clientX,
         startY: e.clientY,
         origX: pos.x,
         origY: pos.y,
       };
-
       const handleMove = (ev: MouseEvent) => {
         if (!dragRef.current) return;
         hasDragged.current = true;
-        const dx = (ev.clientX - dragRef.current.startX) / scale;
-        const dy = (ev.clientY - dragRef.current.startY) / scale;
         setPos({
-          x: dragRef.current.origX + dx,
-          y: dragRef.current.origY + dy,
+          x:
+            dragRef.current.origX +
+            (ev.clientX - dragRef.current.startX) / scale,
+          y:
+            dragRef.current.origY +
+            (ev.clientY - dragRef.current.startY) / scale,
         });
       };
-
       const handleUp = () => {
         if (hasDragged.current && !pinned) {
           onPin();
@@ -99,7 +168,6 @@ export function DiffCard({
         window.removeEventListener("mousemove", handleMove);
         window.removeEventListener("mouseup", handleUp);
       };
-
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
@@ -111,35 +179,40 @@ export function DiffCard({
       e.preventDefault();
       e.stopPropagation();
       const scale = useCanvasStore.getState().viewport.scale;
-
       resizeRef.current = {
         startX: e.clientX,
         startY: e.clientY,
         origW: size.w,
         origH: size.h,
       };
-
       const handleMove = (ev: MouseEvent) => {
         if (!resizeRef.current) return;
-        const dx = (ev.clientX - resizeRef.current.startX) / scale;
-        const dy = (ev.clientY - resizeRef.current.startY) / scale;
         setSize({
-          w: Math.max(240, resizeRef.current.origW + dx),
-          h: Math.max(150, resizeRef.current.origH + dy),
+          w: Math.max(
+            280,
+            resizeRef.current.origW +
+              (ev.clientX - resizeRef.current.startX) / scale,
+          ),
+          h: Math.max(
+            150,
+            resizeRef.current.origH +
+              (ev.clientY - resizeRef.current.startY) / scale,
+          ),
         });
       };
-
       const handleUp = () => {
         resizeRef.current = null;
         window.removeEventListener("mousemove", handleMove);
         window.removeEventListener("mouseup", handleUp);
       };
-
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
     [size],
   );
+
+  const totalAdd = fileDiffs.reduce((s, f) => s + f.file.additions, 0);
+  const totalDel = fileDiffs.reduce((s, f) => s + f.file.deletions, 0);
 
   return (
     <div
@@ -170,9 +243,18 @@ export function DiffCard({
         >
           Diff
         </span>
-        <span className="text-[11px] text-[var(--text-muted)] truncate flex-1">
-          {loading ? "Loading..." : `${stat.split("\n").length - 1} files`}
-        </span>
+        {!loading && (
+          <span className="text-[11px] text-[var(--text-muted)]">
+            {fileDiffs.length} file{fileDiffs.length !== 1 ? "s" : ""}
+            <span className="ml-1.5" style={{ color: "var(--cyan)" }}>
+              +{totalAdd}
+            </span>
+            <span className="ml-1" style={{ color: "var(--red)" }}>
+              -{totalDel}
+            </span>
+          </span>
+        )}
+        <div className="flex-1" />
         {pinned && (
           <button
             className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-150 p-0.5"
@@ -190,36 +272,114 @@ export function DiffCard({
         )}
       </div>
 
-      {/* Content */}
+      {/* File list + inline diffs */}
       <div
-        className="flex-1 overflow-auto px-3 pb-2 min-h-0"
+        className="flex-1 overflow-auto min-h-0"
         style={{ fontFamily: '"Geist Mono", monospace', fontSize: 11 }}
       >
         {loading ? (
-          <div className="text-[var(--text-muted)] py-4 text-center">
-            Loading diff...
+          <div className="text-[var(--text-muted)] py-8 text-center">
+            Loading...
           </div>
-        ) : diff ? (
-          <pre className="whitespace-pre leading-relaxed">
-            {diff.split("\n").map((line, i) => {
-              let color = "var(--text-secondary)";
-              if (line.startsWith("+") && !line.startsWith("+++"))
-                color = "var(--cyan)";
-              else if (line.startsWith("-") && !line.startsWith("---"))
-                color = "var(--red)";
-              else if (line.startsWith("@@")) color = "var(--accent)";
-              else if (line.startsWith("diff ")) color = "var(--text-muted)";
-              return (
-                <div key={i} style={{ color }}>
-                  {line}
-                </div>
-              );
-            })}
-          </pre>
-        ) : (
-          <div className="text-[var(--text-muted)] py-4 text-center">
+        ) : fileDiffs.length === 0 ? (
+          <div className="text-[var(--text-muted)] py-8 text-center">
             No changes
           </div>
+        ) : (
+          fileDiffs.map((fd) => (
+            <div key={fd.file.name}>
+              {/* File header */}
+              <button
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg)] transition-colors duration-150 text-left"
+                onClick={() =>
+                  setExpandedFile(
+                    expandedFile === fd.file.name ? null : fd.file.name,
+                  )
+                }
+              >
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 8 8"
+                  fill="none"
+                  className={`shrink-0 transition-transform duration-150 ${expandedFile === fd.file.name ? "rotate-90" : ""}`}
+                >
+                  <path
+                    d="M2 1L6 4L2 7"
+                    stroke="var(--text-muted)"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="text-[var(--text-primary)] truncate flex-1">
+                  {fd.file.name}
+                </span>
+                {fd.file.binary ? (
+                  <span className="text-[var(--text-muted)] text-[10px] shrink-0">
+                    binary
+                  </span>
+                ) : (
+                  <>
+                    <span className="shrink-0" style={{ color: "var(--cyan)" }}>
+                      +{fd.file.additions}
+                    </span>
+                    <span className="shrink-0" style={{ color: "var(--red)" }}>
+                      -{fd.file.deletions}
+                    </span>
+                    <ChangeBar
+                      additions={fd.file.additions}
+                      deletions={fd.file.deletions}
+                    />
+                  </>
+                )}
+              </button>
+
+              {/* Expanded diff */}
+              {expandedFile === fd.file.name && (
+                <div className="bg-[var(--bg)] border-y border-[var(--border)] overflow-x-auto">
+                  {fd.file.binary ? (
+                    <div className="px-3 py-3 text-[var(--text-muted)] text-center">
+                      Binary file changed
+                    </div>
+                  ) : (
+                    <pre className="px-3 py-1 leading-relaxed">
+                      {fd.hunks
+                        .join("\n")
+                        .split("\n")
+                        .map((line, i) => {
+                          let color = "var(--text-secondary)";
+                          let bg = "transparent";
+                          if (line.startsWith("+") && !line.startsWith("+++")) {
+                            color = "var(--cyan)";
+                            bg = "rgba(80, 227, 194, 0.06)";
+                          } else if (
+                            line.startsWith("-") &&
+                            !line.startsWith("---")
+                          ) {
+                            color = "var(--red)";
+                            bg = "rgba(238, 0, 0, 0.06)";
+                          } else if (line.startsWith("@@")) {
+                            color = "var(--accent)";
+                          } else if (
+                            line.startsWith("index ") ||
+                            line.startsWith("---") ||
+                            line.startsWith("+++")
+                          ) {
+                            color = "var(--text-muted)";
+                          }
+                          return (
+                            <div key={i} style={{ color, backgroundColor: bg }}>
+                              {line || " "}
+                            </div>
+                          );
+                        })}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
         )}
       </div>
 

@@ -153,17 +153,33 @@ function setupIpc() {
   ipcMain.handle("project:diff", (_event, worktreePath: string) => {
     try {
       const { execSync } = require("child_process");
-      const stat = execSync("git diff --stat", {
-        cwd: worktreePath,
-        encoding: "utf-8",
-      });
       const diff = execSync("git diff", {
         cwd: worktreePath,
         encoding: "utf-8",
+        maxBuffer: 10 * 1024 * 1024,
       });
-      return { stat, diff };
+      // numstat: additions  deletions  filename per line
+      const numstat = execSync("git diff --numstat", {
+        cwd: worktreePath,
+        encoding: "utf-8",
+      });
+      const files = numstat
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line: string) => {
+          const [add, del, name] = line.split("\t");
+          const binary = add === "-";
+          return {
+            name,
+            additions: binary ? 0 : parseInt(add, 10),
+            deletions: binary ? 0 : parseInt(del, 10),
+            binary,
+          };
+        });
+      return { diff, files };
     } catch {
-      return { stat: "", diff: "" };
+      return { diff: "", files: [] };
     }
   });
 
