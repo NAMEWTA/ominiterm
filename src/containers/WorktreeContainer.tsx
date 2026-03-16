@@ -6,9 +6,12 @@ import {
   createTerminal,
   getProjectBounds,
 } from "../stores/projectStore";
+import { useCardLayoutStore } from "../stores/cardLayoutStore";
 import { TerminalTile } from "../terminal/TerminalTile";
 import { useDrag } from "../hooks/useDrag";
 import { DiffCard } from "../components/DiffCard";
+import { FileTreeCard } from "../components/FileTreeCard";
+import { FileCard } from "../components/FileCard";
 import { useT } from "../i18n/useT";
 import { useCanvasStore } from "../stores/canvasStore";
 import {
@@ -35,8 +38,17 @@ export function WorktreeContainer({
   const [showDiff, setShowDiff] = useState(false);
   const [diffPinned, setDiffPinned] = useState(false);
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const leaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const diffLeaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const diffCardHovered = useRef(false);
+
+  const [showFileTree, setShowFileTree] = useState(false);
+  const [fileTreePinned, setFileTreePinned] = useState(false);
+  const fileTreeLeaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileTreeCardHovered = useRef(false);
+
+  const [openFiles, setOpenFiles] = useState<
+    { id: string; filePath: string; fileName: string }[]
+  >([]);
   const {
     toggleWorktreeCollapse,
     addTerminal,
@@ -200,12 +212,20 @@ export function WorktreeContainer({
       }}
       onClick={() => setFocusedWorktree(projectId, worktree.id)}
       onMouseEnter={() => {
-        if (diffPinned) return;
-        if (leaveTimeout.current) {
-          clearTimeout(leaveTimeout.current);
-          leaveTimeout.current = null;
+        if (diffLeaveTimeout.current) {
+          clearTimeout(diffLeaveTimeout.current);
+          diffLeaveTimeout.current = null;
         }
-        hoverTimeout.current = setTimeout(() => setShowDiff(true), 400);
+        if (fileTreeLeaveTimeout.current) {
+          clearTimeout(fileTreeLeaveTimeout.current);
+          fileTreeLeaveTimeout.current = null;
+        }
+        if (!diffPinned || !fileTreePinned) {
+          hoverTimeout.current = setTimeout(() => {
+            if (!diffPinned) setShowDiff(true);
+            if (!fileTreePinned) setShowFileTree(true);
+          }, 400);
+        }
       }}
       onMouseLeave={() => {
         if (hoverTimeout.current) {
@@ -213,8 +233,13 @@ export function WorktreeContainer({
           hoverTimeout.current = null;
         }
         if (!diffPinned) {
-          leaveTimeout.current = setTimeout(() => {
+          diffLeaveTimeout.current = setTimeout(() => {
             if (!diffCardHovered.current) setShowDiff(false);
+          }, 300);
+        }
+        if (!fileTreePinned) {
+          fileTreeLeaveTimeout.current = setTimeout(() => {
+            if (!fileTreeCardHovered.current) setShowFileTree(false);
           }, 300);
         }
       }}
@@ -314,21 +339,22 @@ export function WorktreeContainer({
         )}
       </div>
 
-      {/* Diff card — portaled to canvas layer so it's never clipped by containers */}
-      {showDiff &&
-        (() => {
-          const portalTarget = document.getElementById("canvas-layer");
-          if (!portalTarget) return null;
-          const project = useProjectStore
-            .getState()
-            .projects.find((p) => p.id === projectId);
-          const projectW = project
-            ? getProjectBounds(project).w
-            : PROJ_PAD + worktree.position.x + computedSize.w;
-          const absX = projectPosition.x + projectW;
-          const absY = projectPosition.y + PROJ_TITLE_H + worktree.position.y;
-          return createPortal(
-            <>
+      {/* Cards — portaled to canvas layer so they're never clipped by containers */}
+      {(() => {
+        const portalTarget = document.getElementById("canvas-layer");
+        if (!portalTarget) return null;
+        const project = useProjectStore
+          .getState()
+          .projects.find((p) => p.id === projectId);
+        const projectW = project
+          ? getProjectBounds(project).w
+          : PROJ_PAD + worktree.position.x + computedSize.w;
+        const absX = projectPosition.x + projectW;
+        const absY = projectPosition.y + PROJ_TITLE_H + worktree.position.y;
+
+        return createPortal(
+          <>
+            {showDiff && (
               <DiffCard
                 projectId={projectId}
                 worktreeId={worktree.id}
@@ -343,25 +369,89 @@ export function WorktreeContainer({
                 }}
                 onMouseEnter={() => {
                   diffCardHovered.current = true;
-                  if (leaveTimeout.current) {
-                    clearTimeout(leaveTimeout.current);
-                    leaveTimeout.current = null;
+                  if (diffLeaveTimeout.current) {
+                    clearTimeout(diffLeaveTimeout.current);
+                    diffLeaveTimeout.current = null;
                   }
                 }}
                 onMouseLeave={() => {
                   diffCardHovered.current = false;
                   if (!diffPinned) {
-                    leaveTimeout.current = setTimeout(
+                    diffLeaveTimeout.current = setTimeout(
                       () => setShowDiff(false),
                       300,
                     );
                   }
                 }}
               />
-            </>,
-            portalTarget,
-          );
-        })()}
+            )}
+            {showFileTree && (
+              <FileTreeCard
+                projectId={projectId}
+                worktreeId={worktree.id}
+                worktreePath={worktree.path}
+                anchorX={absX}
+                anchorY={absY}
+                pinned={fileTreePinned}
+                onPin={() => setFileTreePinned(true)}
+                onClose={() => {
+                  setFileTreePinned(false);
+                  setShowFileTree(false);
+                }}
+                onMouseEnter={() => {
+                  fileTreeCardHovered.current = true;
+                  if (fileTreeLeaveTimeout.current) {
+                    clearTimeout(fileTreeLeaveTimeout.current);
+                    fileTreeLeaveTimeout.current = null;
+                  }
+                }}
+                onMouseLeave={() => {
+                  fileTreeCardHovered.current = false;
+                  if (!fileTreePinned) {
+                    fileTreeLeaveTimeout.current = setTimeout(
+                      () => setShowFileTree(false),
+                      300,
+                    );
+                  }
+                }}
+                onOpenFile={(filePath, fileName) => {
+                  setOpenFiles((prev) => {
+                    if (prev.some((f) => f.filePath === filePath)) return prev;
+                    return [
+                      ...prev,
+                      { id: `${worktree.id}-${Date.now()}`, filePath, fileName },
+                    ];
+                  });
+                }}
+              />
+            )}
+            {openFiles.map((file) => {
+              // Anchor to FileTreeCard resolved position right edge, fallback to worktree anchor
+              const fileTreeCardId = `filetree:${worktree.id}`;
+              const cards = useCardLayoutStore.getState().cards;
+              const ftCard = cards[fileTreeCardId];
+              const fileAnchorX = ftCard ? ftCard.x + ftCard.w : absX;
+              const fileAnchorY = ftCard ? ftCard.y : absY;
+              return (
+                <FileCard
+                  key={file.id}
+                  fileCardId={file.id}
+                  filePath={file.filePath}
+                  fileName={file.fileName}
+                  anchorX={fileAnchorX}
+                  anchorY={fileAnchorY}
+                  onClose={() =>
+                    setOpenFiles((prev) =>
+                      prev.filter((f) => f.id !== file.id),
+                    )
+                  }
+                />
+              );
+            })}
+          </>,
+          portalTarget,
+        );
+      })()}
     </div>
   );
 }
