@@ -26,6 +26,7 @@ export const en = {
   status_running: "Running",
   status_active: "Active",
   status_waiting: "Waiting",
+  status_completed: "Replied",
   status_done: "Done",
   status_error: "Error",
   status_idle: "Starting",

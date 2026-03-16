@@ -25,6 +25,7 @@ export const zh = {
   status_running: "运行中",
   status_active: "工作中",
   status_waiting: "待关注",
+  status_completed: "已回复",
   status_done: "完成",
   status_error: "错误",
   status_idle: "启动中",

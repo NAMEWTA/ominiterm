@@ -21,6 +21,7 @@ export type TerminalStatus =
   | "running"
   | "active"
   | "waiting"
+  | "completed"
   | "success"
   | "error"
   | "idle";
@@ -81,6 +82,9 @@ export interface TermCanvasAPI {
     getCodexLatest: () => Promise<string | null>;
     getClaudeByPid: (pid: number) => Promise<string | null>;
     getKimiLatest: (cwd: string) => Promise<string | null>;
+    watch: (type: string, sessionId: string, cwd: string) => Promise<void>;
+    unwatch: (sessionId: string) => Promise<void>;
+    onTurnComplete: (callback: (sessionId: string) => void) => () => void;
   };
   project: {
     selectDirectory: () => Promise<string | null>;
