@@ -10,8 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
 
-<!-- screenshot placeholder -->
-<img src="docs/screenshot.png" width="800" alt="TermCanvas screenshot — coming soon" />
+<img src="docs/screenshot.png" width="800" alt="TermCanvas screenshot" />
 
 </div>
 
