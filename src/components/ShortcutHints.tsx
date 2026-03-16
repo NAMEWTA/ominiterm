@@ -9,6 +9,7 @@ export function ShortcutHints() {
   const shortcuts = useShortcutStore((s) => s.shortcuts);
 
   const hints = [
+    { key: shortcuts.addProject, desc: t.shortcut_add_project },
     { key: shortcuts.toggleSidebar, desc: t.shortcut_toggle_sidebar },
     { key: shortcuts.newTerminal, desc: t.shortcut_new_terminal },
     { key: shortcuts.nextTerminal, desc: t.shortcut_next_terminal },

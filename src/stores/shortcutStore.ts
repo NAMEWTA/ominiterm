@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export interface ShortcutMap {
+  addProject: string;
   toggleSidebar: string;
   newTerminal: string;
   nextTerminal: string;
@@ -13,6 +14,7 @@ export interface ShortcutMap {
 }
 
 export const DEFAULT_SHORTCUTS: ShortcutMap = {
+  addProject: "mod+o",
   toggleSidebar: "mod+b",
   newTerminal: "mod+t",
   nextTerminal: "mod+]",

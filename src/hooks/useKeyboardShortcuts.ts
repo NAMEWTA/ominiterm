@@ -1,13 +1,20 @@
 import { useEffect } from "react";
-import { useProjectStore, createTerminal } from "../stores/projectStore";
+import {
+  useProjectStore,
+  createTerminal,
+  generateId,
+} from "../stores/projectStore";
 import { useCanvasStore } from "../stores/canvasStore";
+import { useNotificationStore } from "../stores/notificationStore";
 import {
   useShortcutStore,
   matchesShortcut,
   type ShortcutMap,
 } from "../stores/shortcutStore";
+import { useT } from "../i18n/useT";
 import {
   packTerminals,
+  computeWorktreeSize,
   WT_PAD,
   WT_TITLE_H,
   PROJ_PAD,
@@ -92,11 +99,75 @@ function zoomToTerminal(
   useCanvasStore.getState().animateTo(centerX, centerY, scale);
 }
 
+async function handleAddProject(t: ReturnType<typeof useT>) {
+  if (!window.termcanvas) return;
+  const { notify } = useNotificationStore.getState();
+
+  let dirPath: string | null;
+  try {
+    dirPath = await window.termcanvas.project.selectDirectory();
+  } catch (err) {
+    notify("error", t.error_dir_picker(err));
+    return;
+  }
+  if (!dirPath) return;
+
+  let info: Awaited<ReturnType<typeof window.termcanvas.project.scan>>;
+  try {
+    info = await window.termcanvas.project.scan(dirPath);
+  } catch (err) {
+    notify("error", t.error_scan(err));
+    return;
+  }
+  if (!info) {
+    notify("warn", t.error_not_git(dirPath));
+    return;
+  }
+
+  const { projects, addProject } = useProjectStore.getState();
+  let placeX = 0;
+  const gap = 80;
+  for (const p of projects) {
+    let maxW = 300;
+    for (const wt of p.worktrees) {
+      const wtSize = computeWorktreeSize(wt.terminals.map((tm) => tm.span));
+      maxW = Math.max(maxW, wt.position.x + wtSize.w);
+    }
+    const projW = Math.max(340, maxW + PROJ_PAD * 2);
+    placeX = Math.max(placeX, p.position.x + projW + gap);
+  }
+
+  addProject({
+    id: generateId(),
+    name: info.name,
+    path: info.path,
+    position: { x: placeX, y: 0 },
+    collapsed: false,
+    zIndex: 0,
+    worktrees: info.worktrees.map((wt, i) => ({
+      id: generateId(),
+      name: wt.branch,
+      path: wt.path,
+      position: { x: 0, y: i * 360 },
+      collapsed: false,
+      terminals: [],
+    })),
+  });
+  notify("info", t.info_added_project(info.name, info.worktrees.length));
+}
+
 export function useKeyboardShortcuts() {
   const shortcuts = useShortcutStore((s) => s.shortcuts);
+  const t = useT();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (matchesShortcut(e, shortcuts.addProject)) {
+        e.preventDefault();
+        handleAddProject(t);
+        return;
+      }
+
       if (matchesShortcut(e, shortcuts.clearFocus)) {
         useProjectStore.getState().clearFocus();
         return;
@@ -176,5 +247,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [shortcuts]);
+  }, [shortcuts, t]);
 }

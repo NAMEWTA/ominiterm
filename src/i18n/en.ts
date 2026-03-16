@@ -74,6 +74,7 @@ export const en = {
   layout_vertical: "Vertical layout",
 
   // ShortcutHints
+  shortcut_add_project: "Add project",
   shortcut_toggle_sidebar: "Toggle sidebar",
   shortcut_new_terminal: "New terminal",
   shortcut_next_terminal: "Next terminal",

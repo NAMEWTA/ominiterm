@@ -19,6 +19,7 @@ interface Props {
 type Tab = "general" | "shortcuts";
 
 const SHORTCUT_KEYS: { key: keyof ShortcutMap; labelKey: string }[] = [
+  { key: "addProject", labelKey: "shortcut_add_project" },
   { key: "toggleSidebar", labelKey: "shortcut_toggle_sidebar" },
   { key: "newTerminal", labelKey: "shortcut_new_terminal" },
   { key: "nextTerminal", labelKey: "shortcut_next_terminal" },

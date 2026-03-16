@@ -72,6 +72,7 @@ export const zh = {
   layout_vertical: "纵向布局",
 
   // ShortcutHints
+  shortcut_add_project: "添加项目",
   shortcut_toggle_sidebar: "切换侧栏",
   shortcut_new_terminal: "新建终端",
   shortcut_next_terminal: "下一终端",
