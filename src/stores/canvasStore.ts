@@ -38,6 +38,16 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     const startY = viewport.y;
     const startScale = viewport.scale;
     const endScale = targetScale ?? startScale;
+
+    // Skip animation if already at target
+    if (
+      Math.abs(startX - targetX) < 1 &&
+      Math.abs(startY - targetY) < 1 &&
+      Math.abs(startScale - endScale) < 0.001
+    ) {
+      return;
+    }
+
     const startTime = performance.now();
 
     set({ isAnimating: true, sidebarCollapsed: true });
