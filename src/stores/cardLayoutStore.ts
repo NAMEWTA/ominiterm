@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-interface DiffCardEntry {
+interface CardEntry {
   x: number;
   y: number;
   w: number;
@@ -9,13 +9,13 @@ interface DiffCardEntry {
 
 const CARD_GAP = 12;
 
-interface DiffLayoutStore {
-  cards: Record<string, DiffCardEntry>;
-  register: (id: string, entry: DiffCardEntry) => void;
+interface CardLayoutStore {
+  cards: Record<string, CardEntry>;
+  register: (id: string, entry: CardEntry) => void;
   unregister: (id: string) => void;
 }
 
-export const useDiffLayoutStore = create<DiffLayoutStore>((set) => ({
+export const useCardLayoutStore = create<CardLayoutStore>((set) => ({
   cards: {},
 
   register: (id, entry) =>
@@ -36,12 +36,12 @@ interface Rect {
 }
 
 /**
- * Resolve non-overlapping positions for all registered DiffCards.
+ * Resolve non-overlapping positions for all registered cards.
  *   - Obstacles (project containers): push card RIGHT past the obstacle
- *   - Other DiffCards: push card DOWN below the other card
+ *   - Other cards: push card DOWN below the other card
  */
 export function resolveAllCardPositions(
-  cards: Record<string, DiffCardEntry>,
+  cards: Record<string, CardEntry>,
   obstacles: Rect[] = [],
 ): Record<string, { x: number; y: number }> {
   const entries = Object.entries(cards).sort(([, a], [, b]) => a.y - b.y);
@@ -64,7 +64,7 @@ export function resolveAllCardPositions(
       }
     }
 
-    // Push down to avoid other DiffCards
+    // Push down to avoid other cards
     for (const prev of resolvedCards) {
       if (x < prev.x + prev.w && x + card.w > prev.x) {
         if (y < prev.y + prev.h + CARD_GAP && y + card.h > prev.y - CARD_GAP) {

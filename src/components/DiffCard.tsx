@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useCanvasStore } from "../stores/canvasStore";
 import {
-  useDiffLayoutStore,
+  useCardLayoutStore,
   resolveAllCardPositions,
-} from "../stores/diffLayoutStore";
+} from "../stores/cardLayoutStore";
 import { useProjectStore, getProjectBounds } from "../stores/projectStore";
 import { useT } from "../i18n/useT";
 import { toggleExpandedFiles } from "./diffCardExpansion";
@@ -137,8 +137,8 @@ export function DiffCard({
   } | null>(null);
   const hasDragged = useRef(false);
 
-  const { register, unregister } = useDiffLayoutStore();
-  const cards = useDiffLayoutStore((s) => s.cards);
+  const { register, unregister } = useCardLayoutStore();
+  const cards = useCardLayoutStore((s) => s.cards);
 
   // Register this card's anchor position and size
   useEffect(() => {
