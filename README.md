@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/icon.png" width="128" alt="TermCanvas app icon" />
+
 # TermCanvas
 
 **Your terminals, on an infinite canvas.**
@@ -14,6 +16,16 @@
 </div>
 
 [中文文档](./README.zh-CN.md)
+
+## App Icon
+
+The repository now includes a production-ready app icon set derived from the core TermCanvas mark. Packaged builds use:
+
+- `build/icon.icns` for macOS
+- `build/icon.ico` for Windows
+- `build/icon.png` for Linux and general branding
+
+The editable source lives at `build/icon.svg`.
 
 ## What is TermCanvas
 

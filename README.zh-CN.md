@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/icon.png" width="128" alt="TermCanvas 应用图标" />
+
 # TermCanvas
 
 **你的终端，铺在无限画布上。**
@@ -14,6 +16,16 @@
 </div>
 
 [English](./README.md)
+
+## 应用图标
+
+仓库现在包含一套可直接用于发布的应用图标，基于 TermCanvas 的核心标记整理而成。打包时会直接使用：
+
+- `build/icon.icns` 用于 macOS
+- `build/icon.ico` 用于 Windows
+- `build/icon.png` 用于 Linux 和通用品牌展示
+
+可编辑源文件位于 `build/icon.svg`。
 
 ## 什么是 TermCanvas
 
