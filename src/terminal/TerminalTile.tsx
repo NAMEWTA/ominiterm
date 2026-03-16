@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
+import { WebglAddon } from "@xterm/addon-webgl";
 import { createPortal } from "react-dom";
 import type { TerminalData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
@@ -113,6 +114,15 @@ export function TerminalTile({
     xterm.loadAddon(fitAddon);
     xterm.loadAddon(serializeAddon);
     xterm.open(containerRef.current);
+
+    // GPU-accelerated rendering; fall back to Canvas2D when context limit is hit
+    try {
+      const webglAddon = new WebglAddon();
+      webglAddon.onContextLoss(() => webglAddon.dispose());
+      xterm.loadAddon(webglAddon);
+    } catch {
+      // WebGL not available or context limit reached — Canvas2D fallback is fine
+    }
 
     // Let Cmd key combos propagate to the app shortcut handler
     // (Ctrl must still reach xterm for terminal signals like Ctrl+C)
