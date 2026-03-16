@@ -5,6 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { NotificationToast } from "./components/NotificationToast";
 import { DrawingPanel } from "./toolbar/DrawingPanel";
 import { ShortcutHints } from "./components/ShortcutHints";
+import { CompletionGlow } from "./components/CompletionGlow";
 import { useProjectStore, createTerminal } from "./stores/projectStore";
 import { useCanvasStore } from "./stores/canvasStore";
 import { useDrawingStore } from "./stores/drawingStore";
@@ -332,6 +333,7 @@ export function App() {
       <Sidebar />
       <Canvas />
       <DrawingPanel />
+      <CompletionGlow />
       <ShortcutHints />
       <NotificationToast />
       {showCloseDialog && (
