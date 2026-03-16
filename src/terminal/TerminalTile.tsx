@@ -196,6 +196,18 @@ export function TerminalTile({
         updateTerminalPtyId(projectId, worktreeId, terminal.id, id);
         updateTerminalStatus(projectId, worktreeId, terminal.id, "running");
 
+        // Resume scenario: session ID already known, start watcher immediately
+        if (
+          terminal.sessionId &&
+          (terminal.type === "claude" || terminal.type === "codex")
+        ) {
+          window.termcanvas.session.watch(
+            terminal.type,
+            terminal.sessionId,
+            worktreePath,
+          );
+        }
+
         // Capture session ID for future resume.
         // AI CLIs (claude, codex, etc.) may take a while to initialize and
         // write their session file, so we poll instead of a single attempt.
@@ -225,6 +237,9 @@ export function TerminalTile({
 
               if (sid) {
                 updateTerminalSessionId(projectId, worktreeId, terminal.id, sid);
+                if (terminal.type === "claude" || terminal.type === "codex") {
+                  window.termcanvas.session.watch(terminal.type, sid, worktreePath);
+                }
                 return;
               }
             }
@@ -330,6 +345,28 @@ export function TerminalTile({
       },
     );
 
+    // Listen for turn-completion events from session watcher
+    const removeTurnComplete = window.termcanvas.session.onTurnComplete(
+      (sessionId: string) => {
+        // Match by checking current terminal's sessionId from the store
+        const state = useProjectStore.getState();
+        const proj = state.projects.find((p) => p.id === projectId);
+        const wt = proj?.worktrees.find((w) => w.id === worktreeId);
+        const term = wt?.terminals.find((t) => t.id === terminal.id);
+        if (term?.sessionId === sessionId) {
+          if (currentStatus === "active" || currentStatus === "waiting") {
+            currentStatus = "completed";
+            updateTerminalStatus(
+              projectId,
+              worktreeId,
+              terminal.id,
+              "completed",
+            );
+          }
+        }
+      },
+    );
+
     const resizeObserver = new ResizeObserver(() => {
       fitAddon.fit();
     });
@@ -338,6 +375,15 @@ export function TerminalTile({
     cleanupRef.current = () => {
       if (waitingTimer) clearTimeout(waitingTimer);
       sessionCancelRef.current?.();
+      removeTurnComplete();
+      // Unwatch session watcher
+      const state = useProjectStore.getState();
+      const proj = state.projects.find((p) => p.id === projectId);
+      const wt = proj?.worktrees.find((w) => w.id === worktreeId);
+      const term = wt?.terminals.find((t) => t.id === terminal.id);
+      if (term?.sessionId) {
+        window.termcanvas.session.unwatch(term.sessionId);
+      }
       unregisterTerminal(terminal.id);
       resizeObserver.disconnect();
       removeOutput();

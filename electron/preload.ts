@@ -41,6 +41,19 @@ contextBridge.exposeInMainWorld("termcanvas", {
       ipcRenderer.invoke("session:get-kimi-latest", cwd) as Promise<
         string | null
       >,
+    watch: (type: string, sessionId: string, cwd: string) =>
+      ipcRenderer.invoke("session:watch", type, sessionId, cwd),
+    unwatch: (sessionId: string) =>
+      ipcRenderer.invoke("session:unwatch", sessionId),
+    onTurnComplete: (callback: (sessionId: string) => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        sessionId: string,
+      ) => callback(sessionId);
+      ipcRenderer.on("session:turn-complete", listener);
+      return () =>
+        ipcRenderer.removeListener("session:turn-complete", listener);
+    },
   },
   project: {
     selectDirectory: () => ipcRenderer.invoke("project:select-directory"),

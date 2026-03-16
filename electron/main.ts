@@ -8,6 +8,7 @@ import { PtyManager } from "./pty-manager";
 import { ProjectScanner } from "./project-scanner";
 import { StatePersistence, TERMCANVAS_DIR } from "./state-persistence";
 import { GitFileWatcher } from "./git-watcher";
+import { SessionWatcher, type SessionType } from "./session-watcher";
 import { ApiServer } from "./api-server";
 import { sendToWindow } from "./window-events";
 
@@ -37,6 +38,7 @@ const ptyManager = new PtyManager();
 const projectScanner = new ProjectScanner();
 const statePersistence = new StatePersistence();
 const gitWatcher = new GitFileWatcher();
+const sessionWatcher = new SessionWatcher();
 const apiServer = new ApiServer({
   getWindow: () => mainWindow,
   ptyManager,
@@ -348,6 +350,20 @@ function setupIpc() {
     gitWatcher.unwatch(worktreePath);
   });
 
+  // Session turn-completion watcher IPC
+  ipcMain.handle(
+    "session:watch",
+    (_event, type: SessionType, sessionId: string, cwd: string) => {
+      sessionWatcher.watch(sessionId, type, cwd, () => {
+        sendToWindow(mainWindow, "session:turn-complete", sessionId);
+      });
+    },
+  );
+
+  ipcMain.handle("session:unwatch", (_event, sessionId: string) => {
+    sessionWatcher.unwatch(sessionId);
+  });
+
   // State IPC
   ipcMain.handle("state:load", () => {
     return statePersistence.load();
@@ -440,6 +456,7 @@ function setupIpc() {
   ipcMain.on("app:close-confirmed", () => {
     ptyManager.destroyAll();
     gitWatcher.unwatchAll();
+    sessionWatcher.unwatchAll();
     forceClose = true;
     if (mainWindow) {
       mainWindow.close();
