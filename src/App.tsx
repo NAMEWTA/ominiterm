@@ -9,6 +9,7 @@ import { CompletionGlow } from "./components/CompletionGlow";
 import { useProjectStore, createTerminal } from "./stores/projectStore";
 import { useCanvasStore } from "./stores/canvasStore";
 import { useDrawingStore } from "./stores/drawingStore";
+import { useBrowserCardStore } from "./stores/browserCardStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { serializeAllTerminals } from "./terminal/terminalRegistry";
 import { useT } from "./i18n/useT";
@@ -64,6 +65,7 @@ function snapshotState(): string {
       viewport: useCanvasStore.getState().viewport,
       projects,
       drawings: useDrawingStore.getState().elements,
+      browserCards: useBrowserCardStore.getState().cards,
     },
     null,
     2,
@@ -85,6 +87,11 @@ function restoreFromData(data: Record<string, unknown>) {
         elements: data.drawings as ReturnType<
           typeof useDrawingStore.getState
         >["elements"],
+      });
+    }
+    if (data.browserCards && typeof data.browserCards === "object") {
+      useBrowserCardStore.setState({
+        cards: data.browserCards as Record<string, import("./stores/browserCardStore").BrowserCardData>,
       });
     }
   } catch {
