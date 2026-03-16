@@ -54,6 +54,14 @@ export const en = {
   binary_changed: "Binary file changed",
   file_count: (n: number) => `${n} file${n !== 1 ? "s" : ""}`,
 
+  // FileTreeCard / FileCard
+  files: "Files",
+  file_viewer: "File",
+  file_empty_dir: "Empty directory",
+  file_too_large: (size: string) => `File too large (${size})`,
+  file_binary: "Binary file",
+  file_read_error: "Failed to read file",
+
   // TerminalTile
   terminal_api_unavailable:
     "Terminal API not available. Not running in Electron.",

@@ -53,6 +53,14 @@ export const zh = {
   binary_changed: "二进制文件已修改",
   file_count: (n: number) => `${n} 个文件`,
 
+  // FileTreeCard / FileCard
+  files: "文件",
+  file_viewer: "文件",
+  file_empty_dir: "空目录",
+  file_too_large: (size: string) => `文件过大 (${size})`,
+  file_binary: "二进制文件",
+  file_read_error: "读取文件失败",
+
   // TerminalTile
   terminal_api_unavailable: "终端 API 不可用，未在 Electron 中运行。",
   failed_create_pty: (title: string, err: unknown) =>
