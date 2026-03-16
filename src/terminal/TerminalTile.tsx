@@ -9,6 +9,7 @@ import { ContextMenu } from "../components/ContextMenu";
 import { useNotificationStore } from "../stores/notificationStore";
 import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
 import { useThemeStore, XTERM_THEMES } from "../stores/themeStore";
+import { useCanvasStore } from "../stores/canvasStore";
 import { useT } from "../i18n/useT";
 
 interface Props {
@@ -349,6 +350,56 @@ export function TerminalTile({
       }
     });
     return unsubscribe;
+  }, []);
+
+  // Fix mouse selection offset when canvas viewport is scaled.
+  // xterm.js uses getBoundingClientRect() (visual/scaled) to compute mouse
+  // offsets but divides by unscaled cell dimensions, causing a mismatch.
+  // We intercept mouse events in the capture phase and re-dispatch them
+  // with clientX/clientY corrected from visual-space to canvas-space.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const corrected = new WeakSet<Event>();
+
+    const fix = (e: MouseEvent) => {
+      if (corrected.has(e)) return;
+      const { scale } = useCanvasStore.getState().viewport;
+      if (scale === 1) return;
+
+      const rect = container.getBoundingClientRect();
+      const adjusted = new MouseEvent(e.type, {
+        bubbles: e.bubbles,
+        cancelable: e.cancelable,
+        clientX: rect.left + (e.clientX - rect.left) / scale,
+        clientY: rect.top + (e.clientY - rect.top) / scale,
+        screenX: e.screenX,
+        screenY: e.screenY,
+        button: e.button,
+        buttons: e.buttons,
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey,
+        detail: e.detail,
+      });
+
+      corrected.add(adjusted);
+      e.stopPropagation();
+      e.preventDefault();
+      e.target!.dispatchEvent(adjusted);
+    };
+
+    const types = ["mousedown", "mousemove", "mouseup", "dblclick"];
+    for (const t of types) {
+      container.addEventListener(t, fix as EventListener, true);
+    }
+    return () => {
+      for (const t of types) {
+        container.removeEventListener(t, fix as EventListener, true);
+      }
+    };
   }, []);
 
   const handleClose = useCallback(() => {
