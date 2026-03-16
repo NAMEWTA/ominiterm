@@ -1,25 +1,68 @@
+<div align="center">
+
 # TermCanvas
 
-An infinite canvas desktop app for visually managing terminals across git projects and worktrees.
+**Your terminals, on an infinite canvas.**
+
+[![GitHub release](https://img.shields.io/github/v/release/blueberrycongee/termcanvas)](https://github.com/blueberrycongee/termcanvas/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
+
+<!-- screenshot placeholder -->
+<img src="docs/screenshot.png" width="800" alt="TermCanvas screenshot — coming soon" />
+
+</div>
 
 [中文文档](./README.zh-CN.md)
 
-## Overview
+## What is TermCanvas
 
-TermCanvas organizes your development workflow on a spatial canvas. Instead of tabbed terminals buried in a sidebar, you see all your projects, worktrees, and terminals laid out visually — drag them around, draw annotations, and focus on what matters.
+TermCanvas spreads all your terminals across an infinite spatial canvas — no more tabs, no more split panes. Drag them around, zoom in to focus, zoom out to see the big picture, and annotate with freehand drawings.
 
-**Project → Worktree → Terminal** — a three-layer hierarchy that mirrors how you actually work with git.
+It organizes everything in a **Project → Worktree → Terminal** hierarchy that mirrors how you actually use git. Add a project, and TermCanvas auto-detects its worktrees. Create a new worktree from the terminal, and it appears on the canvas instantly.
 
 ## Features
 
-- **Infinite canvas** — pan, zoom, and arrange freely
-- **Three-layer hierarchy** — git projects contain worktrees, worktrees contain terminals
-- **Live worktree detection** — create a worktree in your terminal, it appears automatically
-- **Drawing tools** — pen, text, rectangles, and arrows for annotations
-- **Terminal types** — Shell, Claude Code, and Codex with status indicators
-- **Sidebar navigation** — click a project to fly to it with smooth animation
-- **Drag & resize** — every container is draggable and resizable with zoom-aware coordinates
-- **Click to focus** — overlapping containers brought to front on click
+**Core**
+- Infinite canvas — pan, zoom, and arrange terminals freely
+- Three-layer hierarchy — projects contain worktrees, worktrees contain terminals
+- Live worktree detection — new worktrees appear automatically
+- Drawing tools — pen, text, rectangles, arrows for annotations
+
+**AI Integration**
+- Claude Code terminal with session status indicator
+- Codex terminal support
+- AI diff review cards
+
+## Quick Start
+
+**Download** — grab the latest build from [GitHub Releases](https://github.com/blueberrycongee/termcanvas/releases).
+
+**Build from source:**
+
+```bash
+git clone https://github.com/blueberrycongee/termcanvas.git
+cd termcanvas
+npm install
+npm run dev
+```
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘ O` | Add project |
+| `⌘ B` | Toggle sidebar |
+| `⌘ T` | New terminal |
+| `⌘ ]` | Next terminal |
+| `⌘ [` | Previous terminal |
+| `Esc` | Unfocus / refocus last terminal |
+| `⌘ 1` | Terminal size: default |
+| `⌘ 2` | Terminal size: wide |
+| `⌘ 3` | Terminal size: tall |
+| `⌘ 4` | Terminal size: large |
+
+> On Windows/Linux, replace `⌘` with `Ctrl`.
 
 ## Tech Stack
 
@@ -33,92 +76,6 @@ TermCanvas organizes your development workflow on a spatial canvas. Instead of t
 | Drawing | perfect-freehand |
 | Build | Vite 7 |
 
-## Getting Started
+## Contributing & License
 
-### Prerequisites
-
-- Node.js 20+
-- npm 10+
-- macOS, Linux, or Windows
-
-### Install
-
-```bash
-git clone https://github.com/blueberrycongee/termcanvas.git
-cd termcanvas
-npm install
-```
-
-### Development
-
-```bash
-npm run dev
-```
-
-This starts Vite dev server and launches the Electron app with hot reload.
-
-### Build
-
-```bash
-npm run build
-```
-
-## Project Structure
-
-```
-termcanvas/
-├── electron/              # Electron main process
-│   ├── main.ts            # Window creation, IPC handlers
-│   ├── preload.ts         # Context bridge API
-│   ├── pty-manager.ts     # node-pty lifecycle management
-│   ├── project-scanner.ts # Git worktree scanning & watching
-│   └── state-persistence.ts
-├── src/                   # React renderer
-│   ├── canvas/            # Infinite canvas, drawing layer
-│   ├── containers/        # Project and worktree containers
-│   ├── terminal/          # Terminal tile with xterm.js
-│   ├── toolbar/           # Top toolbar
-│   ├── components/        # Sidebar, notifications
-│   ├── stores/            # Zustand stores
-│   ├── hooks/             # Drag, resize hooks
-│   └── types/             # TypeScript interfaces
-├── vite.config.ts
-└── package.json
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│  Electron Main Process                  │
-│  ┌──────────┐ ┌────────────────────┐    │
-│  │ PtyManager│ │ ProjectScanner     │    │
-│  │ (node-pty)│ │ (fs.watch + git)   │    │
-│  └──────────┘ └────────────────────┘    │
-│        ↕ IPC            ↕ IPC           │
-├─────────────────────────────────────────┤
-│  Renderer Process                       │
-│  ┌────────────────────────────────────┐ │
-│  │ Canvas (transform: translate/scale)│ │
-│  │  ├── DrawingLayer (SVG)            │ │
-│  │  ├── ProjectContainer (absolute)   │ │
-│  │  │    └── WorktreeContainer        │ │
-│  │  │         └── TerminalTile        │ │
-│  │  │              └── xterm.js       │ │
-│  └────────────────────────────────────┘ │
-│  Zustand: canvasStore, projectStore,    │
-│           drawingStore, notificationStore│
-└─────────────────────────────────────────┘
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/your-feature`)
-3. Commit your changes (`git commit -m "feat: add something"`)
-4. Push to the branch (`git push origin feat/your-feature`)
-5. Open a Pull Request
-
-## License
-
-[MIT](LICENSE)
+Contributions welcome — fork, branch, and open a PR. Licensed under [MIT](LICENSE).

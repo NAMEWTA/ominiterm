@@ -1,25 +1,68 @@
+<div align="center">
+
 # TermCanvas
 
-一个基于无限画布的桌面应用，用于跨 git 项目和 worktree 可视化管理终端。
+**你的终端，铺在无限画布上。**
+
+[![GitHub release](https://img.shields.io/github/v/release/blueberrycongee/termcanvas)](https://github.com/blueberrycongee/termcanvas/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
+
+<!-- screenshot placeholder -->
+<img src="docs/screenshot.png" width="800" alt="TermCanvas 截图 — 即将上线" />
+
+</div>
 
 [English](./README.md)
 
-## 概述
+## 什么是 TermCanvas
 
-TermCanvas 将你的开发工作流组织在一张空间画布上。不再是藏在侧边栏里的标签页终端，而是将所有项目、worktree 和终端可视化地铺开——自由拖拽、画注释、聚焦你关心的内容。
+TermCanvas 把你所有的终端铺在一张无限空间画布上——不再有标签页，不再有分屏。自由拖拽、放大聚焦、缩小俯瞰，还能用手绘工具做标注。
 
-**Project → Worktree → Terminal** —— 三层层级结构，和你使用 git 的方式完全一致。
+它以 **Project → Worktree → Terminal** 三层结构来组织一切，和你使用 git 的方式完全一致。添加一个项目，TermCanvas 自动检测它的 worktree；在终端里新建一个 worktree，画布上立刻出现。
 
 ## 功能特性
 
-- **无限画布** —— 自由平移、缩放、排列
-- **三层层级** —— git 项目包含 worktree，worktree 包含终端
-- **实时 worktree 检测** —— 在终端中创建 worktree，UI 自动更新
-- **绘图工具** —— 画笔、文字、矩形、箭头，用于标注
-- **终端类型** —— Shell、Claude Code、Codex，带运行状态指示
-- **侧边栏导航** —— 点击项目名称，画布平滑动画飞到该项目
-- **拖拽与缩放** —— 所有容器可拖拽、可调整大小，适配画布缩放比例
-- **点击置顶** —— 重叠容器点击自动置顶
+**核心能力**
+- 无限画布——自由平移、缩放、排列终端
+- 三层层级——项目包含 worktree，worktree 包含终端
+- 实时 worktree 检测——新建 worktree 自动出现
+- 绘图工具——画笔、文字、矩形、箭头标注
+
+**AI 集成**
+- Claude Code 终端，带会话状态指示
+- Codex 终端支持
+- AI diff 审查卡片
+
+## 快速开始
+
+**下载** —— 从 [GitHub Releases](https://github.com/blueberrycongee/termcanvas/releases) 获取最新构建。
+
+**从源码构建：**
+
+```bash
+git clone https://github.com/blueberrycongee/termcanvas.git
+cd termcanvas
+npm install
+npm run dev
+```
+
+## 快捷键
+
+| 快捷键 | 功能 |
+|--------|------|
+| `⌘ O` | 添加项目 |
+| `⌘ B` | 切换侧边栏 |
+| `⌘ T` | 新建终端 |
+| `⌘ ]` | 下一个终端 |
+| `⌘ [` | 上一个终端 |
+| `Esc` | 取消聚焦 / 恢复上次聚焦 |
+| `⌘ 1` | 终端尺寸：默认 |
+| `⌘ 2` | 终端尺寸：宽 |
+| `⌘ 3` | 终端尺寸：高 |
+| `⌘ 4` | 终端尺寸：大 |
+
+> Windows/Linux 上用 `Ctrl` 替换 `⌘`。
 
 ## 技术栈
 
@@ -33,92 +76,6 @@ TermCanvas 将你的开发工作流组织在一张空间画布上。不再是藏
 | 绘图 | perfect-freehand |
 | 构建 | Vite 7 |
 
-## 快速开始
+## 参与贡献 & 许可证
 
-### 前置要求
-
-- Node.js 20+
-- npm 10+
-- macOS、Linux 或 Windows
-
-### 安装
-
-```bash
-git clone https://github.com/blueberrycongee/termcanvas.git
-cd termcanvas
-npm install
-```
-
-### 开发
-
-```bash
-npm run dev
-```
-
-启动 Vite 开发服务器并打开 Electron 应用，支持热重载。
-
-### 构建
-
-```bash
-npm run build
-```
-
-## 项目结构
-
-```
-termcanvas/
-├── electron/              # Electron 主进程
-│   ├── main.ts            # 窗口创建、IPC 处理
-│   ├── preload.ts         # Context Bridge API
-│   ├── pty-manager.ts     # node-pty 生命周期管理
-│   ├── project-scanner.ts # Git worktree 扫描与监听
-│   └── state-persistence.ts
-├── src/                   # React 渲染进程
-│   ├── canvas/            # 无限画布、绘图层
-│   ├── containers/        # 项目和 worktree 容器
-│   ├── terminal/          # 终端组件（xterm.js）
-│   ├── toolbar/           # 顶部工具栏
-│   ├── components/        # 侧边栏、通知
-│   ├── stores/            # Zustand 状态管理
-│   ├── hooks/             # 拖拽、缩放 hooks
-│   └── types/             # TypeScript 类型定义
-├── vite.config.ts
-└── package.json
-```
-
-## 架构
-
-```
-┌─────────────────────────────────────────┐
-│  Electron 主进程                         │
-│  ┌──────────┐ ┌────────────────────┐    │
-│  │ PtyManager│ │ ProjectScanner     │    │
-│  │ (node-pty)│ │ (fs.watch + git)   │    │
-│  └──────────┘ └────────────────────┘    │
-│        ↕ IPC            ↕ IPC           │
-├─────────────────────────────────────────┤
-│  渲染进程                                │
-│  ┌────────────────────────────────────┐ │
-│  │ Canvas (transform: translate/scale)│ │
-│  │  ├── DrawingLayer (SVG)            │ │
-│  │  ├── ProjectContainer (absolute)   │ │
-│  │  │    └── WorktreeContainer        │ │
-│  │  │         └── TerminalTile        │ │
-│  │  │              └── xterm.js       │ │
-│  └────────────────────────────────────┘ │
-│  Zustand: canvasStore, projectStore,    │
-│           drawingStore, notificationStore│
-└─────────────────────────────────────────┘
-```
-
-## 参与贡献
-
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feat/your-feature`)
-3. 提交更改 (`git commit -m "feat: add something"`)
-4. 推送到分支 (`git push origin feat/your-feature`)
-5. 发起 Pull Request
-
-## 许可证
-
-[MIT](LICENSE)
+欢迎贡献——Fork、创建分支、发起 PR。基于 [MIT](LICENSE) 许可。
