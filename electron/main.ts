@@ -460,6 +460,11 @@ function setupIpc() {
     }
   });
 
+  // CLI registration
+  ipcMain.handle("cli:is-registered", () => isCliRegistered());
+  ipcMain.handle("cli:register", () => registerCli());
+  ipcMain.handle("cli:unregister", () => unregisterCli());
+
   // Close flow
   ipcMain.on("app:close-confirmed", () => {
     ptyManager.destroyAll();
@@ -472,37 +477,133 @@ function setupIpc() {
   });
 }
 
-function installCli() {
-  if (process.platform !== "darwin" && process.platform !== "linux") return;
+function getCliDir(): string {
+  return path.join(process.resourcesPath, "cli");
+}
 
-  const targetDir = "/usr/local/bin";
-  const cliDir = path.join(process.resourcesPath, "cli");
-  const clis = ["termcanvas", "hydra"];
+const ZPROFILE_PATH = path.join(os.homedir(), ".zprofile");
 
-  for (const name of clis) {
-    const target = path.join(targetDir, name);
-    const source = path.join(cliDir, `${name}.js`);
-    const wrapper = `#!/bin/sh\nexec node "${source}" "$@"\n`;
+function getPathExportLine(): string {
+  return `export PATH="$PATH:${getCliDir()}"`;
+}
 
+function isCliRegistered(): boolean {
+  if (process.platform === "darwin") {
     try {
-      let existing = "";
+      const content = fs.readFileSync(ZPROFILE_PATH, "utf-8");
+      return content.includes(getPathExportLine());
+    } catch {
+      return false;
+    }
+  }
+  if (process.platform === "linux") {
+    const target = path.join(os.homedir(), ".local", "bin", "termcanvas");
+    try {
+      fs.lstatSync(target);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function registerCli(): boolean {
+  const cliDir = getCliDir();
+  const cliFiles = ["termcanvas.js", "hydra.js"];
+
+  // Ensure CLI files are executable
+  for (const file of cliFiles) {
+    try {
+      fs.chmodSync(path.join(cliDir, file), 0o755);
+    } catch {
+      // may fail in asar, non-critical
+    }
+  }
+
+  if (process.platform === "darwin") {
+    const line = getPathExportLine();
+    try {
+      let content = "";
       try {
-        existing = fs.readFileSync(target, "utf-8");
+        content = fs.readFileSync(ZPROFILE_PATH, "utf-8");
       } catch {
         // file doesn't exist yet
       }
-      if (existing === wrapper) continue;
-      fs.writeFileSync(target, wrapper, { mode: 0o755 });
+      if (content.includes(line)) return true;
+      const newContent = content.endsWith("\n") || content === ""
+        ? content + line + "\n"
+        : content + "\n" + line + "\n";
+      fs.writeFileSync(ZPROFILE_PATH, newContent);
+      return true;
     } catch {
-      // permission denied — silently skip
+      return false;
     }
   }
+
+  if (process.platform === "linux") {
+    const binDir = "/usr/local/bin";
+    const fallbackDir = path.join(os.homedir(), ".local", "bin");
+    const clis = ["termcanvas", "hydra"];
+
+    let targetDir = binDir;
+    try {
+      fs.accessSync(binDir, fs.constants.W_OK);
+    } catch {
+      targetDir = fallbackDir;
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    try {
+      for (const name of clis) {
+        const target = path.join(targetDir, name);
+        const source = path.join(cliDir, `${name}.js`);
+        try { fs.unlinkSync(target); } catch { /* doesn't exist */ }
+        fs.symlinkSync(source, target);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+function unregisterCli(): boolean {
+  if (process.platform === "darwin") {
+    const line = getPathExportLine();
+    try {
+      const content = fs.readFileSync(ZPROFILE_PATH, "utf-8");
+      if (!content.includes(line)) return true;
+      const newContent = content
+        .split("\n")
+        .filter((l) => l !== line)
+        .join("\n");
+      fs.writeFileSync(ZPROFILE_PATH, newContent);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  if (process.platform === "linux") {
+    const clis = ["termcanvas", "hydra"];
+    const dirs = ["/usr/local/bin", path.join(os.homedir(), ".local", "bin")];
+    for (const dir of dirs) {
+      for (const name of clis) {
+        try { fs.unlinkSync(path.join(dir, name)); } catch { /* ok */ }
+      }
+    }
+    return true;
+  }
+
+  return false;
 }
 
 app.whenReady().then(() => {
   setupIpc();
   createWindow();
-  installCli();
 
   app.on("second-instance", () => {
     if (mainWindow) {

@@ -113,6 +113,11 @@ export const en = {
   shortcuts_press_hint: "Press shortcut\u2026",
   shortcuts_conflict: "Conflicts with another shortcut",
   add_browser: "Open browser",
+
+  // CLI
+  cli_label: "Command line interface",
+  cli_registered: "Registered",
+  cli_not_registered: "Not registered",
 } as const;
 
 export type TranslationKey = keyof typeof en;

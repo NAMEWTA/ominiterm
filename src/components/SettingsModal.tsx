@@ -83,6 +83,11 @@ export function SettingsModal({ onClose }: Props) {
   );
   const [conflicts, setConflicts] = useState<Set<keyof ShortcutMap>>(new Set());
   const backdropRef = useRef<HTMLDivElement>(null);
+  const [cliRegistered, setCliRegistered] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    window.termcanvas?.cli.isRegistered().then(setCliRegistered);
+  }, []);
 
   // Close on Escape (when not recording)
   useEffect(() => {
@@ -227,6 +232,31 @@ export function SettingsModal({ onClose }: Props) {
                   </span>
                 </div>
               </div>
+
+              {/* CLI registration */}
+              {cliRegistered !== null && (
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[13px] text-[var(--text-secondary)]">
+                      {t.cli_label}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-muted)]">
+                      termcanvas, hydra
+                    </span>
+                  </div>
+                  <button
+                    className={cliRegistered ? activeBtn : inactiveBtn}
+                    onClick={async () => {
+                      const ok = cliRegistered
+                        ? await window.termcanvas.cli.unregister()
+                        : await window.termcanvas.cli.register();
+                      if (ok) setCliRegistered(!cliRegistered);
+                    }}
+                  >
+                    {cliRegistered ? t.cli_registered : t.cli_not_registered}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

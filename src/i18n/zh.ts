@@ -111,4 +111,9 @@ export const zh = {
   shortcuts_press_hint: "按下快捷键…",
   shortcuts_conflict: "与其他快捷键冲突",
   add_browser: "打开浏览器",
+
+  // CLI
+  cli_label: "命令行工具",
+  cli_registered: "已注册",
+  cli_not_registered: "未注册",
 } as const;

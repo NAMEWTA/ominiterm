@@ -110,6 +110,14 @@ contextBridge.exposeInMainWorld("termcanvas", {
         | { error: string; size?: string }
       >,
   },
+  cli: {
+    isRegistered: () =>
+      ipcRenderer.invoke("cli:is-registered") as Promise<boolean>,
+    register: () =>
+      ipcRenderer.invoke("cli:register") as Promise<boolean>,
+    unregister: () =>
+      ipcRenderer.invoke("cli:unregister") as Promise<boolean>,
+  },
   app: {
     platform: process.platform as "darwin" | "win32" | "linux",
     onBeforeClose: (callback: () => void) => {

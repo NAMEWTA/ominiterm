@@ -132,6 +132,11 @@ export interface TermCanvasAPI {
       | { error: string; size?: string }
     >;
   };
+  cli: {
+    isRegistered: () => Promise<boolean>;
+    register: () => Promise<boolean>;
+    unregister: () => Promise<boolean>;
+  };
   app: {
     platform: "darwin" | "win32" | "linux";
     onBeforeClose: (callback: () => void) => () => void;
