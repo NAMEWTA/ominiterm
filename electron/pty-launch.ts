@@ -16,10 +16,6 @@ export interface PtyResolvedLaunchSpec {
   env: Record<string, string>;
 }
 
-export interface CommandLookupOptions {
-  extraPathEntries?: string[];
-}
-
 export interface LaunchResolverDeps {
   platform: NodeJS.Platform;
   pathDelimiter: string;
@@ -85,24 +81,6 @@ export function sanitizeEnv(
 
   cleaned.PATH = mergePathValue(cleaned.PATH, deps.platform, deps.pathDelimiter);
   return cleaned;
-}
-
-function prependExtraPathEntries(
-  env: Record<string, string>,
-  extraPathEntries: string[] | undefined,
-  deps: Pick<LaunchResolverDeps, "pathDelimiter">,
-): Record<string, string> {
-  if (!extraPathEntries?.length) return env;
-
-  const entries = env.PATH.split(deps.pathDelimiter);
-  for (const dir of extraPathEntries) {
-    if (!entries.includes(dir)) entries.unshift(dir);
-  }
-
-  return {
-    ...env,
-    PATH: entries.join(deps.pathDelimiter),
-  };
 }
 
 function hasPathSeparator(command: string): boolean {
@@ -278,23 +256,6 @@ const defaultDeps: LaunchResolverDeps = {
   },
 };
 
-async function buildLaunchEnv(
-  options: CommandLookupOptions | undefined,
-  deps: LaunchResolverDeps,
-): Promise<Record<string, string>> {
-  const shellEnv = sanitizeEnv(await deps.getShellEnv(), deps);
-  return prependExtraPathEntries(shellEnv, options?.extraPathEntries, deps);
-}
-
-export async function isCommandAvailable(
-  command: string,
-  options?: CommandLookupOptions,
-  deps: LaunchResolverDeps = defaultDeps,
-): Promise<boolean> {
-  const env = await buildLaunchEnv(options, deps);
-  return resolveExecutable(command, env, deps) !== null;
-}
-
 export async function buildLaunchSpec(
   options: PtyLaunchOptions,
   deps: LaunchResolverDeps = defaultDeps,
@@ -303,7 +264,16 @@ export async function buildLaunchSpec(
     throw new Error(`Directory does not exist: ${options.cwd}`);
   }
 
-  const shellEnv = await buildLaunchEnv(options, deps);
+  const shellEnv = sanitizeEnv(await deps.getShellEnv(), deps);
+
+  // Inject extra PATH entries (e.g. CLI dir) at the front
+  if (options.extraPathEntries?.length) {
+    const entries = shellEnv.PATH.split(deps.pathDelimiter);
+    for (const dir of options.extraPathEntries) {
+      if (!entries.includes(dir)) entries.unshift(dir);
+    }
+    shellEnv.PATH = entries.join(deps.pathDelimiter);
+  }
 
   if (options.shell) {
     const executable = resolveExecutable(options.shell, shellEnv, deps);

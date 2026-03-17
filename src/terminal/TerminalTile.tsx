@@ -11,7 +11,6 @@ import { useSelectionStore } from "../stores/selectionStore";
 import { ContextMenu } from "../components/ContextMenu";
 import { useNotificationStore } from "../stores/notificationStore";
 import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
-import { getTerminalLaunchOptions } from "./cliConfig";
 import { useThemeStore, XTERM_THEMES } from "../stores/themeStore";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useT } from "../i18n/useT";
@@ -195,41 +194,69 @@ export function TerminalTile({
     registerTerminal(terminal.id, xterm, serializeAddon);
 
     let ptyId: number | null = null;
-    let disposed = false;
+
+    // CLI config: how to launch and resume each terminal type
+    const CLI_CONFIG: Record<
+      string,
+      | {
+          shell: string;
+          resumeArgs: (id: string) => string[];
+          newArgs: string[];
+        }
+      | undefined
+    > = {
+      claude: {
+        shell: "claude",
+        resumeArgs: (id) => ["--resume", id],
+        newArgs: [],
+      },
+      codex: {
+        shell: "codex",
+        resumeArgs: (id) => ["resume", id],
+        newArgs: [],
+      },
+      kimi: {
+        shell: "kimi",
+        resumeArgs: (id) => ["-S", id],
+        newArgs: [],
+      },
+      gemini: {
+        shell: "gemini",
+        resumeArgs: (id) => ["--resume", id],
+        newArgs: [],
+      },
+      opencode: {
+        shell: "opencode",
+        resumeArgs: (id) => ["-s", id],
+        newArgs: [],
+      },
+      lazygit: {
+        shell: "lazygit",
+        resumeArgs: () => [],
+        newArgs: [],
+      },
+      tmux: {
+        shell: "tmux",
+        resumeArgs: (name) => ["attach", "-t", name],
+        newArgs: [],
+      },
+    };
 
     const ptyOptions: { cwd: string; shell?: string; args?: string[] } = {
       cwd: worktreePath,
     };
 
-    const createTerminal = async () => {
-      const hydraAvailable =
-        terminal.type === "claude" && !terminal.sessionId
-          ? await window.termcanvas.terminal.isCommandAvailable("hydra")
-          : false;
-      if (disposed) return;
+    const cliCfg = CLI_CONFIG[terminal.type];
+    if (cliCfg) {
+      ptyOptions.shell = cliCfg.shell;
+      ptyOptions.args = terminal.sessionId
+        ? cliCfg.resumeArgs(terminal.sessionId)
+        : cliCfg.newArgs;
+    }
 
-      const launch = getTerminalLaunchOptions(
-        terminal.type,
-        terminal.sessionId,
-        hydraAvailable,
-      );
-      if (launch) {
-        ptyOptions.shell = launch.shell;
-        ptyOptions.args = launch.args;
-      }
-
-      const id = await window.termcanvas.terminal.create(ptyOptions);
-      if (disposed) {
-        await window.termcanvas.terminal.destroy(id).catch(() => undefined);
-        return;
-      }
-
-      return id;
-    };
-
-    createTerminal()
+    window.termcanvas.terminal
+      .create(ptyOptions)
       .then(async (id) => {
-        if (id === undefined) return;
         ptyId = id;
         updateTerminalPtyId(projectId, worktreeId, terminal.id, id);
         updateTerminalStatus(projectId, worktreeId, terminal.id, "running");
@@ -249,7 +276,7 @@ export function TerminalTile({
         // Capture session ID for future resume.
         // AI CLIs (claude, codex, etc.) may take a while to initialize and
         // write their session file, so we poll instead of a single attempt.
-        if (!terminal.sessionId && ptyOptions.shell) {
+        if (!terminal.sessionId && cliCfg) {
           let cancelled = false;
           sessionCancelRef.current = () => { cancelled = true; };
 
@@ -458,7 +485,6 @@ export function TerminalTile({
     };
 
     return () => {
-      disposed = true;
       cleanupRef.current?.();
       cleanupRef.current = null;
     };

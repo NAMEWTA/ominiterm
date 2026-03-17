@@ -80,7 +80,6 @@ export interface TermCanvasAPI {
     onOutput: (callback: (ptyId: number, data: string) => void) => () => void;
     onExit: (callback: (ptyId: number, exitCode: number) => void) => () => void;
     detectCli: (ptyId: number) => Promise<{ cliType: TerminalType; sessionName?: string } | null>;
-    isCommandAvailable: (command: string) => Promise<boolean>;
   };
   session: {
     getCodexLatest: () => Promise<string | null>;

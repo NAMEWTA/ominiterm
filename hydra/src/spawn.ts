@@ -10,7 +10,6 @@ import {
   terminalInput,
 } from "./termcanvas.ts";
 import { saveAgent } from "./store.ts";
-import { buildSpawnPrompt } from "./prompt.ts";
 
 export interface SpawnArgs {
   task: string;
@@ -127,13 +126,7 @@ export async function spawn(args: string[]): Promise<void> {
   }
 
   // Send task
-  terminalInput(terminal.id, buildSpawnPrompt({
-    task: parsed.task,
-    agentId,
-    worktreePath,
-    branch,
-    baseBranch,
-  }) + "\n");
+  terminalInput(terminal.id, parsed.task + "\n");
 
   // Save agent record
   saveAgent({
