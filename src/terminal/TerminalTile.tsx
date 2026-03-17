@@ -617,6 +617,7 @@ export function TerminalTile({
         <div className="flex items-center gap-0.5">
           <button
             className="text-[var(--text-faint)] hover:text-[var(--text-primary)] transition-colors duration-150 p-1 rounded-md hover:bg-[var(--border)]"
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               toggleTerminalMinimize(projectId, worktreeId, terminal.id);
@@ -645,6 +646,7 @@ export function TerminalTile({
           </button>
           <button
             className="text-[var(--text-faint)] hover:text-[var(--red)] transition-colors duration-150 p-1 rounded-md hover:bg-[var(--border)]"
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               handleClose();
