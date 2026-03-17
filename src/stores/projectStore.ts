@@ -7,6 +7,7 @@ import type {
   TerminalStatus,
 } from "../types";
 import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
+import { DEFAULT_SPAN, withUpdatedTerminalType } from "./terminalState";
 
 interface ProjectStore {
   projects: ProjectData[];
@@ -97,17 +98,6 @@ let idCounter = 0;
 export function generateId(): string {
   return `${Date.now()}-${++idCounter}`;
 }
-
-const DEFAULT_SPAN: Record<TerminalType, { cols: number; rows: number }> = {
-  shell: { cols: 1, rows: 1 },
-  claude: { cols: 2, rows: 1 },
-  codex: { cols: 2, rows: 1 },
-  kimi: { cols: 2, rows: 1 },
-  gemini: { cols: 2, rows: 1 },
-  opencode: { cols: 2, rows: 1 },
-  lazygit: { cols: 2, rows: 1 },
-  tmux: { cols: 2, rows: 1 },
-};
 
 export function createTerminal(
   type: TerminalType = "shell",
@@ -482,7 +472,7 @@ export const useProjectStore = create<ProjectStore>((set) => ({
           projectId,
           worktreeId,
           terminalId,
-          (t) => ({ ...t, type, span: DEFAULT_SPAN[type] }),
+          (t) => withUpdatedTerminalType(t, type),
         ),
       ),
     })),
