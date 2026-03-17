@@ -10,8 +10,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
 
-<img src="docs/screenshot.png" width="800" alt="TermCanvas 截图" />
-
 </div>
 
 [English](./README.md)
