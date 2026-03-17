@@ -88,8 +88,9 @@ async function main() {
           );
         }
       } else if (command === "remove" && rest[0]) {
-        await request("DELETE", `/project/${rest[0]}`);
-        console.log("Removed.");
+        const result = await request("DELETE", `/project/${rest[0]}`);
+        if (jsonFlag) console.log(JSON.stringify(result, null, 2));
+        else console.log("Removed.");
       } else if (command === "rescan" && rest[0]) {
         const result = await request("POST", `/project/${rest[0]}/rescan`);
         if (jsonFlag) console.log(JSON.stringify(result, null, 2));
@@ -137,8 +138,9 @@ async function main() {
           );
         }
       } else if (command === "input" && rest[0] && rest[1]) {
-        await request("POST", `/terminal/${rest[0]}/input`, { text: rest[1] });
-        console.log("Sent.");
+        const result = await request("POST", `/terminal/${rest[0]}/input`, { text: rest[1] });
+        if (jsonFlag) console.log(JSON.stringify(result, null, 2));
+        else console.log("Sent.");
       } else if (command === "status" && rest[0]) {
         const result = await request("GET", `/terminal/${rest[0]}/status`);
         if (jsonFlag) console.log(JSON.stringify(result, null, 2));
@@ -153,8 +155,9 @@ async function main() {
         if (jsonFlag) console.log(JSON.stringify(result, null, 2));
         else console.log(result.lines.join("\n"));
       } else if (command === "destroy" && rest[0]) {
-        await request("DELETE", `/terminal/${rest[0]}`);
-        console.log("Destroyed.");
+        const result = await request("DELETE", `/terminal/${rest[0]}`);
+        if (jsonFlag) console.log(JSON.stringify(result, null, 2));
+        else console.log("Destroyed.");
       } else {
         console.log(
           "Usage: termcanvas terminal <create|list|input|status|output|destroy> [args]",
