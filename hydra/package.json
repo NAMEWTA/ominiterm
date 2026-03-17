@@ -1,0 +1,18 @@
+{
+  "name": "hydra",
+  "version": "0.1.0",
+  "description": "TermCanvas sub-agent spawner",
+  "type": "module",
+  "bin": {
+    "hydra": "./dist/hydra.js"
+  },
+  "scripts": {
+    "build": "node --experimental-strip-types build.ts",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.3"
+  }
+}
