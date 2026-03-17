@@ -4,7 +4,6 @@ import type { ComposerImageAttachment } from "../types";
 interface ComposerStore {
   draft: string;
   images: ComposerImageAttachment[];
-  selectedTerminalId: string | null;
   isSubmitting: boolean;
   error: string | null;
   setDraft: (draft: string) => void;
@@ -12,7 +11,6 @@ interface ComposerStore {
   removeImage: (imageId: string) => void;
   clearImages: () => void;
   clear: () => void;
-  setSelectedTerminalId: (terminalId: string | null) => void;
   setSubmitting: (isSubmitting: boolean) => void;
   setError: (error: string | null) => void;
 }
@@ -20,7 +18,6 @@ interface ComposerStore {
 export const useComposerStore = create<ComposerStore>((set) => ({
   draft: "",
   images: [],
-  selectedTerminalId: null,
   isSubmitting: false,
   error: null,
 
@@ -42,7 +39,6 @@ export const useComposerStore = create<ComposerStore>((set) => ({
       error: null,
       isSubmitting: false,
     }),
-  setSelectedTerminalId: (terminalId) => set({ selectedTerminalId: terminalId }),
   setSubmitting: (isSubmitting) => set({ isSubmitting }),
   setError: (error) => set({ error }),
 }));

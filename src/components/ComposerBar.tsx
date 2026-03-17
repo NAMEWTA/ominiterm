@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { useComposerStore } from "../stores/composerStore";
 import { useNotificationStore } from "../stores/notificationStore";
@@ -69,14 +69,12 @@ export function ComposerBar() {
   const {
     draft,
     images,
-    selectedTerminalId,
     isSubmitting,
     error,
     setDraft,
     addImages,
     removeImage,
     clear,
-    setSelectedTerminalId,
     setSubmitting,
     setError,
   } = useComposerStore();
@@ -88,35 +86,13 @@ export function ComposerBar() {
   );
   const focusedTerminal = supportedTerminals.find((terminal) => terminal.focused);
   const fallbackTerminal = supportedTerminals[0] ?? null;
-  const selectedOption = supportedTerminals.find(
-    (terminal) => terminal.terminalId === selectedTerminalId,
-  );
   const targetTerminal =
     focusedTerminal ??
-    selectedOption ??
     fallbackTerminal ??
     null;
   const targetAdapter = targetTerminal
     ? getComposerAdapter(targetTerminal.type)
     : null;
-
-  useEffect(() => {
-    const nextTerminalId =
-      focusedTerminal?.terminalId ??
-      selectedOption?.terminalId ??
-      fallbackTerminal?.terminalId ??
-      null;
-
-    if (nextTerminalId !== selectedTerminalId) {
-      setSelectedTerminalId(nextTerminalId);
-    }
-  }, [
-    fallbackTerminal?.terminalId,
-    focusedTerminal?.terminalId,
-    selectedOption?.terminalId,
-    selectedTerminalId,
-    setSelectedTerminalId,
-  ]);
 
   const handleImagePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -165,28 +141,23 @@ export function ComposerBar() {
   );
 
   const handleSubmit = useCallback(async () => {
-    const selectedTerminal =
-      supportedTerminals.find(
-        (terminal) => terminal.terminalId === selectedTerminalId,
-      ) ?? null;
-
-    if (!selectedTerminal) {
+    if (!targetTerminal) {
       setError(t.composer_missing_target);
       notify("warn", t.composer_missing_target);
       return;
     }
 
-    const adapter = getComposerAdapter(selectedTerminal.type);
+    const adapter = getComposerAdapter(targetTerminal.type);
     if (!adapter) {
       setError(t.composer_missing_target);
       notify("warn", t.composer_missing_target);
       return;
     }
 
-    if (!adapter.allowedStatuses.includes(selectedTerminal.status)) {
+    if (!adapter.allowedStatuses.includes(targetTerminal.status)) {
       const message = t.composer_blocked_status(
-        selectedTerminal.title,
-        selectedTerminal.status,
+        targetTerminal.title,
+        targetTerminal.status,
       );
       setError(message);
       notify("warn", message);
@@ -194,7 +165,7 @@ export function ComposerBar() {
     }
 
     if (images.length > 0 && !adapter.supportsImages) {
-      const message = t.composer_images_unsupported(selectedTerminal.title);
+      const message = t.composer_images_unsupported(targetTerminal.title);
       setError(message);
       notify("warn", message);
       return;
@@ -207,10 +178,10 @@ export function ComposerBar() {
     }
 
     const request: ComposerSubmitRequest = {
-      terminalId: selectedTerminal.terminalId,
-      ptyId: selectedTerminal.ptyId,
-      terminalType: selectedTerminal.type,
-      worktreePath: selectedTerminal.worktreePath,
+      terminalId: targetTerminal.terminalId,
+      ptyId: targetTerminal.ptyId,
+      terminalType: targetTerminal.type,
+      worktreePath: targetTerminal.worktreePath,
       text: draft,
       images,
     };
@@ -241,10 +212,9 @@ export function ComposerBar() {
     draft,
     images,
     notify,
-    selectedTerminalId,
     setError,
     setSubmitting,
-    supportedTerminals,
+    targetTerminal,
     t,
   ]);
 
@@ -265,29 +235,13 @@ export function ComposerBar() {
             {t.composer_label}
           </span>
           <div className="flex-1" />
-          <label
-            className="text-[11px] text-[var(--text-muted)]"
+          <div
+            className="max-w-[420px] truncate rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-[12px] text-[var(--text-secondary)]"
             style={{ fontFamily: '"Geist Mono", monospace' }}
+            title={targetTerminal?.label ?? t.composer_empty_state}
           >
-            {t.composer_target_label}
-          </label>
-          <select
-            className="min-w-[260px] rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-[12px] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
-            style={{ fontFamily: '"Geist Mono", monospace' }}
-            value={selectedTerminalId ?? ""}
-            onChange={(event) => setSelectedTerminalId(event.target.value || null)}
-            disabled={supportedTerminals.length === 0 || isSubmitting}
-          >
-            {supportedTerminals.length === 0 ? (
-              <option value="">{t.composer_empty_state}</option>
-            ) : (
-              supportedTerminals.map((terminal) => (
-                <option key={terminal.terminalId} value={terminal.terminalId}>
-                  {terminal.label}
-                </option>
-              ))
-            )}
-          </select>
+            {targetTerminal?.label ?? t.composer_empty_state}
+          </div>
         </div>
 
         {images.length > 0 && (
