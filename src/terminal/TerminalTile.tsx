@@ -39,6 +39,7 @@ const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
   kimi: { color: "#0070f3", label: "Kimi" },
   gemini: { color: "#4285f4", label: "Gemini" },
   opencode: { color: "#50e3c2", label: "OpenCode" },
+  lazygit: { color: "#e84d31", label: "Lazygit" },
   tmux: { color: "#1bb91f", label: "Tmux" },
 };
 
@@ -114,7 +115,7 @@ export function TerminalTile({
 
   const { notify } = useNotificationStore();
   const t = useT();
-  const config = TYPE_CONFIG[terminal.type];
+  const config = TYPE_CONFIG[terminal.type] ?? { color: "#888", label: terminal.type };
 
   const isSelected = useSelectionStore((s) =>
     s.selectedItems.some(
