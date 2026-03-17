@@ -85,6 +85,39 @@ test("buildLaunchSpec resolves bare CLI commands from PATH", async () => {
   assert.deepEqual(launch.args, ["resume", "abc123"]);
 });
 
+test("buildLaunchSpec prepends extraPathEntries to PATH", async () => {
+  const launch = await buildLaunchSpec(
+    {
+      cwd: "/repo",
+      extraPathEntries: ["/app/cli"],
+    },
+    createDeps({
+      existsSync: (file) => ["/bin/zsh", "/repo"].includes(file),
+      isExecutable: (file) => ["/bin/zsh"].includes(file),
+    }),
+  );
+
+  const entries = launch.env.PATH.split(":");
+  assert.equal(entries[0], "/app/cli");
+});
+
+test("buildLaunchSpec does not duplicate extraPathEntries already in PATH", async () => {
+  const launch = await buildLaunchSpec(
+    {
+      cwd: "/repo",
+      extraPathEntries: ["/opt/homebrew/bin"],
+    },
+    createDeps({
+      existsSync: (file) => ["/bin/zsh", "/repo"].includes(file),
+      isExecutable: (file) => ["/bin/zsh"].includes(file),
+    }),
+  );
+
+  const entries = launch.env.PATH.split(":");
+  const count = entries.filter((e) => e === "/opt/homebrew/bin").length;
+  assert.equal(count, 1);
+});
+
 test("buildLaunchSpec throws a clear error when a CLI executable cannot be resolved", async () => {
   await assert.rejects(
     () =>

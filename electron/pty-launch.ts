@@ -6,6 +6,7 @@ export interface PtyLaunchOptions {
   cwd: string;
   shell?: string;
   args?: string[];
+  extraPathEntries?: string[];
 }
 
 export interface PtyResolvedLaunchSpec {
@@ -264,6 +265,15 @@ export async function buildLaunchSpec(
   }
 
   const shellEnv = sanitizeEnv(await deps.getShellEnv(), deps);
+
+  // Inject extra PATH entries (e.g. CLI dir) at the front
+  if (options.extraPathEntries?.length) {
+    const entries = shellEnv.PATH.split(deps.pathDelimiter);
+    for (const dir of options.extraPathEntries) {
+      if (!entries.includes(dir)) entries.unshift(dir);
+    }
+    shellEnv.PATH = entries.join(deps.pathDelimiter);
+  }
 
   if (options.shell) {
     const executable = resolveExecutable(options.shell, shellEnv, deps);
