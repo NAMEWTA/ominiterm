@@ -38,5 +38,5 @@ decomposable subtasks), investigate first, then use hydra to spawn sub-agents.
 
 - After spawning, you are responsible for monitoring until completion.
 - Never assume an agent finished just because spawn returned successfully.
-- Always read `.hydra-result.md` before cleaning up.
+- Always read the `resultFile` returned by `spawn` before cleaning up.
 - When NOT to use: simple fixes, high-certainty tasks, faster to do yourself.

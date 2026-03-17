@@ -64,7 +64,8 @@ Output (JSON):
   "agentId": "hydra-1710648000-a1b2",
   "terminalId": "tc-xyz-123",
   "worktreePath": "/path/to/repo/.worktrees/hydra-1710648000-a1b2",
-  "branch": "hydra/1710648000-a1b2"
+  "branch": "hydra/1710648000-a1b2",
+  "resultFile": "/path/to/repo/.worktrees/hydra-1710648000-a1b2/.hydra-result-hydra-1710648000-a1b2.md"
 }
 ```
 
@@ -72,7 +73,7 @@ The main agent uses this info with existing tools:
 
 ```bash
 termcanvas terminal status tc-xyz-123        # check progress
-termcanvas terminal output tc-xyz-123        # read output
+cat /path/to/resultFile                      # read agent result
 termcanvas diff /path/to/.worktrees/hydra-…  # see changes
 git merge hydra/1710648000-a1b2              # adopt
 hydra cleanup hydra-1710648000-a1b2          # clean up
@@ -95,7 +96,7 @@ hydra cleanup --all           # clean up all completed agents
 hydra cleanup --all --force   # clean up all agents (including running ones)
 ```
 
-**That's it. Three commands.** Status, output, diff, and adopt use existing `termcanvas` CLI and `git` commands.
+**That's it. Three commands.** Status, result-file review, diff, and adopt use existing shell and `git` commands.
 
 ## Spawn Internal Flow
 
@@ -111,30 +112,17 @@ hydra spawn --task "fix bug" --type claude --repo .
 │     └─ termcanvas project rescan <project-id>
 │
 ├─ 3. Create terminal
-│     └─ termcanvas terminal create --worktree <path> --type <type>
+│     └─ termcanvas terminal create --worktree <path> --type <type> --prompt "<task>"
 │        → returns { id, type, title }
 │
-├─ 4. Wait for PTY ready
-│     └─ Poll termcanvas terminal status <id>
-│        Wait for status to become "waiting" (agent CLI initialized, showing prompt)
-│        Timeout: 30s. On failure: cleanup and exit with error.
+├─ 4. Write agent task file
+│     └─ .hydra-task-{agentId}.md in the worktree root
 │
-├─ 5. Send task
-│     └─ termcanvas terminal input <id> "<task>\n"
-│
-├─ 6. Write agent record
+├─ 5. Write agent record
 │     └─ ~/.hydra/agents/{agentId}.json
 │
-└─ 7. Output result JSON
+└─ 6. Output result JSON (includes resultFile)
 ```
-
-### PTY readiness timing
-
-TermCanvas terminal status flow: `idle` → `running` → `active` (output during startup) → `waiting` (15s with no output, i.e. prompt is showing).
-
-An agent CLI takes ~5s to initialize, then 15s of silence before `waiting` status. Total: ~20s from spawn to task delivery.
-
-Acceptable for Phase 1. Future optimization: add prompt-ready detection to TermCanvas (detect `❯` or `>` characters) or reduce the waiting threshold.
 
 ### Agent type compatibility
 

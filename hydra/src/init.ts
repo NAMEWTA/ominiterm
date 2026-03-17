@@ -11,10 +11,12 @@ decomposable subtasks), investigate first, then use hydra to spawn sub-agents.
 
 Workflow:
 1. Investigate the problem yourself first, form a clear task description
-2. \`hydra spawn --task "<specific task>" --type claude --repo .\`
+2. Pick the right mode:
+   - Read-only: \`hydra spawn --task "<specific task>" --type claude --repo . --worktree .\`
+   - Code changes: \`hydra spawn --task "<specific task>" --type claude --repo .\`
 3. Poll progress: \`termcanvas terminal status <terminalId>\`
-4. Review: \`termcanvas diff <worktreePath> --summary\`
-5. Adopt: \`git merge <branch>\`
+4. Read the result file returned by spawn: \`cat <resultFile>\`
+5. For code-change tasks: \`termcanvas diff <worktreePath> --summary\` then \`git merge <branch>\`
 6. Clean up: \`hydra cleanup <agentId>\`
 
 When NOT to use: simple fixes, high-certainty tasks, faster to do yourself.

@@ -7,7 +7,7 @@ export interface SpawnContext {
 }
 
 /**
- * Build the full task file content written to .hydra-task.md in the worktree.
+ * Build the full task file content written to the agent-specific task file in the worktree.
  * The sub-agent reads this file for context.
  */
 export function buildTaskFileContent(ctx: SpawnContext): string {
