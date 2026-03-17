@@ -67,6 +67,20 @@ export function buildGitWorktreeAddArgs(
   return ["worktree", "add", "-b", branch, worktreePath, baseBranch];
 }
 
+export function validateWorktreePath(repoPath: string, worktreePath: string): string {
+  const resolvedRepo = path.resolve(repoPath);
+  const resolvedWorktree = path.resolve(worktreePath);
+  const relative = path.relative(resolvedRepo, resolvedWorktree);
+
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(
+      `Worktree must be inside the repo: ${resolvedWorktree} is not under ${resolvedRepo}`,
+    );
+  }
+
+  return resolvedWorktree;
+}
+
 export function spawn(args: string[]): void {
   const parsed = parseSpawnArgs(args);
   const repo = path.resolve(parsed.repo);
@@ -91,7 +105,7 @@ export function spawn(args: string[]): void {
 
   if (parsed.worktree) {
     // Use existing worktree
-    worktreePath = path.resolve(parsed.worktree);
+    worktreePath = validateWorktreePath(repo, parsed.worktree);
     branch = null;
     ownWorktree = false;
   } else {

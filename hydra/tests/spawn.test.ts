@@ -4,6 +4,7 @@ import {
   parseSpawnArgs,
   generateAgentId,
   buildGitWorktreeAddArgs,
+  validateWorktreePath,
 } from "../src/spawn.ts";
 
 test("parseSpawnArgs extracts all flags correctly", () => {
@@ -72,4 +73,22 @@ test("buildGitWorktreeAddArgs preserves spaces and shell metacharacters", () => 
     "/tmp/dir with space",
     'feature/$(touch /tmp/pwned)`whoami`',
   ]);
+});
+
+test("validateWorktreePath accepts repo root and nested worktrees", () => {
+  assert.equal(
+    validateWorktreePath("/tmp/repo", "/tmp/repo"),
+    "/tmp/repo",
+  );
+  assert.equal(
+    validateWorktreePath("/tmp/repo", "/tmp/repo/.worktrees/existing"),
+    "/tmp/repo/.worktrees/existing",
+  );
+});
+
+test("validateWorktreePath rejects worktrees outside the repo", () => {
+  assert.throws(
+    () => validateWorktreePath("/tmp/repo", "/tmp/other-repo"),
+    /must be inside the repo/,
+  );
 });
