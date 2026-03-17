@@ -16,16 +16,6 @@
 
 [中文文档](./README.zh-CN.md)
 
-## App Icon
-
-The repository now includes a production-ready app icon set derived from the core TermCanvas mark. Packaged builds use:
-
-- `build/icon.icns` for macOS
-- `build/icon.ico` for Windows
-- `build/icon.png` for Linux and general branding
-
-The editable source lives at `build/icon.svg`.
-
 ## What is TermCanvas
 
 TermCanvas spreads all your terminals across an infinite spatial canvas — no more tabs, no more split panes. Drag them around, zoom in to focus, zoom out to see the big picture, and annotate with freehand drawings.
@@ -34,16 +24,21 @@ It organizes everything in a **Project → Worktree → Terminal** hierarchy tha
 
 ## Features
 
-**Core**
+**Canvas**
 - Infinite canvas — pan, zoom, and arrange terminals freely
 - Three-layer hierarchy — projects contain worktrees, worktrees contain terminals
 - Live worktree detection — new worktrees appear automatically
 - Drawing tools — pen, text, rectangles, arrows for annotations
+- Workspace save/load — persist your entire layout to a file
 
-**AI Integration**
-- Claude Code terminal with session status indicator
-- Codex terminal support
-- AI diff review cards
+**AI coding agents**
+- First-class support for Claude Code, Codex, Kimi, Gemini, and OpenCode
+- Live session status — see at a glance whether an agent is working, waiting, or done
+- Inline diff cards — review an agent's changes without leaving the canvas
+
+**CLI**
+- `termcanvas` — control the canvas from your terminal: add projects, create terminals, read output, view diffs
+- `hydra` — spawn AI sub-agents in isolated git worktrees, then review and merge their work
 
 ## Quick Start
 
@@ -56,6 +51,33 @@ git clone https://github.com/blueberrycongee/termcanvas.git
 cd termcanvas
 npm install
 npm run dev
+```
+
+**Install CLI tools** — after launching the app, go to Settings → General → Command line interface and click Register. This adds `termcanvas` and `hydra` to your PATH.
+
+## CLI
+
+Both CLIs are bundled with the app. Register them from Settings to use in any terminal.
+
+### termcanvas
+
+```bash
+termcanvas project add ~/my-repo     # add a project to the canvas
+termcanvas project list              # list projects
+termcanvas terminal create --worktree ~/my-repo --type claude
+termcanvas terminal status <id>      # check terminal status
+termcanvas diff ~/my-repo --summary  # view worktree diff
+```
+
+### hydra
+
+Hydra spawns AI coding agents in isolated git worktrees, managed through TermCanvas.
+
+```bash
+hydra spawn --task "fix the login bug" --type claude --repo .
+hydra list                           # list running agents
+hydra cleanup <agent-id>             # remove worktree and terminal
+hydra init                           # add hydra instructions to project CLAUDE.md
 ```
 
 ## Keyboard Shortcuts
@@ -79,13 +101,13 @@ npm run dev
 
 | Layer | Technology |
 |-------|-----------|
-| Desktop | Electron 41 |
-| Frontend | React 19, TypeScript |
-| Terminal | xterm.js 6, node-pty |
-| State | Zustand 5 |
-| Styling | Tailwind CSS 4, Geist font |
+| Desktop | Electron |
+| Frontend | React, TypeScript |
+| Terminal | xterm.js, node-pty |
+| State | Zustand |
+| Styling | Tailwind CSS, Geist font |
 | Drawing | perfect-freehand |
-| Build | Vite 7 |
+| Build | Vite |
 
 ## Contributing & License
 
