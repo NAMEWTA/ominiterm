@@ -50,12 +50,35 @@ function buildCli(): Plugin {
   };
 }
 
+function buildHydra(): Plugin {
+  const opts = {
+    entryPoints: ["hydra/src/cli.ts"],
+    outfile: "dist-cli/hydra.js",
+    format: "esm" as const,
+    platform: "node" as const,
+    bundle: true,
+    banner: { js: "#!/usr/bin/env node" },
+  };
+  return {
+    name: "build-hydra",
+    async buildStart() {
+      if (this.meta.watchMode) {
+        const ctx = await esbuildCtx(opts);
+        await ctx.watch();
+      } else {
+        await esbuild(opts);
+      }
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     buildPreload(),
     buildCli(),
+    buildHydra(),
     electron([
       {
         entry: "electron/main.ts",

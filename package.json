@@ -4,7 +4,8 @@
   "description": "An infinite canvas desktop app for visually managing terminals",
   "main": "dist-electron/main.js",
   "bin": {
-    "termcanvas": "./dist-cli/termcanvas.js"
+    "termcanvas": "./dist-cli/termcanvas.js",
+    "hydra": "./dist-cli/hydra.js"
   },
   "scripts": {
     "dev": "vite",
