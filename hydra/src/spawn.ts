@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import {
@@ -6,11 +7,9 @@ import {
   findProjectByPath,
   projectRescan,
   terminalCreate,
-  terminalStatus,
-  terminalInput,
 } from "./termcanvas.ts";
 import { saveAgent } from "./store.ts";
-import { buildSpawnPrompt } from "./prompt.ts";
+import { buildTaskFileContent, buildSpawnInput } from "./prompt.ts";
 
 export interface SpawnArgs {
   task: string;
@@ -49,10 +48,6 @@ export function generateAgentId(): string {
   return `hydra-${hex}`;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function getCurrentBranch(repoPath: string): string {
   try {
     return execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
@@ -64,8 +59,6 @@ function getCurrentBranch(repoPath: string): string {
   }
 }
 
-const READY_STATUSES = new Set(["waiting", "completed", "success", "error"]);
-
 export function buildGitWorktreeAddArgs(
   branch: string,
   worktreePath: string,
@@ -74,7 +67,7 @@ export function buildGitWorktreeAddArgs(
   return ["worktree", "add", "-b", branch, worktreePath, baseBranch];
 }
 
-export async function spawn(args: string[]): Promise<void> {
+export function spawn(args: string[]): void {
   const parsed = parseSpawnArgs(args);
   const repo = path.resolve(parsed.repo);
 
@@ -115,25 +108,15 @@ export async function spawn(args: string[]): Promise<void> {
     projectRescan(project.id);
   }
 
-  // Create terminal
-  const terminal = terminalCreate(worktreePath, parsed.type);
+  // Write task file to worktree (sub-agent reads this for full context)
+  fs.writeFileSync(
+    path.join(worktreePath, ".hydra-task.md"),
+    buildTaskFileContent({ task: parsed.task, worktreePath, branch, baseBranch }),
+  );
 
-  // Poll until PTY ready (max 30s)
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    const status = terminalStatus(terminal.id);
-    if (READY_STATUSES.has(status.status)) break;
-    await sleep(1_000);
-  }
-
-  // Send task wrapped with worktree context
-  const prompt = buildSpawnPrompt({
-    task: parsed.task,
-    worktreePath,
-    branch,
-    baseBranch,
-  });
-  terminalInput(terminal.id, prompt + "\n");
+  // Create terminal with initial prompt as CLI argument (no PTY injection needed)
+  const prompt = buildSpawnInput(parsed.task);
+  const terminal = terminalCreate(worktreePath, parsed.type, prompt);
 
   // Save agent record
   saveAgent({

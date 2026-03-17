@@ -251,7 +251,9 @@ export function TerminalTile({
       ptyOptions.shell = cliCfg.shell;
       ptyOptions.args = terminal.sessionId
         ? cliCfg.resumeArgs(terminal.sessionId)
-        : cliCfg.newArgs;
+        : terminal.initialPrompt
+          ? [...cliCfg.newArgs, terminal.initialPrompt]
+          : cliCfg.newArgs;
     }
 
     window.termcanvas.terminal

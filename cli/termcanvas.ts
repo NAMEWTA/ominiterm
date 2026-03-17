@@ -102,8 +102,10 @@ async function main() {
       if (command === "create") {
         const wtIdx = rest.indexOf("--worktree");
         const typeIdx = rest.indexOf("--type");
+        const promptIdx = rest.indexOf("--prompt");
         const worktree = wtIdx >= 0 ? rest[wtIdx + 1] : undefined;
         const type = typeIdx >= 0 ? rest[typeIdx + 1] : "shell";
+        const prompt = promptIdx >= 0 ? rest[promptIdx + 1] : undefined;
         if (!worktree) {
           console.error("--worktree is required");
           process.exit(1);
@@ -111,6 +113,7 @@ async function main() {
         const result = await request("POST", "/terminal/create", {
           worktree,
           type,
+          ...(prompt ? { prompt } : {}),
         });
         if (jsonFlag) console.log(JSON.stringify(result, null, 2));
         else

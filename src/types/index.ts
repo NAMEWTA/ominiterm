@@ -39,6 +39,7 @@ export interface TerminalData {
   span: { cols: number; rows: number };
   scrollback?: string;
   sessionId?: string;
+  initialPrompt?: string;
 }
 
 export interface WorktreeData {

@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildSpawnPrompt } from "../src/prompt.ts";
+import { buildTaskFileContent, buildSpawnInput } from "../src/prompt.ts";
 
-test("buildSpawnPrompt includes task and worktree context", () => {
-  const result = buildSpawnPrompt({
+test("buildTaskFileContent includes task and worktree context", () => {
+  const result = buildTaskFileContent({
     task: "Fix the login bug",
     worktreePath: "/tmp/repo/.worktrees/hydra-abc123",
     branch: "hydra/hydra-abc123",
@@ -15,8 +15,8 @@ test("buildSpawnPrompt includes task and worktree context", () => {
   assert.ok(result.includes("main"));
 });
 
-test("buildSpawnPrompt handles null branch (existing worktree)", () => {
-  const result = buildSpawnPrompt({
+test("buildTaskFileContent handles null branch (existing worktree)", () => {
+  const result = buildTaskFileContent({
     task: "Refactor utils",
     worktreePath: "/tmp/repo/.worktrees/existing",
     branch: null,
@@ -27,8 +27,8 @@ test("buildSpawnPrompt handles null branch (existing worktree)", () => {
   assert.ok(result.includes("develop"));
 });
 
-test("buildSpawnPrompt includes safety rules", () => {
-  const result = buildSpawnPrompt({
+test("buildTaskFileContent includes safety rules", () => {
+  const result = buildTaskFileContent({
     task: "Do something",
     worktreePath: "/tmp/wt",
     branch: "hydra/test",
@@ -36,4 +36,18 @@ test("buildSpawnPrompt includes safety rules", () => {
   });
   assert.ok(result.includes("Do not push to remote"));
   assert.ok(result.includes("Commit your changes"));
+});
+
+test("buildSpawnInput is a single line", () => {
+  const result = buildSpawnInput("Fix the bug in auth module");
+  assert.ok(!result.includes("\n"), "Must be single line");
+  assert.ok(result.includes("Fix the bug in auth module"));
+  assert.ok(result.includes(".hydra-task.md"));
+});
+
+test("buildSpawnInput collapses newlines in task", () => {
+  const result = buildSpawnInput("Line one\nLine two\r\nLine three");
+  assert.ok(!result.includes("\n"), "Must not contain newlines");
+  assert.ok(!result.includes("\r"), "Must not contain carriage returns");
+  assert.ok(result.includes("Line one Line two Line three"));
 });

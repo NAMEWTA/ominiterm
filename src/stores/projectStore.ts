@@ -112,6 +112,7 @@ const DEFAULT_SPAN: Record<TerminalType, { cols: number; rows: number }> = {
 export function createTerminal(
   type: TerminalType = "shell",
   title?: string,
+  initialPrompt?: string,
 ): TerminalData {
   return {
     id: generateId(),
@@ -122,6 +123,7 @@ export function createTerminal(
     ptyId: null,
     status: "idle",
     span: DEFAULT_SPAN[type],
+    ...(initialPrompt ? { initialPrompt } : {}),
   };
 }
 

@@ -34,6 +34,21 @@ test("buildTerminalCreateArgs preserves spaces in worktree path as one argv entr
   ]);
 });
 
+test("buildTerminalCreateArgs includes prompt when provided", () => {
+  const args = buildTerminalCreateArgs("/tmp/wt", "claude", "Do the task");
+  assert.deepStrictEqual(args, [
+    "terminal",
+    "create",
+    "--worktree",
+    "/tmp/wt",
+    "--type",
+    "claude",
+    "--prompt",
+    "Do the task",
+    "--json",
+  ]);
+});
+
 test("buildTerminalInputArgs preserves shell metacharacters as literal text", () => {
   const args = buildTerminalInputArgs("tc-001", 'do $(touch /tmp/pwned) `uname`');
   assert.deepStrictEqual(args, [
