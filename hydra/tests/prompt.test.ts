@@ -8,6 +8,7 @@ test("buildTaskFileContent includes task and worktree context", () => {
     worktreePath: "/tmp/repo/.worktrees/hydra-abc123",
     branch: "hydra/hydra-abc123",
     baseBranch: "main",
+    resultFile: ".hydra-result-abc123.md",
   });
   assert.ok(result.includes("Fix the login bug"));
   assert.ok(result.includes("/tmp/repo/.worktrees/hydra-abc123"));
@@ -21,29 +22,31 @@ test("buildTaskFileContent handles null branch (existing worktree)", () => {
     worktreePath: "/tmp/repo/.worktrees/existing",
     branch: null,
     baseBranch: "develop",
+    resultFile: ".hydra-result-existing.md",
   });
   assert.ok(result.includes("(existing worktree)"));
   assert.ok(result.includes("Refactor utils"));
   assert.ok(result.includes("develop"));
 });
 
-test("buildTaskFileContent includes safety rules and result file instruction", () => {
+test("buildTaskFileContent includes result file name in rules", () => {
   const result = buildTaskFileContent({
     task: "Do something",
     worktreePath: "/tmp/wt",
     branch: "hydra/test",
     baseBranch: "main",
+    resultFile: ".hydra-result-abc.md",
   });
   assert.ok(result.includes("Do not push to remote"));
   assert.ok(result.includes("Commit your changes"));
-  assert.ok(result.includes(".hydra-result.md"));
+  assert.ok(result.includes(".hydra-result-abc.md"));
 });
 
-test("buildSpawnInput is a single line", () => {
-  const result = buildSpawnInput("Fix the bug in auth module");
+test("buildSpawnInput is a single line with task file name", () => {
+  const result = buildSpawnInput("Fix the bug in auth module", ".hydra-task-abc.md");
   assert.ok(!result.includes("\n"), "Must be single line");
   assert.ok(result.includes("Fix the bug in auth module"));
-  assert.ok(result.includes(".hydra-task.md"));
+  assert.ok(result.includes(".hydra-task-abc.md"));
 });
 
 test("buildSpawnInput collapses newlines in task", () => {

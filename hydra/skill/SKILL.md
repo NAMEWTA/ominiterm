@@ -26,7 +26,7 @@ decomposable subtasks), investigate first, then use hydra to spawn sub-agents.
 3. **You MUST poll all agents until every one reaches "completed" or "error".**
    Poll each agent every 30s: `termcanvas terminal status <terminalId>`
    Do NOT ask the user whether to poll. Do NOT stop working while agents run.
-4. Read each agent's result: `cat <worktreePath>/.hydra-result.md`
+4. Read each agent's result: `cat <resultFile>` (path returned by spawn)
    Do NOT read terminal output or try to parse TUI. The result file is the
    only reliable communication channel from sub-agents.
 5. For code-change tasks only:

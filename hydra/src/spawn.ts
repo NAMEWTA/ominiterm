@@ -108,14 +108,17 @@ export function spawn(args: string[]): void {
     projectRescan(project.id);
   }
 
-  // Write task file to worktree (sub-agent reads this for full context)
+  // Write task file to worktree (agent ID in filename avoids collisions when
+  // multiple agents share the same worktree for read-only tasks)
+  const taskFile = `.hydra-task-${agentId}.md`;
+  const resultFile = `.hydra-result-${agentId}.md`;
   fs.writeFileSync(
-    path.join(worktreePath, ".hydra-task.md"),
-    buildTaskFileContent({ task: parsed.task, worktreePath, branch, baseBranch }),
+    path.join(worktreePath, taskFile),
+    buildTaskFileContent({ task: parsed.task, worktreePath, branch, baseBranch, resultFile }),
   );
 
   // Create terminal with initial prompt as CLI argument (no PTY injection needed)
-  const prompt = buildSpawnInput(parsed.task);
+  const prompt = buildSpawnInput(parsed.task, taskFile);
   const terminal = terminalCreate(worktreePath, parsed.type, prompt);
 
   // Save agent record
@@ -132,12 +135,13 @@ export function spawn(args: string[]): void {
     createdAt: new Date().toISOString(),
   });
 
-  // Output result
+  // Output result (resultFile tells the parent where to read the outcome)
   const result = {
     agentId,
     terminalId: terminal.id,
     worktreePath,
     branch,
+    resultFile: `${worktreePath}/${resultFile}`,
   };
   console.log(JSON.stringify(result, null, 2));
 }
