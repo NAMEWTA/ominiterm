@@ -41,11 +41,11 @@ test("buildGitBranchDeleteArgs preserves shell metacharacters in branch name", (
   assert.deepStrictEqual(args, ["branch", "-D", 'topic/$(touch /tmp/pwned)`uname`']);
 });
 
-test("isLiveTerminalStatus treats waiting and completed as live sessions", () => {
+test("isLiveTerminalStatus treats waiting as live but completed as safe to clean up", () => {
   assert.equal(isLiveTerminalStatus("running"), true);
   assert.equal(isLiveTerminalStatus("active"), true);
   assert.equal(isLiveTerminalStatus("waiting"), true);
-  assert.equal(isLiveTerminalStatus("completed"), true);
+  assert.equal(isLiveTerminalStatus("completed"), false);
   assert.equal(isLiveTerminalStatus("success"), false);
   assert.equal(isLiveTerminalStatus("error"), false);
   assert.equal(isLiveTerminalStatus("idle"), false);

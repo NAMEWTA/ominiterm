@@ -32,8 +32,7 @@ export function isLiveTerminalStatus(status: string): boolean {
   return (
     status === "running" ||
     status === "active" ||
-    status === "waiting" ||
-    status === "completed"
+    status === "waiting"
   );
 }
 
