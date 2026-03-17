@@ -28,10 +28,7 @@ export type TerminalStatus =
   | "error"
   | "idle";
 
-export type ComposerSupportedTerminalType = Extract<
-  TerminalType,
-  "claude" | "codex"
->;
+export type ComposerSupportedTerminalType = TerminalType;
 
 export interface ComposerImageAttachment {
   id: string;

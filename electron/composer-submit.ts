@@ -3,7 +3,7 @@ import path from "path";
 import {
   getComposerAdapter,
   type ComposerImageFallbackMode,
-} from "../src/terminal/cliConfig";
+} from "../src/terminal/cliConfig.ts";
 import type {
   ComposerImageAttachment,
   ComposerSubmitRequest,
@@ -122,6 +122,28 @@ async function submitImages(
   }
 }
 
+async function submitDirectText(
+  request: ComposerSubmitRequest,
+  deps: ComposerSubmitDeps,
+) {
+  if (request.images.length > 0) {
+    return {
+      ok: false,
+      error: `Image paste is unavailable for ${request.terminalType}.`,
+    } as const;
+  }
+
+  if (request.text.length > 0) {
+    deps.writeToPty(request.ptyId, request.text);
+  }
+  deps.writeToPty(request.ptyId, "\r");
+  return {
+    ok: true,
+    requestId: deps.generateRequestId(),
+    stagedImagePaths: [],
+  } as const;
+}
+
 export async function submitComposerRequest(
   request: ComposerSubmitRequest,
   deps: ComposerSubmitDeps,
@@ -133,6 +155,17 @@ export async function submitComposerRequest(
 
   if (request.text.trim().length === 0 && request.images.length === 0) {
     return { ok: false, error: "Composer submission requires text or images." };
+  }
+
+  if (adapter.inputMode === "type") {
+    return submitDirectText(request, deps);
+  }
+
+  if (request.images.length > 0 && !adapter.supportsImages) {
+    return {
+      ok: false,
+      error: `Image paste is unavailable for ${request.terminalType}.`,
+    };
   }
 
   const requestId = deps.generateRequestId();

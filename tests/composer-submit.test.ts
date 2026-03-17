@@ -162,3 +162,40 @@ test("claude falls back to staged image paths when clipboard image write fails",
   assert.deepEqual(ptyWrites, ["\u0016", "\u0016", "\r"]);
   assert.equal(restoredSnapshots.length, 1);
 });
+
+test("shell writes text directly to the PTY", async () => {
+  const request = createRequest({
+    terminalType: "shell",
+    text: "git status",
+    images: [],
+  });
+  const {
+    deps,
+    ptyWrites,
+    restoredSnapshots,
+    clipboardTextWrites,
+    clipboardImageWrites,
+  } = createDeps();
+
+  const result = await submitComposerRequest(request, deps);
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(ptyWrites, ["git status", "\r"]);
+  assert.deepEqual(clipboardTextWrites, []);
+  assert.deepEqual(clipboardImageWrites, []);
+  assert.equal(restoredSnapshots.length, 0);
+});
+
+test("shell rejects image submission", async () => {
+  const request = createRequest({
+    terminalType: "shell",
+    text: "",
+  });
+  const { deps, ptyWrites } = createDeps();
+
+  const result = await submitComposerRequest(request, deps);
+
+  assert.equal(result.ok, false);
+  assert.match(result.error ?? "", /Image paste is unavailable for shell/);
+  assert.deepEqual(ptyWrites, []);
+});

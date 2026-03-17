@@ -2,15 +2,20 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { useComposerStore } from "../stores/composerStore";
 import { useNotificationStore } from "../stores/notificationStore";
-import { getComposerAdapter, isComposerSupportedTerminal } from "../terminal/cliConfig";
+import { getComposerAdapter } from "../terminal/cliConfig";
 import { useT } from "../i18n/useT";
-import type { ComposerImageAttachment, ComposerSubmitRequest, TerminalStatus } from "../types";
+import type {
+  ComposerImageAttachment,
+  ComposerSubmitRequest,
+  TerminalStatus,
+  TerminalType,
+} from "../types";
 
 interface SupportedTerminalOption {
   terminalId: string;
   ptyId: number;
   title: string;
-  type: "claude" | "codex";
+  type: TerminalType;
   status: TerminalStatus;
   worktreePath: string;
   label: string;
@@ -35,7 +40,7 @@ function getSupportedTerminals(): SupportedTerminalOption[] {
       for (const terminal of worktree.terminals) {
         if (
           terminal.ptyId === null ||
-          !isComposerSupportedTerminal(terminal.type)
+          !getComposerAdapter(terminal.type)
         ) {
           continue;
         }
@@ -86,6 +91,14 @@ export function ComposerBar() {
   const selectedOption = supportedTerminals.find(
     (terminal) => terminal.terminalId === selectedTerminalId,
   );
+  const targetTerminal =
+    focusedTerminal ??
+    selectedOption ??
+    fallbackTerminal ??
+    null;
+  const targetAdapter = targetTerminal
+    ? getComposerAdapter(targetTerminal.type)
+    : null;
 
   useEffect(() => {
     const nextTerminalId =
@@ -107,6 +120,20 @@ export function ComposerBar() {
 
   const handleImagePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!targetTerminal || !targetAdapter) {
+        const message = t.composer_missing_target;
+        setError(message);
+        notify("warn", message);
+        return;
+      }
+
+      if (!targetAdapter.supportsImages) {
+        const message = t.composer_images_unsupported(targetTerminal.title);
+        setError(message);
+        notify("warn", message);
+        return;
+      }
+
       const imageFiles = Array.from(event.clipboardData.items)
         .filter((item) => item.type.startsWith("image/"))
         .map((item) => item.getAsFile())
@@ -134,33 +161,40 @@ export function ComposerBar() {
         notify("error", message);
       }
     },
-    [addImages, notify, setError, t],
+    [addImages, notify, setError, t, targetAdapter, targetTerminal],
   );
 
   const handleSubmit = useCallback(async () => {
-    const targetTerminal =
+    const selectedTerminal =
       supportedTerminals.find(
         (terminal) => terminal.terminalId === selectedTerminalId,
       ) ?? null;
 
-    if (!targetTerminal) {
+    if (!selectedTerminal) {
       setError(t.composer_missing_target);
       notify("warn", t.composer_missing_target);
       return;
     }
 
-    const adapter = getComposerAdapter(targetTerminal.type);
+    const adapter = getComposerAdapter(selectedTerminal.type);
     if (!adapter) {
       setError(t.composer_missing_target);
       notify("warn", t.composer_missing_target);
       return;
     }
 
-    if (!adapter.allowedStatuses.includes(targetTerminal.status)) {
+    if (!adapter.allowedStatuses.includes(selectedTerminal.status)) {
       const message = t.composer_blocked_status(
-        targetTerminal.title,
-        targetTerminal.status,
+        selectedTerminal.title,
+        selectedTerminal.status,
       );
+      setError(message);
+      notify("warn", message);
+      return;
+    }
+
+    if (images.length > 0 && !adapter.supportsImages) {
+      const message = t.composer_images_unsupported(selectedTerminal.title);
       setError(message);
       notify("warn", message);
       return;
@@ -173,10 +207,10 @@ export function ComposerBar() {
     }
 
     const request: ComposerSubmitRequest = {
-      terminalId: targetTerminal.terminalId,
-      ptyId: targetTerminal.ptyId,
-      terminalType: targetTerminal.type,
-      worktreePath: targetTerminal.worktreePath,
+      terminalId: selectedTerminal.terminalId,
+      ptyId: selectedTerminal.ptyId,
+      terminalType: selectedTerminal.type,
+      worktreePath: selectedTerminal.worktreePath,
       text: draft,
       images,
     };
@@ -215,7 +249,9 @@ export function ComposerBar() {
   ]);
 
   const placeholder = supportedTerminals.length
-    ? t.composer_placeholder
+    ? targetAdapter?.supportsImages
+      ? t.composer_placeholder
+      : t.composer_placeholder_text_only
     : t.composer_empty_state;
 
   return (
@@ -306,7 +342,9 @@ export function ComposerBar() {
           <div className="mt-3 flex items-start gap-3">
             <div className="flex-1">
               <div className="text-[12px] text-[var(--text-secondary)]">
-                {t.composer_note}
+                {targetAdapter?.supportsImages
+                  ? t.composer_note
+                  : t.composer_note_text_only}
               </div>
               {error && (
                 <div className="mt-1 text-[12px] text-[var(--red)]">{error}</div>

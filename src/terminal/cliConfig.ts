@@ -5,6 +5,7 @@ import type {
 } from "../types";
 
 export type ComposerImageFallbackMode = "image-path" | "error";
+export type ComposerInputMode = "paste" | "type";
 
 interface TerminalLaunchConfig {
   shell: string;
@@ -15,6 +16,8 @@ interface TerminalLaunchConfig {
 export interface ComposerAdapterConfig {
   supportsComposer: boolean;
   allowedStatuses: readonly TerminalStatus[];
+  inputMode: ComposerInputMode;
+  supportsImages: boolean;
   pasteKeySequence: (
     platform: "darwin" | "win32" | "linux",
   ) => string;
@@ -35,9 +38,20 @@ const READY_STATUSES = [
   "success",
 ] as const satisfies readonly TerminalStatus[];
 
+const INTERACTIVE_STATUSES = [
+  "running",
+  "active",
+  "waiting",
+  "completed",
+  "success",
+  "idle",
+] as const satisfies readonly TerminalStatus[];
+
 const NO_COMPOSER: ComposerAdapterConfig = {
   supportsComposer: false,
   allowedStatuses: [],
+  inputMode: "type",
+  supportsImages: false,
   pasteKeySequence: () => "",
   imageFallback: "error",
   pasteDelayMs: 120,
@@ -46,7 +60,15 @@ const NO_COMPOSER: ComposerAdapterConfig = {
 export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
   shell: {
     type: "shell",
-    composer: NO_COMPOSER,
+    composer: {
+      supportsComposer: true,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "type",
+      supportsImages: false,
+      pasteKeySequence: () => "",
+      imageFallback: "error",
+      pasteDelayMs: 0,
+    },
   },
   claude: {
     type: "claude",
@@ -57,7 +79,9 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
     },
     composer: {
       supportsComposer: true,
-      allowedStatuses: READY_STATUSES,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "paste",
+      supportsImages: true,
       pasteKeySequence: (platform) =>
         platform === "darwin" ? "\u001bv" : "\u0016",
       imageFallback: "image-path",
@@ -73,7 +97,9 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
     },
     composer: {
       supportsComposer: true,
-      allowedStatuses: READY_STATUSES,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "paste",
+      supportsImages: true,
       pasteKeySequence: () => "\u0016",
       imageFallback: "error",
       pasteDelayMs: 120,
@@ -86,7 +112,15 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       resumeArgs: (id) => ["-S", id],
       newArgs: () => [],
     },
-    composer: NO_COMPOSER,
+    composer: {
+      supportsComposer: true,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "paste",
+      supportsImages: true,
+      pasteKeySequence: () => "\u0016",
+      imageFallback: "image-path",
+      pasteDelayMs: 120,
+    },
   },
   gemini: {
     type: "gemini",
@@ -95,7 +129,15 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       resumeArgs: (id) => ["--resume", id],
       newArgs: () => [],
     },
-    composer: NO_COMPOSER,
+    composer: {
+      supportsComposer: true,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "paste",
+      supportsImages: true,
+      pasteKeySequence: () => "\u0016",
+      imageFallback: "image-path",
+      pasteDelayMs: 120,
+    },
   },
   opencode: {
     type: "opencode",
@@ -104,7 +146,15 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       resumeArgs: (id) => ["-s", id],
       newArgs: () => [],
     },
-    composer: NO_COMPOSER,
+    composer: {
+      supportsComposer: true,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "paste",
+      supportsImages: true,
+      pasteKeySequence: () => "\u0016",
+      imageFallback: "image-path",
+      pasteDelayMs: 120,
+    },
   },
   lazygit: {
     type: "lazygit",
@@ -113,7 +163,15 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       resumeArgs: () => [],
       newArgs: () => [],
     },
-    composer: NO_COMPOSER,
+    composer: {
+      supportsComposer: true,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "type",
+      supportsImages: false,
+      pasteKeySequence: () => "",
+      imageFallback: "error",
+      pasteDelayMs: 0,
+    },
   },
   tmux: {
     type: "tmux",
@@ -122,7 +180,15 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       resumeArgs: (name) => ["attach", "-t", name],
       newArgs: () => [],
     },
-    composer: NO_COMPOSER,
+    composer: {
+      supportsComposer: true,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "type",
+      supportsImages: false,
+      pasteKeySequence: () => "",
+      imageFallback: "error",
+      pasteDelayMs: 0,
+    },
   },
 };
 
@@ -149,5 +215,5 @@ export function getComposerAdapter(
 export function isComposerSupportedTerminal(
   type: TerminalType,
 ): type is ComposerSupportedTerminalType {
-  return type === "claude" || type === "codex";
+  return getComposerAdapter(type) !== null;
 }

@@ -117,4 +117,26 @@ export const zh = {
   cli_registered: "已注册",
   cli_not_registered: "未注册",
   cli_registering: "注册中…",
+
+  // Composer
+  composer_label: "Composer",
+  composer_target_label: "目标",
+  composer_submit: "发送",
+  composer_submitting: "发送中…",
+  composer_empty_state: "当前没有可用终端",
+  composer_placeholder:
+    "发送到当前聚焦终端。对于 agent 终端，也可以直接粘贴截图。",
+  composer_placeholder_text_only:
+    "直接发送文本到当前聚焦终端。",
+  composer_note:
+    "默认发送到当前聚焦终端。Agent 终端也支持图片输入。",
+  composer_note_text_only:
+    "默认发送到当前聚焦终端。当前终端类型不支持图片输入。",
+  composer_missing_target: "请先选择或聚焦一个终端。",
+  composer_empty_submit: "发送前请输入文本或粘贴图片。",
+  composer_images_unsupported: (title: string) =>
+    `终端 "${title}" 不支持图片输入。`,
+  composer_blocked_status: (title: string, status: string) =>
+    `终端 "${title}" 当前正忙 (${status})，请稍后再试。`,
+  composer_submit_failed: (err: string) => `发送失败：${err}`,
 } as const;

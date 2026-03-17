@@ -125,13 +125,19 @@ export const en = {
   composer_target_label: "Target",
   composer_submit: "Send",
   composer_submitting: "Sending\u2026",
-  composer_empty_state: "No Claude/Codex terminals available",
+  composer_empty_state: "No terminals available",
   composer_placeholder:
-    "Draft a prompt here and paste screenshots directly into the composer.",
+    "Send text to the focused terminal. Paste screenshots here for agent terminals.",
+  composer_placeholder_text_only:
+    "Send text directly to the focused terminal.",
   composer_note:
-    "Claude/Codex only. In v1, don't mix direct terminal typing with composer submission.",
-  composer_missing_target: "Select a Claude/Codex terminal first.",
+    "Targets the focused terminal by default. Agent terminals can also receive pasted images.",
+  composer_note_text_only:
+    "Targets the focused terminal directly. Image paste is unavailable for this terminal type.",
+  composer_missing_target: "Select or focus a terminal first.",
   composer_empty_submit: "Enter text or paste an image before sending.",
+  composer_images_unsupported: (title: string) =>
+    `"${title}" does not support image submission.`,
   composer_blocked_status: (title: string, status: string) =>
     `"${title}" is busy (${status}). Wait until the agent is ready.`,
   composer_submit_failed: (err: string) => `Composer submit failed: ${err}`,
