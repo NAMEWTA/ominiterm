@@ -14,6 +14,7 @@ import { sendToWindow } from "./window-events";
 import { detectCli } from "./process-detector";
 import { ensureCliLauncher } from "./cli-launchers";
 import {
+  ensureHydraSkillLinks,
   getHydraSkillSourceDir,
   installHydraSkillLinks,
   uninstallHydraSkillLinks,
@@ -654,12 +655,17 @@ function installSkill(): boolean {
   return installHydraSkillLinks({ sourceDir: getSkillSourceDir() });
 }
 
+function ensureSkillInstalled(): boolean {
+  return ensureHydraSkillLinks({ sourceDir: getSkillSourceDir() });
+}
+
 function uninstallSkill(): boolean {
   return uninstallHydraSkillLinks();
 }
 
 app.whenReady().then(() => {
   ensureCliLinks();
+  if (isCliRegistered()) ensureSkillInstalled();
   setupIpc();
   createWindow();
 

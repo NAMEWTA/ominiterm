@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  ensureHydraSkillLinks,
   getHydraSkillLinks,
   installHydraSkillLinks,
   uninstallHydraSkillLinks,
@@ -43,4 +44,37 @@ test("uninstallHydraSkillLinks removes Hydra from both skill directories", () =>
   for (const link of getHydraSkillLinks(home)) {
     assert.equal(fs.existsSync(link), false);
   }
+});
+
+test("ensureHydraSkillLinks creates missing links and updates stale targets", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hydra-skill-ensure-"));
+  const home = path.join(dir, "home");
+  const staleSourceDir = path.join(dir, "stale-source");
+  const currentSourceDir = path.join(dir, "current-source");
+
+  fs.mkdirSync(staleSourceDir, { recursive: true });
+  fs.mkdirSync(currentSourceDir, { recursive: true });
+  fs.mkdirSync(path.join(home, ".claude", "skills"), { recursive: true });
+  fs.symlinkSync(staleSourceDir, path.join(home, ".claude", "skills", "hydra"));
+
+  assert.equal(ensureHydraSkillLinks({ home, sourceDir: currentSourceDir }), true);
+
+  for (const link of getHydraSkillLinks(home)) {
+    assert.equal(fs.readlinkSync(link), currentSourceDir);
+  }
+});
+
+test("ensureHydraSkillLinks is a no-op when links already point at the current source", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hydra-skill-noop-"));
+  const home = path.join(dir, "home");
+  const sourceDir = path.join(dir, "source");
+
+  fs.mkdirSync(sourceDir, { recursive: true });
+  installHydraSkillLinks({ home, sourceDir });
+
+  const beforeMtimes = getHydraSkillLinks(home).map((link) => fs.lstatSync(link).mtimeMs);
+  assert.equal(ensureHydraSkillLinks({ home, sourceDir }), true);
+  const afterMtimes = getHydraSkillLinks(home).map((link) => fs.lstatSync(link).mtimeMs);
+
+  assert.deepEqual(afterMtimes, beforeMtimes);
 });

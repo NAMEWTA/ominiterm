@@ -41,6 +41,38 @@ export function installHydraSkillLinks({
   }
 }
 
+export function ensureHydraSkillLinks({
+  home = os.homedir(),
+  sourceDir,
+}: {
+  home?: string;
+  sourceDir: string;
+}): boolean {
+  try {
+    for (const link of getHydraSkillLinks(home)) {
+      fs.mkdirSync(path.dirname(link), { recursive: true });
+
+      let alreadyCurrent = false;
+      try {
+        alreadyCurrent = fs.readlinkSync(link) === sourceDir;
+      } catch {
+        alreadyCurrent = false;
+      }
+      if (alreadyCurrent) continue;
+
+      try {
+        fs.unlinkSync(link);
+      } catch {
+        // ignore missing stale links
+      }
+      fs.symlinkSync(sourceDir, link);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function uninstallHydraSkillLinks(home = os.homedir()): boolean {
   try {
     for (const link of getHydraSkillLinks(home)) {
