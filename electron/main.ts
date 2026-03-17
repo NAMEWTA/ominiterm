@@ -12,6 +12,7 @@ import { SessionWatcher, type SessionType } from "./session-watcher";
 import { ApiServer } from "./api-server";
 import { sendToWindow } from "./window-events";
 import { detectCli } from "./process-detector";
+import { ensureCliLauncher } from "./cli-launchers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -494,27 +495,17 @@ function getCliDir(): string {
 
 const CLI_NAMES = ["termcanvas", "hydra"];
 
-/** Ensure CLI .js files are executable and have extensionless symlinks. */
+/** Ensure CLI launchers exist for the current platform. */
 function ensureCliLinks(): void {
   const cliDir = getCliDir();
   if (!fs.existsSync(cliDir)) return;
 
   for (const name of CLI_NAMES) {
     const jsFile = path.join(cliDir, `${name}.js`);
-    const link = path.join(cliDir, name);
-
-    // Make .js file executable
     try {
-      fs.chmodSync(jsFile, 0o755);
-    } catch { /* may not exist yet */ }
-
-    // Create extensionless symlink if missing
-    try {
-      fs.lstatSync(link);
+      ensureCliLauncher(jsFile);
     } catch {
-      try {
-        fs.symlinkSync(`${name}.js`, link);
-      } catch { /* read-only fs in prod asar */ }
+      // read-only fs in packaged apps; best-effort only
     }
   }
 }

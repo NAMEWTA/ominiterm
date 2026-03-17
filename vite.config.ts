@@ -4,8 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
 import path from "path";
-import fs from "fs";
 import { build as esbuild, context as esbuildCtx, type Plugin as EsbuildPlugin } from "esbuild";
+import { ensureCliLauncher } from "./electron/cli-launchers";
 
 function buildPreload(): Plugin {
   const opts = {
@@ -29,18 +29,14 @@ function buildPreload(): Plugin {
   };
 }
 
-/** esbuild plugin: after write, create extensionless symlink + chmod 755 */
+/** esbuild plugin: after write, create the platform-appropriate CLI launcher. */
 function cliSymlinkPlugin(outfile: string): EsbuildPlugin {
   const jsPath = path.resolve(outfile);
-  const linkPath = jsPath.replace(/\.js$/, "");
   return {
     name: "cli-symlink",
     setup(build) {
       build.onEnd(() => {
-        try { fs.chmodSync(jsPath, 0o755); } catch {}
-        try { fs.lstatSync(linkPath); } catch {
-          try { fs.symlinkSync(path.basename(jsPath), linkPath); } catch {}
-        }
+        ensureCliLauncher(jsPath);
       });
     },
   };
