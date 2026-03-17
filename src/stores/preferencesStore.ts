@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
-const DEFAULT_BLUR = 1.5;
+const DEFAULT_BLUR = 0;
+const LEGACY_ENABLED_BLUR = 1.5;
 
 interface PreferencesStore {
   /** Blur intensity in px (0 = off, max 3) */
@@ -17,7 +18,7 @@ function loadPreferences(): { animationBlur: number } {
       const parsed = JSON.parse(raw);
       const v = parsed.animationBlur;
       // migrate old boolean values
-      if (v === true) return { animationBlur: DEFAULT_BLUR };
+      if (v === true) return { animationBlur: LEGACY_ENABLED_BLUR };
       if (v === false) return { animationBlur: 0 };
       if (typeof v === "number" && v >= 0 && v <= 3) return { animationBlur: v };
     }
