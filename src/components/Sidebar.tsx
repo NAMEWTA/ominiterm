@@ -24,6 +24,7 @@ const TYPE_LABEL: Record<TerminalType, string> = {
   gemini: "Gemini",
   opencode: "OpenCode",
   lazygit: "lazygit",
+  tmux: "Tmux",
 };
 
 export function Sidebar() {

@@ -5,7 +5,7 @@ import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { ImageAddon } from "@xterm/addon-image";
 import { createPortal } from "react-dom";
-import type { TerminalData } from "../types";
+import type { TerminalData, TerminalType } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { useSelectionStore } from "../stores/selectionStore";
 import { ContextMenu } from "../components/ContextMenu";
@@ -39,7 +39,41 @@ const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
   kimi: { color: "#0070f3", label: "Kimi" },
   gemini: { color: "#4285f4", label: "Gemini" },
   opencode: { color: "#50e3c2", label: "OpenCode" },
+  tmux: { color: "#1bb91f", label: "Tmux" },
 };
+
+async function pollSessionId(
+  ptyId: number,
+  cliType: string,
+  worktreePath: string,
+  onFound: (sid: string) => void,
+  shouldCancel: () => boolean,
+) {
+  const MAX_ATTEMPTS = 15;
+  const INTERVAL = 2000;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    await new Promise((r) => setTimeout(r, INTERVAL));
+    if (shouldCancel()) return;
+
+    let sid: string | null = null;
+    if (cliType === "codex") {
+      sid = await window.termcanvas.session.getCodexLatest();
+    } else if (cliType === "claude") {
+      const pid = await window.termcanvas.terminal.getPid(ptyId);
+      if (pid) {
+        sid = await window.termcanvas.session.getClaudeByPid(pid);
+      }
+    } else if (cliType === "kimi") {
+      sid = await window.termcanvas.session.getKimiLatest(worktreePath);
+    }
+
+    if (sid) {
+      onFound(sid);
+      return;
+    }
+  }
+}
 
 export function TerminalTile({
   projectId,
@@ -74,6 +108,7 @@ export function TerminalTile({
     updateTerminalPtyId,
     updateTerminalStatus,
     updateTerminalSessionId,
+    updateTerminalType,
     setFocusedTerminal,
   } = useProjectStore();
 
@@ -199,6 +234,11 @@ export function TerminalTile({
         resumeArgs: () => [],
         newArgs: [],
       },
+      tmux: {
+        shell: "tmux",
+        resumeArgs: (name) => ["attach", "-t", name],
+        newArgs: [],
+      },
     };
 
     const ptyOptions: { cwd: string; shell?: string; args?: string[] } = {
@@ -239,35 +279,16 @@ export function TerminalTile({
           let cancelled = false;
           sessionCancelRef.current = () => { cancelled = true; };
 
-          (async () => {
-            const MAX_ATTEMPTS = 15;
-            const INTERVAL = 2000;
-
-            for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-              await new Promise((r) => setTimeout(r, INTERVAL));
-              if (cancelled) return;
-
-              let sid: string | null = null;
-              if (terminal.type === "codex") {
-                sid = await window.termcanvas.session.getCodexLatest();
-              } else if (terminal.type === "claude") {
-                const pid = await window.termcanvas.terminal.getPid(id);
-                if (pid) {
-                  sid = await window.termcanvas.session.getClaudeByPid(pid);
-                }
-              } else if (terminal.type === "kimi") {
-                sid = await window.termcanvas.session.getKimiLatest(worktreePath);
+          pollSessionId(
+            id, terminal.type, worktreePath,
+            (sid) => {
+              updateTerminalSessionId(projectId, worktreeId, terminal.id, sid);
+              if (terminal.type === "claude" || terminal.type === "codex") {
+                window.termcanvas.session.watch(terminal.type, sid, worktreePath);
               }
-
-              if (sid) {
-                updateTerminalSessionId(projectId, worktreeId, terminal.id, sid);
-                if (terminal.type === "claude" || terminal.type === "codex") {
-                  window.termcanvas.session.watch(terminal.type, sid, worktreePath);
-                }
-                return;
-              }
-            }
-          })();
+            },
+            () => cancelled,
+          );
         }
 
         xterm.onData((data) => {
@@ -294,6 +315,46 @@ export function TerminalTile({
     let waitingTimer: ReturnType<typeof setTimeout> | null = null;
     const WAITING_THRESHOLD = 15_000;
 
+    // CLI auto-detection for shell terminals
+    let lastDetectedType: string | null = terminal.type !== "shell" ? terminal.type : null;
+    let detectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const triggerDetection = () => {
+      if (terminal.type !== "shell" || ptyId === null) return;
+      if (detectTimer) clearTimeout(detectTimer);
+      detectTimer = setTimeout(async () => {
+        if (ptyId === null) return;
+        const result = await window.termcanvas.terminal.detectCli(ptyId);
+        const newType = (result?.cliType ?? null) as TerminalType | null;
+        if (!newType || newType === lastDetectedType) return;
+        lastDetectedType = newType;
+
+        // Upgrade terminal type in store (does NOT change title)
+        updateTerminalType(projectId, worktreeId, terminal.id, newType);
+
+        // tmux: session name IS the sessionId
+        if (newType === "tmux" && result!.sessionName) {
+          updateTerminalSessionId(projectId, worktreeId, terminal.id, result!.sessionName);
+          return;
+        }
+
+        // AI CLIs: start sessionId capture polling
+        sessionCancelRef.current?.();
+        let cancelled = false;
+        sessionCancelRef.current = () => { cancelled = true; };
+        pollSessionId(
+          ptyId, newType, worktreePath,
+          (sid) => {
+            updateTerminalSessionId(projectId, worktreeId, terminal.id, sid);
+            if (newType === "claude" || newType === "codex") {
+              window.termcanvas.session.watch(newType, sid, worktreePath);
+            }
+          },
+          () => cancelled,
+        );
+      }, 3000);
+    };
+
     // Throttled worktree activity event for DiffCard refresh
     let activityThrottled = false;
     let activityPending = false;
@@ -310,6 +371,7 @@ export function TerminalTile({
       (id: number, data: string) => {
         if (id === ptyId) {
           xterm.write(data);
+          triggerDetection();
 
           // Throttled activity notification (at most once per 3s)
           if (!activityThrottled) {
@@ -398,6 +460,7 @@ export function TerminalTile({
 
     cleanupRef.current = () => {
       if (waitingTimer) clearTimeout(waitingTimer);
+      if (detectTimer) clearTimeout(detectTimer);
       sessionCancelRef.current?.();
       removeTurnComplete();
       // Unwatch session watcher

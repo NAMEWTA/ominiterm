@@ -5,7 +5,8 @@ export type TerminalType =
   | "kimi"
   | "gemini"
   | "opencode"
-  | "lazygit";
+  | "lazygit"
+  | "tmux";
 
 export interface Position {
   x: number;
@@ -78,6 +79,7 @@ export interface TermCanvasAPI {
     resize: (ptyId: number, cols: number, rows: number) => void;
     onOutput: (callback: (ptyId: number, data: string) => void) => () => void;
     onExit: (callback: (ptyId: number, exitCode: number) => void) => () => void;
+    detectCli: (ptyId: number) => Promise<{ cliType: TerminalType; sessionName?: string } | null>;
   };
   session: {
     getCodexLatest: () => Promise<string | null>;

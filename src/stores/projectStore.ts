@@ -65,6 +65,12 @@ interface ProjectStore {
     terminalId: string,
     sessionId: string,
   ) => void;
+  updateTerminalType: (
+    projectId: string,
+    worktreeId: string,
+    terminalId: string,
+    type: TerminalType,
+  ) => void;
   updateTerminalSpan: (
     projectId: string,
     worktreeId: string,
@@ -100,6 +106,7 @@ const DEFAULT_SPAN: Record<TerminalType, { cols: number; rows: number }> = {
   gemini: { cols: 2, rows: 1 },
   opencode: { cols: 2, rows: 1 },
   lazygit: { cols: 2, rows: 1 },
+  tmux: { cols: 2, rows: 1 },
 };
 
 export function createTerminal(
@@ -462,6 +469,19 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         worktreeId,
         terminalId,
         (t) => ({ ...t, sessionId }),
+      ),
+    })),
+
+  updateTerminalType: (projectId, worktreeId, terminalId, type) =>
+    set((state) => ({
+      projects: resolveOverlaps(
+        mapTerminals(
+          state.projects,
+          projectId,
+          worktreeId,
+          terminalId,
+          (t) => ({ ...t, type, span: DEFAULT_SPAN[type] }),
+        ),
       ),
     })),
 

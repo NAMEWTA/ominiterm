@@ -11,6 +11,7 @@ import { GitFileWatcher } from "./git-watcher";
 import { SessionWatcher, type SessionType } from "./session-watcher";
 import { ApiServer } from "./api-server";
 import { sendToWindow } from "./window-events";
+import { detectCli } from "./process-detector";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -148,6 +149,12 @@ function setupIpc() {
 
   ipcMain.handle("terminal:get-pid", (_event, ptyId: number) => {
     return ptyManager.getPid(ptyId) ?? null;
+  });
+
+  ipcMain.handle("terminal:detect-cli", async (_event, ptyId: number) => {
+    const shellPid = ptyManager.getPid(ptyId);
+    if (!shellPid) return null;
+    return detectCli(shellPid);
   });
 
   // Session ID discovery for codex/claude

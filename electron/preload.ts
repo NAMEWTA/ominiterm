@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld("termcanvas", {
       ipcRenderer.on("terminal:exit", listener);
       return () => ipcRenderer.removeListener("terminal:exit", listener);
     },
+    detectCli: (ptyId: number) =>
+      ipcRenderer.invoke("terminal:detect-cli", ptyId),
   },
   session: {
     getCodexLatest: () =>
