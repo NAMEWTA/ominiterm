@@ -16,8 +16,13 @@ import { detectCli } from "./process-detector";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const isDev = !!process.env.VITE_DEV_SERVER_URL;
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
+  console.error(
+    "[TermCanvas] Another instance is already running. Quitting.\n" +
+    "  Kill the old process first: pkill -f Electron",
+  );
   app.quit();
 }
 
