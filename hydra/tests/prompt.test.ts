@@ -27,7 +27,7 @@ test("buildTaskFileContent handles null branch (existing worktree)", () => {
   assert.ok(result.includes("develop"));
 });
 
-test("buildTaskFileContent includes safety rules", () => {
+test("buildTaskFileContent includes safety rules and result file instruction", () => {
   const result = buildTaskFileContent({
     task: "Do something",
     worktreePath: "/tmp/wt",
@@ -36,6 +36,7 @@ test("buildTaskFileContent includes safety rules", () => {
   });
   assert.ok(result.includes("Do not push to remote"));
   assert.ok(result.includes("Commit your changes"));
+  assert.ok(result.includes(".hydra-result.md"));
 });
 
 test("buildSpawnInput is a single line", () => {

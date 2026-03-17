@@ -17,13 +17,17 @@ decomposable subtasks), investigate first, then use hydra to spawn sub-agents.
    Poll each agent every 30s: `termcanvas terminal status <terminalId>`
    Do NOT ask the user whether to poll. Do NOT stop working while agents run.
    Continue with other work or poll in a loop.
-4. Review results: `termcanvas diff <worktreePath> --summary`
-5. Adopt changes: `git merge <branch>`
-6. Clean up: `hydra cleanup <agentId>`
+4. Read each agent's result: `cat <worktreePath>/.hydra-result.md`
+   Do NOT read terminal output or try to parse TUI. The result file is the
+   only reliable communication channel from sub-agents.
+5. Review code changes: `termcanvas diff <worktreePath> --summary`
+6. Adopt changes: `git merge <branch>`
+7. Clean up ONLY after reading the result: `hydra cleanup <agentId>`
 
 ## Rules
 
 - After spawning, you are responsible for monitoring until completion.
 - Never assume an agent finished just because spawn returned successfully.
 - If an agent is stuck in "waiting" for >2 minutes, check its terminal output.
+- Always read `.hydra-result.md` before merging or cleaning up a worktree.
 - When NOT to use: simple fixes, high-certainty tasks, faster to do yourself.
