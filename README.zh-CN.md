@@ -83,7 +83,13 @@ termcanvas terminal status <id>      # 检查终端状态
 termcanvas diff ~/my-repo --summary  # 查看 worktree diff
 ```
 
+<div align="center">
+
+<img src="docs/hydra-icon.png" width="80" alt="Hydra icon" />
+
 ### hydra
+
+</div>
 
 Hydra 让你把大任务拆成小块，分派给不同的 AI agent——Claude、Codex、Kimi、Gemini 或 OpenCode。每个 agent 拥有独立的 git worktree 和画布上的独立终端，你可以同时观察它们并行工作，随时介入。
 

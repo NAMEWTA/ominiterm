@@ -83,7 +83,13 @@ termcanvas terminal status <id>      # check terminal status
 termcanvas diff ~/my-repo --summary  # view worktree diff
 ```
 
+<div align="center">
+
+<img src="docs/hydra-icon.png" width="80" alt="Hydra icon" />
+
 ### hydra
+
+</div>
 
 Hydra lets you break a big task into smaller pieces and hand each piece to an AI agent — Claude, Codex, Kimi, Gemini, or OpenCode. Every agent gets its own git worktree and its own terminal on the canvas, so you can watch them all work in parallel and step in whenever you need to.
 
