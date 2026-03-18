@@ -54,15 +54,26 @@ async function pollSessionId(
   const MAX_ATTEMPTS = 15;
   const INTERVAL = 2000;
 
+  // For claude: capture PID upfront so it survives process exit
+  let cachedPid: number | null = null;
+  if (cliType === "claude") {
+    cachedPid = (await window.termcanvas.terminal.getPid(ptyId)) ?? null;
+  }
+  console.log(`[SessionCapture] start ptyId=${ptyId} type=${cliType}${cachedPid != null ? ` pid=${cachedPid}` : ""}`);
+
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     await new Promise((r) => setTimeout(r, INTERVAL));
-    if (shouldCancel()) return;
+    if (shouldCancel()) {
+      console.log(`[SessionCapture] cancelled ptyId=${ptyId}`);
+      return;
+    }
 
     let sid: string | null = null;
     if (cliType === "codex") {
       sid = await window.termcanvas.session.getCodexLatest();
     } else if (cliType === "claude") {
-      const pid = await window.termcanvas.terminal.getPid(ptyId);
+      const pid = cachedPid ?? (await window.termcanvas.terminal.getPid(ptyId)) ?? null;
+      if (!cachedPid && pid) cachedPid = pid;
       if (pid) {
         sid = await window.termcanvas.session.getClaudeByPid(pid);
       }
@@ -70,11 +81,16 @@ async function pollSessionId(
       sid = await window.termcanvas.session.getKimiLatest(worktreePath);
     }
 
+    console.log(`[SessionCapture] poll ${attempt + 1}/${MAX_ATTEMPTS} ptyId=${ptyId} sid=${sid ?? "null"}`);
+
     if (sid) {
+      console.log(`[SessionCapture] found sid=${sid} for ptyId=${ptyId}`);
       onFound(sid);
       return;
     }
   }
+
+  console.warn(`[SessionCapture] timeout ptyId=${ptyId} type=${cliType} after ${MAX_ATTEMPTS} attempts`);
 }
 
 export function TerminalTile({
@@ -226,6 +242,7 @@ export function TerminalTile({
           terminal.sessionId &&
           (terminal.type === "claude" || terminal.type === "codex")
         ) {
+          console.log(`[SessionCapture] watch (resume) type=${terminal.type} sid=${terminal.sessionId} cwd=${worktreePath}`);
           window.termcanvas.session.watch(
             terminal.type,
             terminal.sessionId,
@@ -245,6 +262,7 @@ export function TerminalTile({
             (sid) => {
               updateTerminalSessionId(projectId, worktreeId, terminal.id, sid);
               if (terminal.type === "claude" || terminal.type === "codex") {
+                console.log(`[SessionCapture] watch (new) type=${terminal.type} sid=${sid} cwd=${worktreePath}`);
                 window.termcanvas.session.watch(terminal.type, sid, worktreePath);
               }
             },
@@ -308,6 +326,7 @@ export function TerminalTile({
           (sid) => {
             updateTerminalSessionId(projectId, worktreeId, terminal.id, sid);
             if (newType === "claude" || newType === "codex") {
+              console.log(`[SessionCapture] watch (detected) type=${newType} sid=${sid} cwd=${worktreePath}`);
               window.termcanvas.session.watch(newType, sid, worktreePath);
             }
           },
@@ -400,6 +419,7 @@ export function TerminalTile({
         const proj = state.projects.find((p) => p.id === projectId);
         const wt = proj?.worktrees.find((w) => w.id === worktreeId);
         const term = wt?.terminals.find((t) => t.id === terminal.id);
+        console.log(`[SessionCapture] onTurnComplete sid=${sessionId} termSid=${term?.sessionId ?? "null"} status=${currentStatus}`);
         if (term?.sessionId === sessionId) {
           if (currentStatus === "active" || currentStatus === "waiting") {
             currentStatus = "completed";
@@ -409,6 +429,7 @@ export function TerminalTile({
               terminal.id,
               "completed",
             );
+            console.log(`[SessionCapture] status -> completed for terminal=${terminal.id}`);
           }
         }
       },

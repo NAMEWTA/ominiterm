@@ -140,6 +140,7 @@ export class SessionWatcher {
     if (this.entries.has(sessionId)) return;
 
     const filePath = resolveSessionFile(sessionId, type, cwd);
+    console.log(`[SessionCapture] SessionWatcher.watch sid=${sessionId} type=${type} cwd=${cwd} file=${filePath ?? "null"}`);
     if (!filePath) return;
 
     const dir = path.dirname(filePath);
@@ -191,6 +192,7 @@ export class SessionWatcher {
         if (currentMtime === entry.lastNotifiedMtime) return;
 
         const result = checkTurnComplete(filePath, type);
+        console.log(`[SessionCapture] file change check sid=${sessionId} completed=${result.completed}`);
         if (result.completed) {
           entry.lastNotifiedMtime = currentMtime;
           callback();
@@ -204,6 +206,15 @@ export class SessionWatcher {
       lastNotifiedMtime,
       debounceTimer,
     });
+
+    // Initial check: the turn may have completed before the watcher was set up
+    if (lastNotifiedMtime > 0) {
+      const result = checkTurnComplete(filePath, type);
+      if (result.completed) {
+        console.log(`[SessionCapture] initial check: already completed sid=${sessionId}`);
+        callback();
+      }
+    }
   }
 
   unwatch(sessionId: string): void {
