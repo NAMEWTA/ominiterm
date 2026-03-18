@@ -82,6 +82,28 @@ function formatComposerWarning(
   return t.composer_submit_warning_with_context(targetTitle, stage, detail);
 }
 
+/**
+ * Map keyboard events to terminal escape sequences for keys that should be
+ * forwarded to the PTY rather than handled by the Composer textarea.
+ * Returns null if the key should stay in the textarea.
+ */
+function getPassthroughSequence(
+  event: React.KeyboardEvent<HTMLTextAreaElement>,
+): string | null {
+  // Shift+Tab → mode cycling (e.g. Claude Code permission modes)
+  if (event.key === "Tab" && event.shiftKey) return "\x1b[Z";
+  // Escape → cancel / go back
+  if (event.key === "Escape") return "\x1b";
+  // Ctrl+C → interrupt (only when no text is selected, so copy still works)
+  if (event.key === "c" && event.ctrlKey && !event.metaKey) {
+    const el = event.target as HTMLTextAreaElement;
+    if (el.selectionStart === el.selectionEnd) {
+      return "\x03";
+    }
+  }
+  return null;
+}
+
 export function ComposerBar() {
   const t = useT();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -343,6 +365,16 @@ export function ComposerBar() {
               if (shouldSubmitComposerFromKeyEvent(event)) {
                 event.preventDefault();
                 void handleSubmit();
+                return;
+              }
+              // Forward terminal control keys to the PTY so CLI shortcuts
+              // (e.g. Claude Code mode cycling) work from the Composer.
+              if (targetTerminal) {
+                const seq = getPassthroughSequence(event);
+                if (seq !== null) {
+                  event.preventDefault();
+                  window.termcanvas.terminal.input(targetTerminal.ptyId, seq);
+                }
               }
             }}
             rows={4}
