@@ -257,9 +257,19 @@ export function ComposerBar() {
       // The textarea was `disabled` during submission and lost DOM focus.
       // React may not have flushed the re-render (clearing `disabled`) yet,
       // so defer the focus to the next frame.
-      // Skip for "type"-mode terminals — they need xterm focused instead.
-      const submitAdapter = getComposerAdapter(targetTerminal.type);
-      if (submitAdapter?.inputMode !== "type") {
+      // Re-resolve the current target after the async submit to avoid a
+      // stale-closure race: the user may have switched terminals while the
+      // request was in flight.
+      const currentTarget = resolveComposerTarget(
+        getSupportedTerminals(
+          useProjectStore.getState().projects,
+          (tt) => getComposerAdapter(tt) !== null,
+        ),
+      );
+      const currentAdapter = currentTarget
+        ? getComposerAdapter(currentTarget.type)
+        : null;
+      if (currentAdapter?.inputMode !== "type") {
         requestAnimationFrame(() => textareaRef.current?.focus());
       }
     } catch (submitError) {
