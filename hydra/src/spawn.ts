@@ -17,6 +17,7 @@ export interface SpawnArgs {
   repo: string;
   worktree?: string;
   baseBranch?: string;
+  autoApprove?: boolean;
 }
 
 export function parseSpawnArgs(args: string[]): SpawnArgs {
@@ -34,6 +35,8 @@ export function parseSpawnArgs(args: string[]): SpawnArgs {
       result.worktree = args[++i];
     } else if (arg === "--base-branch" && i + 1 < args.length) {
       result.baseBranch = args[++i];
+    } else if (arg === "--auto-approve") {
+      result.autoApprove = true;
     }
   }
 
@@ -133,7 +136,7 @@ export function spawn(args: string[]): void {
 
   // Create terminal with initial prompt as CLI argument (no PTY injection needed)
   const prompt = buildSpawnInput(parsed.task, taskFile);
-  const terminal = terminalCreate(worktreePath, parsed.type, prompt);
+  const terminal = terminalCreate(worktreePath, parsed.type, prompt, parsed.autoApprove);
 
   // Save agent record
   saveAgent({

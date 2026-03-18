@@ -30,9 +30,10 @@ export function buildTermcanvasArgs(
   return [group, command, ...args, "--json"];
 }
 
-export function buildTerminalCreateArgs(worktreePath: string, type: string, prompt?: string): string[] {
+export function buildTerminalCreateArgs(worktreePath: string, type: string, prompt?: string, autoApprove?: boolean): string[] {
   const args = ["--worktree", worktreePath, "--type", type];
   if (prompt) args.push("--prompt", prompt);
+  if (autoApprove) args.push("--auto-approve");
   return buildTermcanvasArgs("terminal", "create", args);
 }
 
@@ -68,8 +69,8 @@ export function projectRescan(projectId: string): void {
   tc("project", "rescan", [projectId]);
 }
 
-export function terminalCreate(worktreePath: string, type: string, prompt?: string): { id: string; type: string; title: string } {
-  return runTermcanvasJson(buildTerminalCreateArgs(worktreePath, type, prompt), 10_000);
+export function terminalCreate(worktreePath: string, type: string, prompt?: string, autoApprove?: boolean): { id: string; type: string; title: string } {
+  return runTermcanvasJson(buildTerminalCreateArgs(worktreePath, type, prompt, autoApprove), 10_000);
 }
 
 export function terminalStatus(terminalId: string): { id: string; status: string; ptyId: number | null } {

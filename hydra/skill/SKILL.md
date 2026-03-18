@@ -19,6 +19,29 @@ decomposable subtasks), investigate first, then use hydra to spawn sub-agents.
   `hydra spawn --task "..." --type <agent-type> --repo .`
   Creates a new worktree and branch. Merge the branch when done.
 
+## Permission inheritance
+
+Sub-agents run as independent CLI processes. If they lack permissions, they
+will stall on approval prompts with no way for you to intervene.
+
+**Rule: if you are currently running in a permissionless / auto-approve mode,
+always pass `--auto-approve` so sub-agents inherit the same level of autonomy.**
+
+```
+hydra spawn --task "..." --type codex --repo . --auto-approve
+```
+
+How to tell if you are in auto-approve mode:
+- **Claude Code**: you were launched with `--dangerously-skip-permissions`,
+  or your permission mode is `bypassPermissions`.
+- **Codex**: your approval policy is `full-auto` / `full-access`,
+  or you were launched with `--full-auto`.
+- **When in doubt**: if tool calls (Bash, Write, Edit) execute without
+  asking the user for approval, you are in auto-approve mode.
+
+Do NOT pass `--auto-approve` if you are running in a restricted or
+interactive-approval mode — the sub-agent should respect the same constraints.
+
 ## Workflow
 
 1. Investigate the problem yourself first, form a clear task description
