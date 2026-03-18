@@ -114,7 +114,7 @@ export function parsePsOutput(psOutput: string, shellPids: number[]): DetectedCl
  */
 export async function detectCli(
   shellPid: number,
-): Promise<{ cliType: string; sessionName?: string } | null> {
+): Promise<{ cliType: string; pid?: number; sessionName?: string } | null> {
   const psOutput = await new Promise<string>((resolve, reject) => {
     execFile("ps", ["-eo", "pid,ppid,args"], (err, stdout) => {
       if (err) return reject(err);
@@ -136,11 +136,11 @@ export async function detectCli(
           resolve(stdout.trim());
         });
       });
-      return { cliType: "tmux", sessionName };
+      return { cliType: "tmux", pid: first.pid, sessionName };
     } catch {
-      return { cliType: "tmux" };
+      return { cliType: "tmux", pid: first.pid };
     }
   }
 
-  return { cliType: first.cliType };
+  return { cliType: first.cliType, pid: first.pid };
 }

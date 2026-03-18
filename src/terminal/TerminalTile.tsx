@@ -51,16 +51,29 @@ async function pollSessionId(
   worktreePath: string,
   onFound: (sid: string) => void,
   shouldCancel: () => boolean,
+  detectedCliPid?: number | null,
 ) {
   const MAX_ATTEMPTS = 15;
   const INTERVAL = 2000;
 
-  // For claude: capture PID upfront so it survives process exit
-  let cachedPid: number | null = null;
-  if (cliType === "claude") {
+  // For claude: capture PID upfront so it survives process exit.
+  // When launched from a shell terminal (auto-detected), the PTY PID is the
+  // shell, not the actual Claude process. `detectedCliPid` (from detectCli)
+  // provides the real Claude PID in that case.
+  let cachedPid: number | null = detectedCliPid ?? null;
+  if (!cachedPid && cliType === "claude") {
     cachedPid = (await window.termcanvas.terminal.getPid(ptyId)) ?? null;
   }
-  console.log(`[SessionCapture] start ptyId=${ptyId} type=${cliType}${cachedPid != null ? ` pid=${cachedPid}` : ""}`);
+
+  // For codex: capture baseline session ID before polling starts.
+  // getCodexLatest() is a global lookup (returns the latest from session_index.jsonl),
+  // so without a baseline we'd capture a stale session from a previous Codex run.
+  let codexBaseline: string | null = null;
+  if (cliType === "codex") {
+    codexBaseline = await window.termcanvas.session.getCodexLatest();
+  }
+
+  console.log(`[SessionCapture] start ptyId=${ptyId} type=${cliType}${cachedPid != null ? ` pid=${cachedPid}` : ""}${codexBaseline != null ? ` codexBaseline=${codexBaseline}` : ""}`);
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     await new Promise((r) => setTimeout(r, INTERVAL));
@@ -72,6 +85,8 @@ async function pollSessionId(
     let sid: string | null = null;
     if (cliType === "codex") {
       sid = await window.termcanvas.session.getCodexLatest();
+      // Reject stale session from before this terminal was created
+      if (sid && sid === codexBaseline) sid = null;
     } else if (cliType === "claude") {
       const pid = cachedPid ?? (await window.termcanvas.terminal.getPid(ptyId)) ?? null;
       if (!cachedPid && pid) cachedPid = pid;
@@ -170,6 +185,33 @@ export function TerminalTile({
     xterm.loadAddon(serializeAddon);
     xterm.open(containerRef.current);
 
+    // Scroll-pinning: xterm.js can lose its auto-follow-bottom behavior
+    // during rapid output (AI CLI streaming).
+    // We use wheel events to DISABLE follow (only user intent can do this)
+    // and onScroll to RE-ENABLE follow (when viewport reaches bottom by any
+    // means — wheel, keyboard, scrollbar drag). This avoids the pitfall of
+    // using onScroll for both: xterm's own auto-scroll drift (the very bug
+    // we're fixing) would set viewportY < baseY and falsely disable follow.
+    let followBottom = true;
+    xterm.element?.addEventListener("wheel", (e: WheelEvent) => {
+      if (e.deltaY < 0) {
+        // User scrolled up — verify viewport actually left the bottom
+        // (guards against no-scrollback or touchpad noise where deltaY < 0
+        // but the viewport didn't move)
+        requestAnimationFrame(() => {
+          const buf = xterm.buffer.active;
+          if (buf.viewportY < buf.baseY) followBottom = false;
+        });
+      }
+    }, { passive: true });
+    // Re-enable: covers keyboard PageDown, scrollbar drag, etc.
+    const scrollDisposable = xterm.onScroll(() => {
+      if (!followBottom) {
+        const buf = xterm.buffer.active;
+        if (buf.viewportY >= buf.baseY) followBottom = true;
+      }
+    });
+
     // GPU-accelerated rendering; fall back to Canvas2D when context limit is hit
     try {
       const webglAddon = new WebglAddon();
@@ -199,7 +241,7 @@ export function TerminalTile({
 
     // Restore scrollback from previous session
     if (terminal.scrollback) {
-      xterm.write(terminal.scrollback);
+      xterm.write(terminal.scrollback, () => xterm.scrollToBottom());
     }
 
     requestAnimationFrame(() => {
@@ -332,6 +374,7 @@ export function TerminalTile({
             }
           },
           () => cancelled,
+          result?.pid,
         );
       }, 3000);
     };
@@ -351,7 +394,12 @@ export function TerminalTile({
     const removeOutput = window.termcanvas.terminal.onOutput(
       (id: number, data: string) => {
         if (id === ptyId) {
-          xterm.write(data);
+          xterm.write(data, () => {
+            if (followBottom) {
+              const buf = xterm.buffer.active;
+              if (buf.viewportY < buf.baseY) xterm.scrollToBottom();
+            }
+          });
           triggerDetection();
 
           // Throttled activity notification (at most once per 3s)
@@ -441,6 +489,7 @@ export function TerminalTile({
       if (detectTimer) clearTimeout(detectTimer);
       sessionCancelRef.current?.();
       removeTurnComplete();
+      scrollDisposable.dispose();
       // Unwatch session watcher
       const state = useProjectStore.getState();
       const proj = state.projects.find((p) => p.id === projectId);
