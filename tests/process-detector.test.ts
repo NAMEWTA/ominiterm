@@ -65,7 +65,7 @@ test("non-CLI child (vim) returns empty result", () => {
   assert.equal(results.length, 0);
 });
 
-test("non-direct child is ignored", () => {
+test("detects grandchild CLI through intermediate process", () => {
   const ps = HEADER +
     "  100     1 /bin/zsh\n" +
     "  200   100 bash\n" +
@@ -73,7 +73,51 @@ test("non-direct child is ignored", () => {
 
   // Shell PID is 100 — claude (PID 300) is a grandchild via bash (PID 200)
   const results = parsePsOutput(ps, [100]);
-  assert.equal(results.length, 0);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].cliType, "claude");
+  assert.equal(results[0].pid, 300);
+});
+
+test("detects CLI through volta/mise shim (deep nesting)", () => {
+  const ps = HEADER +
+    "  100     1 /bin/zsh\n" +
+    "  200   100 /Users/x/.volta/bin/claude\n" +
+    "  300   200 node /Users/x/.volta/tools/image/packages/claude/cli.mjs\n";
+
+  const results = parsePsOutput(ps, [100]);
+  assert.equal(results.length, 2);
+  assert.equal(results[0].cliType, "claude");
+  assert.equal(results[0].pid, 200);
+});
+
+test("shallowest match comes first in results", () => {
+  const ps = HEADER +
+    "  100     1 /bin/zsh\n" +
+    "  200   100 bash -c codex\n" +
+    "  300   200 node /path/to/codex\n" +
+    "  400   300 codex\n";
+
+  const results = parsePsOutput(ps, [100]);
+  assert.ok(results.length >= 1);
+  assert.equal(results[0].cliType, "codex");
+});
+
+test("shallow direct child wins over deeper descendant regardless of PID order", () => {
+  // PID 500 (claude, direct child) was started AFTER PID 300 (codex, grandchild)
+  // so PID 500 > PID 300 in ps output, but claude is shallower and should win.
+  const ps = HEADER +
+    "  100     1 /bin/zsh\n" +
+    "  200   100 bash\n" +
+    "  300   200 codex\n" +
+    "  500   100 claude\n";
+
+  const results = parsePsOutput(ps, [100]);
+  assert.ok(results.length >= 2);
+  // claude (depth 1) should come before codex (depth 2)
+  assert.equal(results[0].cliType, "claude");
+  assert.equal(results[0].pid, 500);
+  assert.equal(results[1].cliType, "codex");
+  assert.equal(results[1].pid, 300);
 });
 
 test("multiple shell PIDs with different children", () => {

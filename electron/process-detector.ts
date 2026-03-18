@@ -45,12 +45,11 @@ function matchCli(args: string): string | null {
 
 /**
  * Parse `ps -eo pid,ppid,args` output and find CLI processes
- * that are direct children of the given shell PIDs.
+ * among all descendants (not just direct children) of the given shell PIDs.
+ * Uses BFS so shallower matches appear first in results.
  */
 export function parsePsOutput(psOutput: string, shellPids: number[]): DetectedCli[] {
-  const parentSet = new Set(shellPids);
-  const results: DetectedCli[] = [];
-
+  const processes: { pid: number; ppid: number; args: string }[] = [];
   const lines = psOutput.split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
@@ -60,15 +59,49 @@ export function parsePsOutput(psOutput: string, shellPids: number[]): DetectedCl
     const match = trimmed.match(/^(\d+)\s+(\d+)\s+(.+)$/);
     if (!match) continue;
 
-    const pid = parseInt(match[1], 10);
-    const ppid = parseInt(match[2], 10);
-    const args = match[3];
+    processes.push({
+      pid: parseInt(match[1], 10),
+      ppid: parseInt(match[2], 10),
+      args: match[3],
+    });
+  }
 
-    if (!parentSet.has(ppid)) continue;
+  // Build parent → children map
+  const childrenOf = new Map<number, number[]>();
+  for (const p of processes) {
+    let siblings = childrenOf.get(p.ppid);
+    if (!siblings) {
+      siblings = [];
+      childrenOf.set(p.ppid, siblings);
+    }
+    siblings.push(p.pid);
+  }
 
-    const cliType = matchCli(args);
+  // BFS: collect all descendant PIDs
+  const descendants = new Set<number>();
+  const queue = [...shellPids];
+  let qi = 0;
+  while (qi < queue.length) {
+    const children = childrenOf.get(queue[qi++]);
+    if (!children) continue;
+    for (const child of children) {
+      if (!descendants.has(child)) {
+        descendants.add(child);
+        queue.push(child);
+      }
+    }
+  }
+
+  // Match CLIs among descendants in BFS order (shallowest first).
+  // `queue` was populated by BFS so its order reflects tree depth.
+  const processMap = new Map(processes.map((p) => [p.pid, p]));
+  const results: DetectedCli[] = [];
+  for (const pid of queue.slice(shellPids.length)) {
+    const proc = processMap.get(pid);
+    if (!proc) continue;
+    const cliType = matchCli(proc.args);
     if (cliType) {
-      results.push({ pid, cliType, args });
+      results.push({ pid: proc.pid, cliType, args: proc.args });
     }
   }
 
@@ -76,7 +109,7 @@ export function parsePsOutput(psOutput: string, shellPids: number[]): DetectedCl
 }
 
 /**
- * Detect a CLI tool running as a direct child of the given shell PID.
+ * Detect a CLI tool running as a descendant of the given shell PID.
  * Returns the CLI type and optional session name (for tmux).
  */
 export async function detectCli(
