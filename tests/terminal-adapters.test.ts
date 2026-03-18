@@ -7,23 +7,23 @@ import {
   isComposerSupportedTerminal,
 } from "../src/terminal/cliConfig.ts";
 
-test("claude adapter exposes composer support and mac paste binding", () => {
+test("claude adapter uses bracketed paste with image-path fallback", () => {
   const adapter = getComposerAdapter("claude");
   assert.ok(adapter);
-  assert.equal(adapter.inputMode, "paste");
+  assert.equal(adapter.inputMode, "bracketed-paste");
   assert.equal(adapter.supportsImages, true);
-  assert.equal(adapter.pasteKeySequence("darwin"), "\u001bv");
+  assert.equal(adapter.pasteKeySequence("darwin"), "");
   assert.equal(adapter.imageFallback, "image-path");
   assert.ok(adapter.allowedStatuses.includes("waiting"));
 });
 
-test("codex adapter uses ctrl-v paste on every platform", () => {
+test("codex adapter uses bracketed paste with error fallback", () => {
   const adapter = getComposerAdapter("codex");
   assert.ok(adapter);
-  assert.equal(adapter.inputMode, "paste");
+  assert.equal(adapter.inputMode, "bracketed-paste");
   assert.equal(adapter.supportsImages, true);
-  assert.equal(adapter.pasteKeySequence("darwin"), "\u0016");
-  assert.equal(adapter.pasteKeySequence("win32"), "\u0016");
+  assert.equal(adapter.pasteKeySequence("darwin"), "");
+  assert.equal(adapter.pasteKeySequence("win32"), "");
   assert.equal(adapter.imageFallback, "error");
 });
 
