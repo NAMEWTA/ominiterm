@@ -120,24 +120,30 @@ function utcToLocalHour(tsClean: string, tzOffsetHours: number): number {
 
 // ── JSONL file discovery ───────────────────────────────────────────────
 
+function collectJsonlRecursive(dir: string, files: string[], depth = 0): void {
+  if (depth > 4) return; // guard against deep nesting
+  try {
+    for (const entry of fs.readdirSync(dir)) {
+      const full = path.join(dir, entry);
+      try {
+        const stat = fs.statSync(full);
+        if (stat.isFile() && entry.endsWith(".jsonl")) {
+          files.push(full);
+        } else if (stat.isDirectory()) {
+          collectJsonlRecursive(full, files, depth + 1);
+        }
+      } catch { /* skip inaccessible */ }
+    }
+  } catch { /* skip */ }
+}
+
 function findClaudeJsonlFiles(): string[] {
   const claudeDir = path.join(os.homedir(), ".claude");
   const projectsDir = path.join(claudeDir, "projects");
   const files: string[] = [];
 
   if (fs.existsSync(projectsDir)) {
-    try {
-      const dirs = fs.readdirSync(projectsDir);
-      for (const d of dirs) {
-        const p = path.join(projectsDir, d);
-        try {
-          if (fs.statSync(p).isDirectory()) {
-            const jsonls = fs.readdirSync(p).filter((f) => f.endsWith(".jsonl"));
-            for (const f of jsonls) files.push(path.join(p, f));
-          }
-        } catch { /* skip inaccessible */ }
-      }
-    } catch { /* skip */ }
+    collectJsonlRecursive(projectsDir, files);
   }
 
   // Also check ~/.claude root
@@ -208,11 +214,16 @@ function parseClaudeSession(
     return { records: [], projectPath };
   }
 
-  // Try to extract project path from the directory name
-  // e.g. ~/.claude/projects/-Users-zzzz-termcanvas/xxx.jsonl
-  const dirName = path.basename(path.dirname(filePath));
-  if (dirName.startsWith("-")) {
-    projectPath = dirName.replace(/-/g, "/");
+  // Extract project path by finding the "-" prefixed directory under projects/
+  // e.g. ~/.claude/projects/-Users-zzzz-termcanvas/session/subagents/xxx.jsonl
+  //       → projectPath = "/Users/zzzz/termcanvas"
+  const projectsDir = path.join(os.homedir(), ".claude", "projects");
+  const rel = path.relative(projectsDir, filePath);
+  const topDir = rel.split(path.sep)[0];
+  if (topDir && topDir.startsWith("-")) {
+    // Strip worktree suffix: -Users-zzzz-foo--worktrees-hydra-abc → -Users-zzzz-foo
+    const cleaned = topDir.replace(/--worktrees-.*$/, "");
+    projectPath = cleaned.replace(/-/g, "/");
   }
 
   // Deduplicate by message ID — keep only the last entry per message
