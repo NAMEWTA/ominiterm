@@ -397,7 +397,7 @@ export function ComposerBar() {
               className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-3 pr-14 py-2 text-[13px] text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
             />
             <button
-              className="absolute right-2 bottom-2 rounded-md bg-[var(--accent)] px-2.5 py-1 text-[11px] font-medium text-white transition-colors duration-150 hover:bg-[#005cc5] disabled:cursor-not-allowed disabled:opacity-40"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-[var(--accent)] px-2.5 py-1 text-[11px] font-medium text-white transition-colors duration-150 hover:bg-[#005cc5] disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => void handleSubmit()}
               disabled={!isTargetReady || isSubmitting}
             >
