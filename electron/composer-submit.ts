@@ -181,6 +181,7 @@ async function submitBracketedPaste(
 
     if (request.text.trim().length > 0) {
       writeBracketedPaste(request.ptyId, request.text, deps, "paste-text");
+      await deps.delayMs(adapter.pasteDelayMs);
     }
 
     writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
