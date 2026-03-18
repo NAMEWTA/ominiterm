@@ -2,6 +2,18 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.7.23] - 2026-03-19
+
+### Fixed
+- Session watcher: return success/failure from watch() instead of void
+- Session: surface watch failures and poll timeouts to the user
+- Persistence: log errors in state load/restore instead of silently swallowing
+- Session watcher: match Claude CLI projectKey algorithm for paths containing dots
+- Terminal: use onScroll as single source of truth for follow-bottom
+
+### Changed
+- Demo: rewrite ASCII logo to canvas text rendering for 120fps with true-color gradients
+
 ## [0.7.22] - 2026-03-18
 
 ### Fixed
