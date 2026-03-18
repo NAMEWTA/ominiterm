@@ -152,6 +152,13 @@ export function ComposerBar() {
     }
   }, [targetTerminalId, isTargetReady, targetAdapter]);
 
+  // Focus composer when an explicit focus shortcut is used (Cmd+[/], Cmd+E, etc.)
+  useEffect(() => {
+    const handleFocusComposer = () => requestAnimationFrame(() => textareaRef.current?.focus());
+    window.addEventListener("termcanvas:focus-composer", handleFocusComposer);
+    return () => window.removeEventListener("termcanvas:focus-composer", handleFocusComposer);
+  }, []);
+
   const handleImagePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
       if (!targetTerminal || !targetAdapter) {
