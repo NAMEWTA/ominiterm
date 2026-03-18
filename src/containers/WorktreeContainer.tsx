@@ -144,12 +144,14 @@ export function WorktreeContainer({
         WT_PAD +
         item.y;
 
+      const { rightPanelCollapsed, rightPanelWidth } = useCanvasStore.getState();
+      const rightOffset = rightPanelCollapsed ? 0 : rightPanelWidth;
       const padding = 60;
-      const viewW = window.innerWidth - padding * 2;
+      const viewW = window.innerWidth - rightOffset - padding * 2;
       const viewH = window.innerHeight - padding * 2;
       const scale = Math.min(viewW / item.w, viewH / item.h) * 0.85;
 
-      const centerX = -(absX + item.w / 2) * scale + window.innerWidth / 2;
+      const centerX = -(absX + item.w / 2) * scale + (window.innerWidth - rightOffset) / 2;
       const centerY = -(absY + item.h / 2) * scale + window.innerHeight / 2;
 
       useCanvasStore.getState().animateTo(centerX, centerY, scale);

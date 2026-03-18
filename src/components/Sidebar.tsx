@@ -181,14 +181,16 @@ export function Sidebar() {
         PROJ_TITLE_H + PROJ_PAD + totalH + PROJ_PAD,
       );
 
+      const { rightPanelCollapsed, rightPanelWidth } = useCanvasStore.getState();
+      const rightOffset = rightPanelCollapsed ? 0 : rightPanelWidth;
       const padding = 80;
       const toolbarH = 44;
-      const viewW = window.innerWidth - padding * 2;
+      const viewW = window.innerWidth - rightOffset - padding * 2;
       const viewH = window.innerHeight - toolbarH - padding * 2;
       const scale = Math.min(1, viewW / projW, viewH / projH);
 
       const centerX =
-        -(project.position.x + projW / 2) * scale + window.innerWidth / 2;
+        -(project.position.x + projW / 2) * scale + (window.innerWidth - rightOffset) / 2;
       const centerY =
         -(project.position.y + projH / 2) * scale +
         (window.innerHeight + toolbarH) / 2;
