@@ -401,8 +401,28 @@ export const useProjectStore = create<ProjectStore>((set) => ({
     })),
 
   removeTerminal: (projectId, worktreeId, terminalId) =>
-    set((state) => ({
-      projects: resolveOverlaps(
+    set((state) => {
+      // Check if the terminal being removed is focused
+      let wasFocused = false;
+      let adjacentTerminalId: string | null = null;
+      for (const p of state.projects) {
+        if (p.id !== projectId) continue;
+        for (const w of p.worktrees) {
+          if (w.id !== worktreeId) continue;
+          const idx = w.terminals.findIndex((t) => t.id === terminalId);
+          if (idx !== -1 && w.terminals[idx].focused) {
+            wasFocused = true;
+            // Prefer the terminal after, then before
+            if (idx + 1 < w.terminals.length) {
+              adjacentTerminalId = w.terminals[idx + 1].id;
+            } else if (idx - 1 >= 0) {
+              adjacentTerminalId = w.terminals[idx - 1].id;
+            }
+          }
+        }
+      }
+
+      const updatedProjects = resolveOverlaps(
         state.projects.map((p) =>
           p.id !== projectId
             ? p
@@ -420,8 +440,35 @@ export const useProjectStore = create<ProjectStore>((set) => ({
                 ),
               },
         ),
-      ),
-    })),
+      );
+
+      if (!wasFocused) {
+        return { projects: updatedProjects };
+      }
+
+      // Transfer focus to adjacent terminal in the same worktree
+      if (adjacentTerminalId) {
+        return {
+          projects: updatedProjects.map((p) => ({
+            ...p,
+            worktrees: p.worktrees.map((w) => ({
+              ...w,
+              terminals: w.terminals.map((t) => ({
+                ...t,
+                focused: t.id === adjacentTerminalId,
+              })),
+            })),
+          })),
+        };
+      }
+
+      // No adjacent terminal — clear focus
+      return {
+        focusedProjectId: null,
+        focusedWorktreeId: null,
+        projects: updatedProjects,
+      };
+    }),
 
   updateTerminalPtyId: (projectId, worktreeId, terminalId, ptyId) =>
     set((state) => ({
