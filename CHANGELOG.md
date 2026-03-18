@@ -2,6 +2,13 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.7.22] - 2026-03-18
+
+### Fixed
+- Session capture: use actual CLI process PID for auto-detected terminals, fixing completion glow never appearing
+- Session watcher: support detecting multiple turn completions per session
+- Session watcher: increase JSONL tail read size from 4KB to 128KB for longer sessions
+
 ## [0.7.21] - 2026-03-18
 
 ### Changed
