@@ -156,12 +156,14 @@ export function ComposerBar() {
 
   // Auto-focus Composer when target terminal changes so the user can
   // start typing immediately without an extra click.
+  // Skip for "type"-mode terminals (shell, lazygit, tmux) — those need
+  // xterm to hold DOM focus for real-time keystroke interaction.
   const targetTerminalId = targetTerminal?.terminalId ?? null;
   useEffect(() => {
-    if (targetTerminalId && isTargetReady) {
+    if (targetTerminalId && isTargetReady && targetAdapter?.inputMode !== "type") {
       textareaRef.current?.focus();
     }
-  }, [targetTerminalId, isTargetReady]);
+  }, [targetTerminalId, isTargetReady, targetAdapter]);
 
   const handleImagePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -276,7 +278,11 @@ export function ComposerBar() {
       // The textarea was `disabled` during submission and lost DOM focus.
       // React may not have flushed the re-render (clearing `disabled`) yet,
       // so defer the focus to the next frame.
-      requestAnimationFrame(() => textareaRef.current?.focus());
+      // Skip for "type"-mode terminals — they need xterm focused instead.
+      const submitAdapter = getComposerAdapter(targetTerminal.type);
+      if (submitAdapter?.inputMode !== "type") {
+        requestAnimationFrame(() => textareaRef.current?.focus());
+      }
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : String(submitError);
