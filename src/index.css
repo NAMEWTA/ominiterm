@@ -106,10 +106,6 @@ body {
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.terminal-tile:hover {
-  border-color: var(--border-hover);
-}
-
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 5px;

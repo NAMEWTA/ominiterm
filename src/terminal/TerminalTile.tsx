@@ -573,11 +573,7 @@ export function TerminalTile({
   return (
     <div
       ref={tileRef}
-      className={`absolute terminal-tile rounded-md bg-[var(--bg)] overflow-hidden flex flex-col ${
-        terminal.origin !== "agent"
-          ? "border-[1.5px] border-amber-500/40"
-          : "border border-[var(--border)]"
-      }`}
+      className="absolute terminal-tile rounded-md bg-[var(--bg)] overflow-hidden flex flex-col border border-[var(--border)] hover:border-[var(--border-hover)]"
 
       style={{
         left: gridX + (isDragging ? dragOffsetX : 0),
@@ -613,6 +609,9 @@ export function TerminalTile({
           setContextMenu({ x: e.clientX, y: e.clientY });
         }}
       >
+        {terminal.origin !== "agent" && (
+          <div className="w-[3px] h-3 rounded-full bg-amber-500/60 shrink-0" />
+        )}
         <span
           className="text-[11px] font-medium"
           style={{ color: config.color, fontFamily: '"Geist Mono", monospace' }}
