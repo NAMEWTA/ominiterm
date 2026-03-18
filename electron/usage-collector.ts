@@ -72,8 +72,17 @@ export interface UsageSummary {
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
+function matchPricing(model: string) {
+  if (PRICING[model]) return PRICING[model];
+  // Match versioned model IDs like "claude-opus-4-6-20251001" → "claude-opus-4-6"
+  for (const key of Object.keys(PRICING)) {
+    if (key !== "default" && model.startsWith(key)) return PRICING[key];
+  }
+  return PRICING.default;
+}
+
 function computeCost(model: string, input: number, output: number, cacheRead: number, cacheCreate: number): number {
-  const p = PRICING[model] ?? PRICING.default;
+  const p = matchPricing(model);
   return (input / 1e6) * p.input
        + (output / 1e6) * p.output
        + (cacheRead / 1e6) * p.cache_read
@@ -86,10 +95,11 @@ function getLocalTzOffsetHours(): number {
   return -(new Date().getTimezoneOffset() / 60);
 }
 
-/** Convert a target date (YYYY-MM-DD, local) to UTC start/end strings for filtering. */
-function dateToUtcRange(dateStr: string, tzOffsetHours: number): { utcStart: string; utcEnd: string } {
-  const d = new Date(`${dateStr}T00:00:00`);
-  const startMs = d.getTime() - tzOffsetHours * 3600_000;
+/** Convert a target date (YYYY-MM-DD, local) to UTC start/end strings for filtering.
+ *  new Date("YYYY-MM-DDT00:00:00") already parses as local midnight,
+ *  so getTime() returns the correct UTC epoch — no manual tz adjustment needed. */
+function dateToUtcRange(dateStr: string): { utcStart: string; utcEnd: string } {
+  const startMs = new Date(`${dateStr}T00:00:00`).getTime();
   const endMs = startMs + 86400_000;
   const fmt = (ms: number) => new Date(ms).toISOString().replace("Z", "").split(".")[0];
   return { utcStart: fmt(startMs), utcEnd: fmt(endMs) };
@@ -319,7 +329,7 @@ export async function collectUsage(
   intervalHours = 2,
 ): Promise<UsageSummary> {
   const tzOffsetHours = getLocalTzOffsetHours();
-  const { utcStart, utcEnd } = dateToUtcRange(dateStr, tzOffsetHours);
+  const { utcStart, utcEnd } = dateToUtcRange(dateStr);
 
   // Run file I/O in a microtask to avoid blocking the main thread too long
   const result = await new Promise<UsageSummary>((resolve) => {

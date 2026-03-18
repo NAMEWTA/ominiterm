@@ -22,6 +22,9 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
   date: todayStr(),
 
   fetch: async (dateStr?: string) => {
+    // Guard against overlapping requests
+    if (get().loading) return;
+
     const target = dateStr ?? get().date;
     set({ loading: true, date: target });
 
@@ -35,6 +38,8 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
       // Only update if the date hasn't changed during the async call
       if (get().date === target) {
         set({ summary, loading: false });
+      } else {
+        set({ loading: false });
       }
     } catch {
       set({ loading: false });
