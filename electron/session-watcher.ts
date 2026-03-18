@@ -15,7 +15,7 @@ interface CompletionSignal {
 export function checkTurnComplete(
   filePath: string,
   type: SessionType,
-  tailBytes = 4096,
+  tailBytes = 131072,
 ): CompletionSignal {
   let content: string;
   try {
