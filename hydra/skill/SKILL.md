@@ -24,8 +24,12 @@ decomposable subtasks), investigate first, then use hydra to spawn sub-agents.
 Sub-agents run as independent CLI processes. If they lack permissions, they
 will stall on approval prompts with no way for you to intervene.
 
-**Rule: if you are currently running in a permissionless / auto-approve mode,
-always pass `--auto-approve` so sub-agents inherit the same level of autonomy.**
+**Rule: if you are currently running in a permissionless / auto-approve mode
+and spawning a Claude Code or Codex sub-agent, always pass `--auto-approve`
+so sub-agents inherit the same level of autonomy.**
+
+`--auto-approve` is currently supported for `--type claude` and `--type codex`
+only. For other agent types it is silently ignored.
 
 ```
 hydra spawn --task "..." --type codex --repo . --auto-approve
