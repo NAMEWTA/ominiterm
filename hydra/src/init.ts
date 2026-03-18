@@ -15,10 +15,14 @@ Workflow:
 2. Pick the right mode:
    - Read-only: \`hydra spawn --task "<specific task>" --type <agent-type> --repo . --worktree .\`
    - Code changes: \`hydra spawn --task "<specific task>" --type <agent-type> --repo .\`
-3. Poll progress: \`termcanvas terminal status <terminalId>\`
-4. Read the result file returned by spawn: \`cat <resultFile>\`
-5. For code-change tasks: \`termcanvas diff <worktreePath> --summary\` then \`git merge <branch>\`
-6. Clean up: \`hydra cleanup <agentId>\`
+3. If you are in a permissionless / auto-approve mode (e.g. Claude Code with
+   \`--dangerously-skip-permissions\`, Codex with \`--full-auto\`) and spawning
+   a Claude or Codex sub-agent, add \`--auto-approve\` so the sub-agent inherits
+   the same autonomy level. Without this, sub-agents may stall on approval prompts.
+4. Poll progress: \`termcanvas terminal status <terminalId>\`
+5. Read the result file returned by spawn: \`cat <resultFile>\`
+6. For code-change tasks: \`termcanvas diff <worktreePath> --summary\` then \`git merge <branch>\`
+7. Clean up: \`hydra cleanup <agentId>\`
 
 When NOT to use: simple fixes, high-certainty tasks, faster to do yourself.
 `;
