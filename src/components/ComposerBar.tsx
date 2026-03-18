@@ -212,6 +212,8 @@ export function ComposerBar() {
   );
 
   const handleSubmit = useCallback(async () => {
+    if (isSubmitting) return;
+
     if (!targetTerminal) {
       setError(t.composer_missing_target);
       notify("warn", t.composer_missing_target);
@@ -289,6 +291,7 @@ export function ComposerBar() {
     clear,
     draft,
     images,
+    isSubmitting,
     notify,
     setError,
     setSubmitting,
