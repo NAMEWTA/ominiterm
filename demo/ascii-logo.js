@@ -246,8 +246,8 @@ function setupMouseTracking(eye, preElement) {
     eye.targetPupilX = Math.max(-1, Math.min(1, dx / maxDist * 2));
     eye.targetPupilY = Math.max(-1, Math.min(1, dy / maxDist * 2));
 
-    // Wake up if idle
-    if (eye.state === "idle") {
+    // Wake up if idle or sleeping
+    if (eye.state === "idle" || eye.state === "sleeping") {
       eye.state = "awakening";
     }
 
