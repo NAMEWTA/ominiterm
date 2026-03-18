@@ -132,3 +132,165 @@ function drawCursorOrEye(ctx, w, h, eye) {
     ctx.fill();
   }
 }
+
+class AnimationLoop {
+  #raf = null;
+  #callback;
+
+  constructor(callback) {
+    this.#callback = callback;
+  }
+
+  start() {
+    if (this.#raf != null) return;
+    const loop = (time) => {
+      this.#callback(time);
+      this.#raf = requestAnimationFrame(loop);
+    };
+    this.#raf = requestAnimationFrame(loop);
+  }
+
+  stop() {
+    if (this.#raf != null) {
+      cancelAnimationFrame(this.#raf);
+      this.#raf = null;
+    }
+  }
+}
+
+/**
+ * State machine for eye animation.
+ * States: idle → awakening → tracking → sleeping → idle
+ */
+function createEyeState() {
+  return {
+    state: "idle",          // "idle" | "awakening" | "tracking" | "sleeping"
+    openAmount: 0,          // 0 = cursor, 1 = fully open eye
+    pupilX: 0,              // [-1, 1] horizontal pupil offset
+    pupilY: 0,              // [-1, 1] vertical pupil offset
+    blinkVisible: true,     // cursor blink toggle
+    blinkTimer: 0,          // ms since last blink toggle
+    idleTimer: 0,           // ms since last mouse move (for sleep trigger)
+    targetPupilX: 0,        // target pupil position (from mouse)
+    targetPupilY: 0,
+    lastTime: 0,
+  };
+}
+
+const BLINK_INTERVAL = 530;    // ms between cursor blink toggles
+const AWAKEN_DURATION = 500;   // ms for cursor → eye transition
+const SLEEP_DURATION = 500;    // ms for eye → cursor transition
+const SLEEP_AFTER = 3000;      // ms of no mouse movement before sleeping
+const PUPIL_LERP = 0.08;       // smoothing factor for pupil follow
+
+function updateEyeState(eye, time) {
+  const dt = eye.lastTime === 0 ? 16 : time - eye.lastTime;
+  eye.lastTime = time;
+
+  switch (eye.state) {
+    case "idle":
+      eye.blinkTimer += dt;
+      if (eye.blinkTimer >= BLINK_INTERVAL) {
+        eye.blinkVisible = !eye.blinkVisible;
+        eye.blinkTimer = 0;
+      }
+      eye.openAmount = 0;
+      break;
+
+    case "awakening":
+      eye.openAmount = Math.min(1, eye.openAmount + dt / AWAKEN_DURATION);
+      eye.blinkVisible = true;
+      // Lerp pupil toward target during awakening
+      eye.pupilX += (eye.targetPupilX - eye.pupilX) * PUPIL_LERP;
+      eye.pupilY += (eye.targetPupilY - eye.pupilY) * PUPIL_LERP;
+      if (eye.openAmount >= 1) {
+        eye.state = "tracking";
+        eye.idleTimer = 0;
+      }
+      break;
+
+    case "tracking":
+      eye.openAmount = 1;
+      eye.pupilX += (eye.targetPupilX - eye.pupilX) * PUPIL_LERP;
+      eye.pupilY += (eye.targetPupilY - eye.pupilY) * PUPIL_LERP;
+      eye.idleTimer += dt;
+      if (eye.idleTimer >= SLEEP_AFTER) {
+        eye.state = "sleeping";
+      }
+      break;
+
+    case "sleeping":
+      eye.openAmount = Math.max(0, eye.openAmount - dt / SLEEP_DURATION);
+      eye.pupilX += (0 - eye.pupilX) * PUPIL_LERP;
+      eye.pupilY += (0 - eye.pupilY) * PUPIL_LERP;
+      if (eye.openAmount <= 0) {
+        eye.state = "idle";
+        eye.blinkTimer = 0;
+        eye.blinkVisible = true;
+      }
+      break;
+  }
+}
+
+function setupMouseTracking(eye, preElement) {
+  document.addEventListener("mousemove", (e) => {
+    // Compute pupil target from mouse position relative to page center
+    const rect = preElement.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = e.clientX - centerX;
+    const dy = e.clientY - centerY;
+    const maxDist = Math.max(rect.width, rect.height);
+
+    // Normalize and clamp to [-1, 1]
+    eye.targetPupilX = Math.max(-1, Math.min(1, dx / maxDist * 2));
+    eye.targetPupilY = Math.max(-1, Math.min(1, dy / maxDist * 2));
+
+    // Wake up if idle
+    if (eye.state === "idle") {
+      eye.state = "awakening";
+    }
+
+    // Reset idle timer if tracking
+    if (eye.state === "tracking") {
+      eye.idleTimer = 0;
+    }
+  });
+}
+
+function init() {
+  const COLS = 80;
+  const ROWS = 40;
+
+  // Canvas at 4x resolution for smoother sampling
+  const canvas = new OffscreenCanvas(COLS * 4, ROWS * 4);
+  const ctx = canvas.getContext("2d");
+
+  const pre = document.createElement("pre");
+  document.getElementById("root").appendChild(pre);
+
+  const eye = createEyeState();
+  setupMouseTracking(eye, pre);
+
+  // Respect prefers-reduced-motion
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    drawLogo(ctx, canvas.width, canvas.height, eye);
+    const lines = canvasToAscii(ctx, canvas.width, canvas.height, COLS, ROWS);
+    pre.textContent = lines.join("\n");
+    return;
+  }
+
+  const loop = new AnimationLoop((time) => {
+    updateEyeState(eye, time);
+    drawLogo(ctx, canvas.width, canvas.height, eye);
+    const lines = canvasToAscii(ctx, canvas.width, canvas.height, COLS, ROWS);
+    pre.textContent = lines.join("\n");
+  });
+
+  // Pause on blur, resume on focus
+  window.addEventListener("blur", () => loop.stop());
+  window.addEventListener("focus", () => loop.start());
+  if (document.visibilityState === "visible") loop.start();
+}
+
+init();
