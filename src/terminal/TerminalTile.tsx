@@ -543,7 +543,11 @@ export function TerminalTile({
   return (
     <div
       ref={tileRef}
-      className={`absolute terminal-tile rounded-md bg-[var(--bg)] overflow-hidden flex flex-col ${terminal.focused ? "border-[1.5px] border-[var(--accent)]" : terminal.origin !== "agent" ? "border-[1.5px] border-amber-500/40" : "border border-[var(--border)]"}`}
+      className={`absolute terminal-tile rounded-md bg-[var(--bg)] overflow-hidden flex flex-col ${
+        terminal.origin !== "agent"
+          ? "border-[1.5px] border-amber-500/40"
+          : "border border-[var(--border)]"
+      }`}
 
       style={{
         left: gridX + (isDragging ? dragOffsetX : 0),
@@ -553,7 +557,11 @@ export function TerminalTile({
         zIndex: isDragging ? 50 : undefined,
         opacity: isDragging ? 0.9 : 1,
         transition: isDragging ? "none" : "left 0.2s ease, top 0.2s ease",
-        boxShadow: isDragging ? "0 8px 32px rgba(0,0,0,0.3)" : undefined,
+        boxShadow: isDragging
+          ? "0 8px 32px rgba(0,0,0,0.3)"
+          : terminal.focused
+            ? "0 0 0 1px rgba(0,112,243,0.45), 0 0 8px rgba(0,112,243,0.15)"
+            : undefined,
         transform: isDragging ? "scale(1.02)" : undefined,
         outline: isSelected ? "2px solid #3b82f6" : undefined,
         outlineOffset: isSelected ? -2 : undefined,
