@@ -38,24 +38,30 @@ function getEnvVarCaseInsensitive(
   return found?.[1];
 }
 
+function getPlatformPath(platform: NodeJS.Platform): typeof path.posix {
+  return platform === "win32" ? path.win32 : path.posix;
+}
+
 function defaultPathEntriesForPlatform(
   platform: NodeJS.Platform,
   env: Record<string, string | undefined>,
 ): string[] {
+  const platformPath = getPlatformPath(platform);
+
   if (platform === "win32") {
     return [
       "C:\\Windows\\System32",
       "C:\\Windows",
       "C:\\Windows\\System32\\WindowsPowerShell\\v1.0",
       getEnvVarCaseInsensitive(env, "LOCALAPPDATA")
-        ? path.join(
+        ? platformPath.join(
             getEnvVarCaseInsensitive(env, "LOCALAPPDATA")!,
             "Microsoft",
             "WindowsApps",
           )
         : "",
       getEnvVarCaseInsensitive(env, "LOCALAPPDATA")
-        ? path.join(
+        ? platformPath.join(
             getEnvVarCaseInsensitive(env, "LOCALAPPDATA")!,
             "OpenAI",
             "Codex",
@@ -63,13 +69,17 @@ function defaultPathEntriesForPlatform(
           )
         : "",
       getEnvVarCaseInsensitive(env, "APPDATA")
-        ? path.join(getEnvVarCaseInsensitive(env, "APPDATA")!, "npm")
+        ? platformPath.join(getEnvVarCaseInsensitive(env, "APPDATA")!, "npm")
         : "",
       getEnvVarCaseInsensitive(env, "USERPROFILE")
-        ? path.join(getEnvVarCaseInsensitive(env, "USERPROFILE")!, ".local", "bin")
+        ? platformPath.join(
+            getEnvVarCaseInsensitive(env, "USERPROFILE")!,
+            ".local",
+            "bin",
+          )
         : "",
       getEnvVarCaseInsensitive(env, "USERPROFILE")
-        ? path.join(getEnvVarCaseInsensitive(env, "USERPROFILE")!, "bin")
+        ? platformPath.join(getEnvVarCaseInsensitive(env, "USERPROFILE")!, "bin")
         : "",
     ].filter(Boolean);
   }
@@ -188,7 +198,9 @@ export function resolveExecutable(
 ): string | null {
   if (!command) return null;
 
-  if (path.isAbsolute(command) || hasPathSeparator(command)) {
+  const platformPath = getPlatformPath(deps.platform);
+
+  if (platformPath.isAbsolute(command) || hasPathSeparator(command)) {
     const candidates =
       deps.platform === "win32" ? getWindowsPathCandidates(command) : [command];
 
@@ -209,7 +221,7 @@ export function resolveExecutable(
 
   for (const dir of pathEntries) {
     for (const name of commandNames) {
-      const candidate = path.join(dir, name);
+      const candidate = platformPath.join(dir, name);
       const resolved = resolveExactExecutable(candidate, deps);
       if (resolved) return resolved;
     }
