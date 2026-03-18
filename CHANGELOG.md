@@ -2,6 +2,22 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.0] - 2026-03-19
+
+### Added
+- Composer: slash command autocomplete — type `/` to see available commands for the focused terminal's agent type (Claude, Codex)
+- Usage panel: interactive date navigation with mini calendar popup, days with data show dot indicators
+- Usage panel: enhanced hover states with floating tooltips on sparkline bars, token breakdown, projects, and models
+- Usage panel: micro-animations — section fade-in, sparkline bar growth, cost count-up transitions
+- Hierarchy: parent-child terminal visualization with SVG bezier connection lines on the canvas
+- Hierarchy: terminal badges showing parent/child relationships with click-to-pan navigation
+- Hierarchy: hover-to-reveal family tree overlay showing full agent hierarchy
+- Hierarchy: `TERMCANVAS_TERMINAL_ID` env var injected into PTY for Hydra auto-detection
+- Focus: tree-aware Cmd+[] cycling — DFS pre-order traversal groups parents with their children
+
+### Changed
+- Usage panel: larger 24px cost display, inset dividers, improved spacing rhythm
+
 ## [0.7.23] - 2026-03-19
 
 ### Fixed
