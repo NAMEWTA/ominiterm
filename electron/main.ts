@@ -66,6 +66,7 @@ const apiServer = new ApiServer({
 });
 
 function createWindow() {
+  forceClose = false;
   const isMac = process.platform === "darwin";
   const isWin = process.platform === "win32";
 
@@ -134,20 +135,31 @@ function createWindow() {
   });
 }
 
+// ── Debug file logger for session capture investigation ──
+const DEBUG_LOG = path.join(os.homedir(), ".termcanvas", "session-debug.log");
+function dbg(msg: string) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try { fs.appendFileSync(DEBUG_LOG, line); } catch { /* ignore */ }
+}
+
 function setupIpc() {
   // Terminal IPC
   ipcMain.handle(
     "terminal:create",
     async (_event, options: { cwd: string; shell?: string; args?: string[] }) => {
+      dbg(`terminal:create shell=${options.shell ?? "(default)"} args=${JSON.stringify(options.args)} cwd=${options.cwd}`);
       const ptyId = await ptyManager.create({
         ...options,
         extraPathEntries: [getCliDir()],
       });
+      const pid = ptyManager.getPid(ptyId);
+      dbg(`terminal:create => ptyId=${ptyId} pid=${pid ?? "null"}`);
       ptyManager.onData(ptyId, (data: string) => {
         ptyManager.captureOutput(ptyId, data);
         sendToWindow(mainWindow, "terminal:output", ptyId, data);
       });
       ptyManager.onExit(ptyId, (exitCode: number) => {
+        dbg(`terminal:exit ptyId=${ptyId} pid=${pid ?? "null"} exitCode=${exitCode}`);
         sendToWindow(mainWindow, "terminal:exit", ptyId, exitCode);
       });
       return ptyId;
@@ -170,7 +182,9 @@ function setupIpc() {
   });
 
   ipcMain.handle("terminal:get-pid", (_event, ptyId: number) => {
-    return ptyManager.getPid(ptyId) ?? null;
+    const pid = ptyManager.getPid(ptyId) ?? null;
+    dbg(`terminal:get-pid ptyId=${ptyId} => pid=${pid}`);
+    return pid;
   });
 
   ipcMain.handle("terminal:detect-cli", async (_event, ptyId: number) => {
@@ -206,10 +220,22 @@ function setupIpc() {
         "sessions",
         `${pid}.json`,
       );
-      if (!fs.existsSync(sessionFile)) return null;
+      const exists = fs.existsSync(sessionFile);
+      dbg(`session:get-claude-by-pid pid=${pid} file=${sessionFile} exists=${exists}`);
+      if (!exists) {
+        // List actual session files for comparison
+        const sessDir = path.join(os.homedir(), ".claude", "sessions");
+        try {
+          const files = fs.readdirSync(sessDir).filter(f => f.endsWith(".json"));
+          dbg(`  session files in dir: ${files.join(", ")}`);
+        } catch { /* ignore */ }
+        return null;
+      }
       const data = JSON.parse(fs.readFileSync(sessionFile, "utf-8"));
+      dbg(`  found sessionId=${data.sessionId}`);
       return data.sessionId as string;
-    } catch {
+    } catch (err) {
+      dbg(`  ERROR: ${err}`);
       return null;
     }
   });
@@ -555,6 +581,7 @@ function setupIpc() {
     if (mainWindow) {
       mainWindow.close();
     }
+    app.quit();
   });
 }
 

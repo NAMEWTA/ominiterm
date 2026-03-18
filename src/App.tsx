@@ -54,11 +54,14 @@ function snapshotState(): string {
     ...p,
     worktrees: p.worktrees.map((wt) => ({
       ...wt,
-      terminals: wt.terminals.map((t) => ({
-        ...t,
-        scrollback: scrollbacks[t.id] ?? t.scrollback ?? undefined,
-        ptyId: null,
-      })),
+      terminals: wt.terminals.map((t) => {
+        console.log(`[snapshot] terminal=${t.id} type=${t.type} sessionId=${t.sessionId ?? "NONE"} ptyId=${t.ptyId}`);
+        return {
+          ...t,
+          scrollback: scrollbacks[t.id] ?? t.scrollback ?? undefined,
+          ptyId: null,
+        };
+      }),
     })),
   }));
 
@@ -170,15 +173,20 @@ function useCloseHandler() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    const data = snapshotState();
-    const saved = await window.termcanvas.workspace.save(data);
-    if (saved) {
-      // Also save to auto-restore location
-      window.termcanvas.state.save(JSON.parse(data));
+    try {
+      const data = snapshotState();
+      const saved = await window.termcanvas.workspace.save(data);
+      if (saved) {
+        // Also save to auto-restore location
+        window.termcanvas.state.save(JSON.parse(data));
+        window.termcanvas.app.confirmClose();
+      } else {
+        // User cancelled the save dialog, stay open
+        setShowCloseDialog(false);
+      }
+    } catch (err) {
+      console.error("[CloseHandler] save failed, forcing close:", err);
       window.termcanvas.app.confirmClose();
-    } else {
-      // User cancelled the save dialog, stay open
-      setShowCloseDialog(false);
     }
   }, []);
 
