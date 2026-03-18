@@ -74,8 +74,21 @@ function canvasToAscii(ctx, canvasWidth, canvasHeight, cols, rows, time) {
       }
 
       const i = (py * canvasWidth + px) * 4;
-      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3 / 255;
-      line += RAMP[Math.floor(brightness * (RAMP.length - 1))];
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const brightness = (r + g + b) / 3 / 255;
+      const ch = RAMP[Math.floor(brightness * (RAMP.length - 1))];
+
+      if (ch === " ") {
+        line += " ";
+      } else if (b > r * 1.2 && b > g * 1.2) {
+        // Blue-dominant → Codex blue
+        line += `<span class="c-blue">${ch}</span>`;
+      } else if (r > b * 1.3 && g > b * 1.1) {
+        // Yellow/amber-dominant → Claude amber
+        line += `<span class="c-amber">${ch}</span>`;
+      } else {
+        line += ch;
+      }
     }
     lines.push(line);
   }
@@ -110,8 +123,8 @@ function drawLogo(ctx, w, h, eye) {
   roundRect(ctx, outerX, outerY, outerW, outerH, radius);
   ctx.fill();
 
-  // 2. Terminal frame (bright = will become dense characters)
-  ctx.fillStyle = "#e0e0e0";
+  // 2. Terminal frame — amber/yellow tint (Claude Code)
+  ctx.fillStyle = "#d4a030";
   ctx.fillRect(sx(208), sy(188), sx(608), sy(684));
 
   // 3. Screen interior (dark = will become spaces)
@@ -167,8 +180,8 @@ function drawCursorOrEye(ctx, w, h, eye) {
   const eyeRadiusX = cursorHalfW + t * (sx(120) - cursorHalfW); // widen
   const eyeRadiusY = cursorHalfH + t * (sy(100) - cursorHalfH); // shorten to ellipse
 
-  // Draw eye/cursor shape
-  ctx.fillStyle = "#e0e0e0";
+  // Draw eye/cursor shape — blue tint (Codex)
+  ctx.fillStyle = "#4090e0";
   ctx.beginPath();
   ctx.ellipse(cx, cy, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -330,7 +343,7 @@ function init() {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     drawLogo(ctx, canvas.width, canvas.height, eye);
     const lines = canvasToAscii(ctx, canvas.width, canvas.height, COLS, ROWS, 0);
-    pre.textContent = lines.join("\n");
+    pre.innerHTML = lines.join("\n");
     return;
   }
 
@@ -338,7 +351,7 @@ function init() {
     updateEyeState(eye, time);
     drawLogo(ctx, canvas.width, canvas.height, eye);
     const lines = canvasToAscii(ctx, canvas.width, canvas.height, COLS, ROWS, time);
-    pre.textContent = lines.join("\n");
+    pre.innerHTML = lines.join("\n");
   });
 
   // Pause on blur, resume on focus
