@@ -17,7 +17,8 @@ export class StatePersistence {
       if (!fs.existsSync(STATE_FILE)) return null;
       const data = fs.readFileSync(STATE_FILE, "utf-8");
       return JSON.parse(data);
-    } catch {
+    } catch (err) {
+      console.error("[StatePersistence] failed to load state:", err);
       return null;
     }
   }

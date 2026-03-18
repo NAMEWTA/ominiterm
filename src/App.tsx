@@ -100,8 +100,8 @@ function restoreFromData(data: Record<string, unknown>) {
         cards: data.browserCards as Record<string, import("./stores/browserCardStore").BrowserCardData>,
       });
     }
-  } catch {
-    // Invalid data, ignore
+  } catch (err) {
+    console.error("[restoreFromData] failed to restore state:", err);
   }
 }
 
@@ -139,6 +139,8 @@ function useStatePersistence() {
     if (!window.termcanvas) return;
     window.termcanvas.state.load().then((saved) => {
       if (saved) restoreFromData(saved as unknown as Record<string, unknown>);
+    }).catch((err) => {
+      console.error("[useStatePersistence] failed to load state:", err);
     });
   }, []);
 }
@@ -149,8 +151,8 @@ function useWorkspaceOpen() {
       const raw = (e as CustomEvent<string>).detail;
       try {
         restoreFromData(JSON.parse(raw));
-      } catch {
-        // Invalid workspace file
+      } catch (err) {
+        console.error("[useWorkspaceOpen] failed to parse workspace file:", err);
       }
     };
     window.addEventListener("termcanvas:open-workspace", handler);
