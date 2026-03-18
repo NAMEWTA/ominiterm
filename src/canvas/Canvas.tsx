@@ -9,6 +9,8 @@ import { useBoxSelect } from "../hooks/useBoxSelect";
 import { ProjectContainer } from "../containers/ProjectContainer";
 import { BrowserCard } from "../components/BrowserCard";
 import { DrawingLayer } from "./DrawingLayer";
+import { ConnectionOverlay } from "./ConnectionOverlay";
+import { FamilyTreeOverlay } from "../components/FamilyTreeOverlay";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
 
 export function Canvas() {
@@ -52,12 +54,14 @@ export function Canvas() {
           transition: animationBlur > 0 ? "filter 0.15s ease" : "none",
         }}
       >
+        <ConnectionOverlay />
         {projects.map((project) => (
           <ProjectContainer key={project.id} project={project} />
         ))}
         {Object.values(browserCards).map((card) => (
           <BrowserCard key={card.id} card={card} />
         ))}
+        <FamilyTreeOverlay />
       </div>
 
       {/* Box-select overlay */}
