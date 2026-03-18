@@ -2,6 +2,12 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.7.19] - 2026-03-18
+
+### Fixed
+- Terminal scroll position no longer drifts upward during streaming output when user has scrolled up to read earlier content
+- Replaced ResizeObserver-driven fitAddon.fit() with React state-driven fitting to prevent xterm resize/reflow from nudging viewport position
+
 ## [0.7.18] - 2026-03-18
 
 ### Added
