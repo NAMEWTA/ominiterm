@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
 import { DEFAULT_SPAN, withUpdatedTerminalType } from "./terminalState";
+import { normalizeProjectsFocus } from "./projectFocus";
 
 interface ProjectStore {
   projects: ProjectData[];
@@ -568,5 +569,5 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       })),
     })),
 
-  setProjects: (projects) => set({ projects }),
+  setProjects: (projects) => set(() => normalizeProjectsFocus(projects)),
 }));
