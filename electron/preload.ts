@@ -122,6 +122,10 @@ contextBridge.exposeInMainWorld("termcanvas", {
     submit: (request: unknown) =>
       ipcRenderer.invoke("composer:submit", request),
   },
+  usage: {
+    query: (dateStr: string) =>
+      ipcRenderer.invoke("usage:query", dateStr),
+  },
   app: {
     platform: process.platform as "darwin" | "win32" | "linux",
     onBeforeClose: (callback: () => void) => {

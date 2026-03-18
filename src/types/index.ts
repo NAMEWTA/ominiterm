@@ -124,6 +124,44 @@ export interface CanvasState {
   projects: ProjectData[];
 }
 
+// Usage statistics types
+export interface UsageBucket {
+  label: string;
+  hourStart: number;
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheCreate: number;
+  cost: number;
+  calls: number;
+}
+
+export interface ProjectUsage {
+  path: string;
+  name: string;
+  cost: number;
+  calls: number;
+}
+
+export interface ModelUsage {
+  model: string;
+  cost: number;
+  calls: number;
+}
+
+export interface UsageSummary {
+  date: string;
+  sessions: number;
+  totalInput: number;
+  totalOutput: number;
+  totalCacheRead: number;
+  totalCacheCreate: number;
+  totalCost: number;
+  buckets: UsageBucket[];
+  projects: ProjectUsage[];
+  models: ModelUsage[];
+}
+
 // Preload API types
 export interface TermCanvasAPI {
   terminal: {
@@ -198,6 +236,9 @@ export interface TermCanvasAPI {
   };
   composer: {
     submit: (request: ComposerSubmitRequest) => Promise<ComposerSubmitResult>;
+  };
+  usage: {
+    query: (dateStr: string) => Promise<UsageSummary>;
   };
   app: {
     platform: "darwin" | "win32" | "linux";

@@ -24,6 +24,7 @@ import {
   submitComposerRequest,
   type ClipboardSnapshot,
 } from "./composer-submit";
+import { collectUsage } from "./usage-collector";
 import type { ComposerSubmitRequest } from "../src/types";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -554,6 +555,11 @@ function setupIpc() {
         detail,
       };
     }
+  });
+
+  // Usage statistics
+  ipcMain.handle("usage:query", (_event, dateStr: string) => {
+    return collectUsage(dateStr);
   });
 
   // Close flow
