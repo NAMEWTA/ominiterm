@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { hasPrimaryModifier } from "../hooks/shortcutTarget";
 
 export interface ShortcutMap {
   addProject: string;
@@ -41,13 +42,6 @@ function getShortcutPlatform(): ShortcutPlatform {
     }
   }
   return "darwin";
-}
-
-function hasPrimaryModifier(
-  e: Pick<KeyboardEvent, "metaKey" | "ctrlKey">,
-  platform: ShortcutPlatform,
-): boolean {
-  return platform === "darwin" ? e.metaKey : e.ctrlKey;
 }
 
 function hasUnsupportedPlatformModifier(

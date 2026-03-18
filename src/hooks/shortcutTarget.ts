@@ -10,10 +10,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
   );
 }
 
-function hasPrimaryModifier(
+export function hasPrimaryModifier(
   e: Pick<KeyboardEvent, "metaKey" | "ctrlKey">,
+  platform: string = window.termcanvas?.app.platform ?? "darwin",
 ): boolean {
-  const platform = window.termcanvas?.app.platform ?? "darwin";
   return platform === "darwin" ? e.metaKey : e.ctrlKey;
 }
 
