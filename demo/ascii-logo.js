@@ -6,7 +6,15 @@ const RAMP = " .:-=+*#%@$";
  * Sample an OffscreenCanvas and return an array of strings (one per row).
  * Each character maps to the brightness of the corresponding cell.
  */
-function canvasToAscii(ctx, canvasWidth, canvasHeight, cols, rows) {
+// Wave distortion parameters
+const WAVE_AMP_X = 1.8;     // horizontal wave amplitude (in cells)
+const WAVE_AMP_Y = 0.8;     // vertical wave amplitude (in cells)
+const WAVE_FREQ_X = 0.15;   // horizontal wave frequency (per row)
+const WAVE_FREQ_Y = 0.12;   // vertical wave frequency (per col)
+const WAVE_SPEED_X = 0.0015; // horizontal wave speed
+const WAVE_SPEED_Y = 0.001;  // vertical wave speed
+
+function canvasToAscii(ctx, canvasWidth, canvasHeight, cols, rows, time) {
   const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   const { data } = imageData;
   const cellW = canvasWidth / cols;
@@ -15,10 +23,22 @@ function canvasToAscii(ctx, canvasWidth, canvasHeight, cols, rows) {
 
   for (let row = 0; row < rows; row++) {
     let line = "";
+    // Horizontal wave: each row shifts left/right with a sine wave
+    const waveX = Math.sin(time * WAVE_SPEED_X + row * WAVE_FREQ_X) * WAVE_AMP_X * cellW;
+
     for (let col = 0; col < cols; col++) {
-      // Sample center of each cell
-      const px = Math.floor(col * cellW + cellW / 2);
-      const py = Math.floor(row * cellH + cellH / 2);
+      // Vertical wave: each column shifts up/down
+      const waveY = Math.sin(time * WAVE_SPEED_Y + col * WAVE_FREQ_Y) * WAVE_AMP_Y * cellH;
+
+      const px = Math.floor(col * cellW + cellW / 2 + waveX);
+      const py = Math.floor(row * cellH + cellH / 2 + waveY);
+
+      // Clamp to canvas bounds
+      if (px < 0 || px >= canvasWidth || py < 0 || py >= canvasHeight) {
+        line += " ";
+        continue;
+      }
+
       const i = (py * canvasWidth + px) * 4;
       const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3 / 255;
       line += RAMP[Math.floor(brightness * (RAMP.length - 1))];
@@ -275,7 +295,7 @@ function init() {
   // Respect prefers-reduced-motion
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     drawLogo(ctx, canvas.width, canvas.height, eye);
-    const lines = canvasToAscii(ctx, canvas.width, canvas.height, COLS, ROWS);
+    const lines = canvasToAscii(ctx, canvas.width, canvas.height, COLS, ROWS, 0);
     pre.textContent = lines.join("\n");
     return;
   }
@@ -283,7 +303,7 @@ function init() {
   const loop = new AnimationLoop((time) => {
     updateEyeState(eye, time);
     drawLogo(ctx, canvas.width, canvas.height, eye);
-    const lines = canvasToAscii(ctx, canvas.width, canvas.height, COLS, ROWS);
+    const lines = canvasToAscii(ctx, canvas.width, canvas.height, COLS, ROWS, time);
     pre.textContent = lines.join("\n");
   });
 
