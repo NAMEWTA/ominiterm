@@ -186,32 +186,22 @@ export function TerminalTile({
     xterm.loadAddon(serializeAddon);
     xterm.open(containerRef.current);
 
-    // Scroll-pinning: xterm.js can lose its auto-follow-bottom behavior
-    // during rapid output (AI CLI streaming).
-    // We use wheel events to DISABLE follow (only user intent can do this)
-    // and onScroll to RE-ENABLE follow (when viewport reaches bottom by any
-    // means — wheel, keyboard, scrollbar drag). This avoids the pitfall of
-    // using onScroll for both: xterm's own auto-scroll drift (the very bug
-    // we're fixing) would set viewportY < baseY and falsely disable follow.
+    // Scroll-pinning: keep viewport pinned to bottom during streaming
+    // unless the user has scrolled up to read history.
+    //
+    // Single source of truth: onScroll captures ALL scroll methods (wheel,
+    // keyboard PageUp/Down, scrollbar drag, touch). A `programmaticScroll`
+    // guard prevents our own scrollToBottom() from falsely disabling follow.
+    //
+    // Previous approach used wheel events to track intent, but that missed
+    // keyboard/scrollbar scrolling entirely — those paths left followBottom
+    // true and output kept snapping back to bottom.
     let followBottom = true;
-    xterm.element?.addEventListener("wheel", (e: WheelEvent) => {
-      if (e.deltaY < 0) {
-        // User scrolled up — disable follow-bottom immediately.
-        // Must be synchronous: if deferred via rAF, the next output write
-        // still sees followBottom=true and calls scrollToBottom(), snapping
-        // the viewport back before the rAF ever fires. This caused
-        // flickering during AI CLI streaming.
-        // Guard: only disable if there is scrollback to read (baseY > 0).
-        const buf = xterm.buffer.active;
-        if (buf.baseY > 0) followBottom = false;
-      }
-    }, { passive: true });
-    // Re-enable: covers keyboard PageDown, scrollbar drag, etc.
+    let programmaticScroll = false;
     const scrollDisposable = xterm.onScroll(() => {
-      if (!followBottom) {
-        const buf = xterm.buffer.active;
-        if (buf.viewportY >= buf.baseY) followBottom = true;
-      }
+      if (programmaticScroll) return;
+      const buf = xterm.buffer.active;
+      followBottom = buf.viewportY >= buf.baseY;
     });
 
     // GPU-accelerated rendering; fall back to Canvas2D when context limit is hit
@@ -430,7 +420,11 @@ export function TerminalTile({
           xterm.write(data, () => {
             if (followBottom) {
               const buf = xterm.buffer.active;
-              if (buf.viewportY < buf.baseY) xterm.scrollToBottom();
+              if (buf.viewportY < buf.baseY) {
+                programmaticScroll = true;
+                xterm.scrollToBottom();
+                programmaticScroll = false;
+              }
             }
           });
           triggerDetection();
