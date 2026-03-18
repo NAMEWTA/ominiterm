@@ -125,23 +125,39 @@ test("stageComposerImages writes png buffers for every pasted image", () => {
   assert.equal(stagedPaths[1].endsWith(path.join("req-123", "image-2.png")), true);
 });
 
-test("codex returns an error when clipboard image write fails", async () => {
-  const request = createRequest({ terminalType: "codex" });
-  const { deps, restoredSnapshots, ptyWrites } = createDeps({
-    writeClipboardImage: () => {
-      throw new Error("clipboard unavailable");
-    },
+test("codex sends text via bracketed paste without clipboard", async () => {
+  const request = createRequest({
+    terminalType: "codex",
+    text: "fix the bug",
+    images: [],
   });
+  const {
+    deps,
+    ptyWrites,
+    clipboardTextWrites,
+    clipboardImageWrites,
+    restoredSnapshots,
+  } = createDeps();
+
+  const result = await submitComposerRequest(request, deps);
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~", "\r"]);
+  assert.deepEqual(clipboardTextWrites, []);
+  assert.deepEqual(clipboardImageWrites, []);
+  assert.equal(restoredSnapshots.length, 0);
+});
+
+test("codex rejects image submission when supportsImages is false", async () => {
+  const request = createRequest({ terminalType: "codex" });
+  const { deps, ptyWrites } = createDeps();
 
   const result = await submitComposerRequest(request, deps);
 
   assert.equal(result.ok, false);
-  assert.equal(result.code, "clipboard-image-failed");
-  assert.equal(result.stage, "paste-image");
-  assert.equal(result.detail, "clipboard unavailable");
-  assert.match(result.error ?? "", /clipboard unavailable/);
+  assert.equal(result.code, "images-unsupported");
+  assert.equal(result.stage, "validate");
   assert.deepEqual(ptyWrites, []);
-  assert.equal(restoredSnapshots.length, 1);
 });
 
 test("claude falls back to staged image paths when clipboard image write fails", async () => {

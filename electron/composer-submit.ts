@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import {
   getComposerAdapter,
+  type ComposerAdapterConfig,
   type ComposerImageFallbackMode,
 } from "../src/terminal/cliConfig.ts";
 import type {
@@ -209,6 +210,65 @@ async function submitImages(
   }
 }
 
+const BRACKETED_PASTE_START = "\x1b[200~";
+const BRACKETED_PASTE_END = "\x1b[201~";
+
+function writeBracketedPaste(
+  ptyId: number,
+  text: string,
+  deps: ComposerSubmitDeps,
+  stage: ComposerSubmitIssueStage,
+): void {
+  writePtyData(
+    ptyId,
+    BRACKETED_PASTE_START + text + BRACKETED_PASTE_END,
+    deps,
+    stage,
+    "pty-write-failed",
+  );
+}
+
+async function submitBracketedPaste(
+  request: ComposerSubmitRequest,
+  deps: ComposerSubmitDeps,
+  adapter: ComposerAdapterConfig,
+): Promise<ComposerSubmitResult> {
+  if (request.images.length > 0 && !adapter.supportsImages) {
+    return createFailure({
+      code: "images-unsupported",
+      stage: "validate",
+      detail: `Image paste is unavailable for ${request.terminalType}.`,
+    });
+  }
+
+  const requestId = deps.generateRequestId();
+
+  try {
+    if (request.text.trim().length > 0) {
+      writeBracketedPaste(request.ptyId, request.text, deps, "paste-text");
+    }
+
+    writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
+
+    return { ok: true, requestId, stagedImagePaths: [] };
+  } catch (error) {
+    const issue =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      "stage" in error &&
+      "detail" in error
+        ? (error as ComposerSubmitIssue)
+        : ({
+            code: "internal-error" as const,
+            stage: "submit" as const,
+            detail: getErrorDetail(error),
+          } satisfies ComposerSubmitIssue);
+
+    return createFailure(issue, { requestId });
+  }
+}
+
 async function submitDirectText(
   request: ComposerSubmitRequest,
   deps: ComposerSubmitDeps,
@@ -266,6 +326,10 @@ export async function submitComposerRequest(
 
   if (adapter.inputMode === "type") {
     return submitDirectText(request, deps);
+  }
+
+  if (adapter.inputMode === "bracketed-paste") {
+    return submitBracketedPaste(request, deps, adapter);
   }
 
   if (request.images.length > 0 && !adapter.supportsImages) {

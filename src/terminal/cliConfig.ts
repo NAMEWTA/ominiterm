@@ -5,7 +5,7 @@ import type {
 } from "../types";
 
 export type ComposerImageFallbackMode = "image-path" | "error";
-export type ComposerInputMode = "paste" | "type";
+export type ComposerInputMode = "paste" | "type" | "bracketed-paste";
 
 interface TerminalLaunchConfig {
   shell: string;
@@ -101,9 +101,9 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
     composer: {
       supportsComposer: true,
       allowedStatuses: INTERACTIVE_STATUSES,
-      inputMode: "paste",
-      supportsImages: true,
-      pasteKeySequence: () => "\u0016",
+      inputMode: "bracketed-paste",
+      supportsImages: false,
+      pasteKeySequence: () => "",
       imageFallback: "error",
       pasteDelayMs: 120,
     },
