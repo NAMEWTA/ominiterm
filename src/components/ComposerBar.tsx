@@ -93,7 +93,7 @@ function getPassthroughSequence(
   // Arrow keys → forward to terminal when Composer is empty
   // (no draft text means arrows have no cursor-movement purpose)
   const arrowSeq = ARROW_SEQUENCES[event.key];
-  if (arrowSeq && draft.length === 0) {
+  if (arrowSeq && draft.trim().length === 0) {
     return arrowSeq;
   }
   return null;
