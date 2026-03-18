@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { useComposerStore } from "../stores/composerStore";
 import { useNotificationStore } from "../stores/notificationStore";
+import { useCanvasStore } from "../stores/canvasStore";
 import { getComposerAdapter } from "../terminal/cliConfig";
 import { shouldSubmitComposerFromKeyEvent } from "./composerInputBehavior";
 import {
@@ -122,6 +123,8 @@ export function ComposerBar() {
     setError,
   } = useComposerStore();
   const projects = useProjectStore((s) => s.projects);
+  const composerLeft = useCanvasStore((s) => s.sidebarCollapsed ? 0 : s.sidebarWidth);
+  const composerRight = useCanvasStore((s) => s.rightPanelCollapsed ? 0 : s.rightPanelWidth);
 
   const supportedTerminals = useMemo(
     () =>
@@ -316,7 +319,10 @@ export function ComposerBar() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-[90] pointer-events-none flex justify-center px-4">
+    <div
+      className="fixed bottom-4 z-[90] pointer-events-none flex justify-center px-4"
+      style={{ left: composerLeft, right: composerRight }}
+    >
       <div className="pointer-events-auto w-full max-w-4xl rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_18px_48px_rgba(0,0,0,0.24)]">
         {/* Header */}
         <div className="flex items-center gap-3 px-3 py-1.5 border-b border-[var(--border)]">
