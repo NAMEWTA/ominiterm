@@ -2,6 +2,11 @@ appId: com.blueberrycongee.termcanvas
 productName: TermCanvas
 copyright: Copyright © 2026 blueberrycongee
 
+publish:
+  provider: github
+  owner: blueberrycongee
+  repo: termcanvas
+
 directories:
   output: out
   buildResources: build

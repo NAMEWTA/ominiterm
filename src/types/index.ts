@@ -238,6 +238,21 @@ export interface TermCanvasAPI {
     onBeforeClose: (callback: () => void) => () => void;
     confirmClose: () => void;
   };
+  updater: {
+    check: () => Promise<unknown>;
+    install: () => void;
+    getVersion: () => Promise<string>;
+    onUpdateAvailable: (callback: (info: UpdateEventInfo) => void) => () => void;
+    onDownloadProgress: (callback: (progress: { percent: number }) => void) => () => void;
+    onUpdateDownloaded: (callback: (info: UpdateEventInfo) => void) => () => void;
+    onError: (callback: (error: { message: string }) => void) => () => void;
+  };
+}
+
+export interface UpdateEventInfo {
+  version: string;
+  releaseNotes: string;
+  releaseDate: string;
 }
 
 declare global {

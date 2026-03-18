@@ -3,6 +3,7 @@ import { Canvas } from "./canvas/Canvas";
 import { Toolbar } from "./toolbar/Toolbar";
 import { Sidebar } from "./components/Sidebar";
 import { NotificationToast } from "./components/NotificationToast";
+import { UpdateModal } from "./components/UpdateModal";
 import { ComposerBar } from "./components/ComposerBar";
 import { DrawingPanel } from "./toolbar/DrawingPanel";
 import { ShortcutHints } from "./components/ShortcutHints";
@@ -352,6 +353,7 @@ export function App() {
       <UsagePanel />
       <ComposerBar />
       <NotificationToast />
+      <UpdateModal />
       {showCloseDialog && (
         <CloseDialog
           onSave={handleSave}

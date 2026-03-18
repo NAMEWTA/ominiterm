@@ -24,6 +24,7 @@ import {
   submitComposerRequest,
 } from "./composer-submit";
 import { collectUsage } from "./usage-collector";
+import { setupAutoUpdater, stopAutoUpdater } from "./auto-updater";
 import type { ComposerSubmitRequest } from "../src/types";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -741,6 +742,7 @@ app.whenReady().then(() => {
   if (isCliRegistered()) ensureSkillInstalled();
   setupIpc();
   createWindow();
+  if (mainWindow) setupAutoUpdater(mainWindow);
 
   app.on("second-instance", () => {
     if (mainWindow) {
@@ -755,6 +757,7 @@ app.whenReady().then(() => {
 });
 
 app.on("will-quit", () => {
+  stopAutoUpdater();
   apiServer.stop();
   cleanupPortFile();
 });

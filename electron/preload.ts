@@ -135,4 +135,29 @@ contextBridge.exposeInMainWorld("termcanvas", {
     },
     confirmClose: () => ipcRenderer.send("app:close-confirmed"),
   },
+  updater: {
+    check: () => ipcRenderer.invoke("updater:check"),
+    install: () => ipcRenderer.send("updater:install"),
+    getVersion: () => ipcRenderer.invoke("updater:get-version") as Promise<string>,
+    onUpdateAvailable: (callback: (info: { version: string; releaseNotes: string; releaseDate: string }) => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, info: { version: string; releaseNotes: string; releaseDate: string }) => callback(info);
+      ipcRenderer.on("updater:update-available", listener);
+      return () => ipcRenderer.removeListener("updater:update-available", listener);
+    },
+    onDownloadProgress: (callback: (progress: { percent: number }) => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, progress: { percent: number }) => callback(progress);
+      ipcRenderer.on("updater:download-progress", listener);
+      return () => ipcRenderer.removeListener("updater:download-progress", listener);
+    },
+    onUpdateDownloaded: (callback: (info: { version: string; releaseNotes: string; releaseDate: string }) => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, info: { version: string; releaseNotes: string; releaseDate: string }) => callback(info);
+      ipcRenderer.on("updater:update-downloaded", listener);
+      return () => ipcRenderer.removeListener("updater:update-downloaded", listener);
+    },
+    onError: (callback: (error: { message: string }) => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, error: { message: string }) => callback(error);
+      ipcRenderer.on("updater:error", listener);
+      return () => ipcRenderer.removeListener("updater:error", listener);
+    },
+  },
 });
