@@ -9,6 +9,30 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Nav ────────────────────────────────────────────────────── */
+#topnav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  padding: 1rem 1.5rem;
+  z-index: 100;
+}
+#lang-toggle {
+  background: transparent;
+  color: #71717a;
+  border: 1px solid #333;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-family: 'Geist', sans-serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+#lang-toggle:hover {
+  color: #fafafa;
+  border-color: #555;
+}
+
 /* ── Hero ───────────────────────────────────────────────────── */
 #hero {
   min-height: 100vh;
@@ -17,9 +41,9 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 2rem;
+  padding: 2rem 2rem 5rem;
 }
-#ascii-logo { display: flex; align-items: center; justify-content: center; }
+#ascii-logo { display: flex; align-items: center; justify-content: center; transform: scale(0.9); }
 #hero h1 {
   font-family: 'Geist Mono', monospace;
   font-size: 2rem;
