@@ -115,7 +115,7 @@ test("codex sends text via bracketed paste without clipboard", async () => {
   const result = await submitComposerRequest(request, deps);
 
   assert.equal(result.ok, true);
-  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~\r"]);
+  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~", "\r"]);
 });
 
 test("codex sends image paths via bracketed paste without clipboard", async () => {
@@ -140,9 +140,10 @@ test("codex sends image paths via bracketed paste without clipboard", async () =
     fileWrites[0].filePath.endsWith(path.join("req-123", "image-1.png")),
     true,
   );
-  assert.equal(ptyWrites.length, 2);
+  assert.equal(ptyWrites.length, 3);
   assert.match(ptyWrites[0], /^\x1b\[200~.*image-1\.png\x1b\[201~$/);
-  assert.equal(ptyWrites[1], "\x1b[200~check this\x1b[201~\r");
+  assert.equal(ptyWrites[1], "\x1b[200~check this\x1b[201~");
+  assert.equal(ptyWrites[2], "\r");
 });
 
 test("claude sends text via bracketed paste without clipboard", async () => {
@@ -156,7 +157,7 @@ test("claude sends text via bracketed paste without clipboard", async () => {
   const result = await submitComposerRequest(request, deps);
 
   assert.equal(result.ok, true);
-  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~\r"]);
+  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~", "\r"]);
 });
 
 test("claude sends image paths via bracketed paste", async () => {
@@ -181,9 +182,10 @@ test("claude sends image paths via bracketed paste", async () => {
     fileWrites[0].filePath.endsWith(path.join("req-123", "image-1.png")),
     true,
   );
-  assert.equal(ptyWrites.length, 2);
+  assert.equal(ptyWrites.length, 3);
   assert.match(ptyWrites[0], /^\x1b\[200~.*image-1\.png\x1b\[201~$/);
-  assert.equal(ptyWrites[1], "\x1b[200~Inspect this screenshot\x1b[201~\r");
+  assert.equal(ptyWrites[1], "\x1b[200~Inspect this screenshot\x1b[201~");
+  assert.equal(ptyWrites[2], "\r");
 });
 
 test("shell writes text directly to the PTY", async () => {

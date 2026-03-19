@@ -162,12 +162,11 @@ async function submitBracketedPaste(
     }
   }
 
-  // Build an ordered list of paste payloads. The \r is appended to the final
-  // write() to eliminate the inter-write scheduling gap that caused the old
-  // race condition. CLI parsers (Ink, Crossterm, etc.) are stream-aware and
-  // preserve event boundaries across read() chunks, so correctness does not
-  // depend on a single read() — but removing the gap avoids the window where
-  // the TUI could re-render between the paste-end marker and the submit key.
+  // Build an ordered list of paste payloads. The \r (Enter) is sent as a
+  // SEPARATE write after a delay. Ink's paste handler updates React state
+  // asynchronously; if \r arrives in the same write or too soon after the
+  // paste-end marker, the TUI processes Enter before the input state is
+  // updated and the submit is silently dropped.
   const pastes: { data: string; stage: ComposerSubmitIssueStage }[] = [];
   for (const imagePath of stagedImagePaths) {
     pastes.push({ data: imagePath, stage: "paste-image" });
@@ -179,22 +178,23 @@ async function submitBracketedPaste(
   try {
     for (let i = 0; i < pastes.length; i++) {
       const { data, stage } = pastes[i];
-      const isLast = i === pastes.length - 1;
-      const payload = isLast
-        ? buildBracketedPaste(data) + "\r"
-        : buildBracketedPaste(data);
+      const payload = buildBracketedPaste(data);
 
-      writePtyData(request.ptyId, payload, deps, stage, isLast ? "submit-key-failed" : "pty-write-failed");
+      writePtyData(request.ptyId, payload, deps, stage, "pty-write-failed");
 
-      if (!isLast) {
+      if (i < pastes.length - 1) {
         await deps.delayMs(adapter.pasteDelayMs);
       }
     }
 
-    // Edge case: no pastes at all (validated away earlier, but be defensive)
-    if (pastes.length === 0) {
-      writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
+    // Delay before Enter so the CLI's paste handler can finish updating
+    // its input state. Without this, the \r arrives too early and is
+    // swallowed (text appears in input but never submits).
+    if (pastes.length > 0) {
+      await deps.delayMs(adapter.pasteDelayMs);
     }
+
+    writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
 
     return { ok: true, requestId, stagedImagePaths };
   } catch (error) {
