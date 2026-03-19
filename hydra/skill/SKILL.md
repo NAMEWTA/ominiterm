@@ -54,17 +54,27 @@ interactive-approval mode — the sub-agent should respect the same constraints.
    Poll each agent every 30s: `termcanvas terminal status <terminalId>`
    Do NOT ask the user whether to poll. Do NOT stop working while agents run.
 
-   **Unblocking stalled agents**: During each poll cycle, also check the last
-   20 lines of terminal output: `termcanvas terminal output <terminalId> --lines 20`
-   If the output contains a permission prompt ("Do you want to proceed?",
-   "❯" followed by "Yes", or similar approval dialogs), the sub-agent is
-   stalled waiting for human input. Unblock it by sending Enter:
+   **Result file as primary completion signal**: The terminal status system
+   can sometimes fail to transition to "completed" (especially on macOS).
+   During each poll cycle, ALSO check if the result file exists:
+   `test -f <resultFile> && echo "DONE" || echo "PENDING"`
+   If the result file exists, the agent has finished — proceed to step 4
+   regardless of what the terminal status says. Do NOT send any input to a
+   terminal whose result file already exists.
+
+   **Unblocking stalled agents**: If status is NOT "completed"/"error" AND
+   the result file does NOT exist, check the last 20 lines of terminal output:
+   `termcanvas terminal output <terminalId> --lines 20`
+   Only send Enter if the output contains an **explicit permission prompt**:
+   patterns like "Do you want to proceed?", "Allow", "❯ Yes", or
+   "[Y/n]". Do NOT send Enter just because the agent appears idle or shows
+   a bare input prompt (e.g. `>`, `❯`) — that means the agent is between
+   turns, not stalled.
    `termcanvas terminal input <terminalId> $'\r'`
-   This approves the default selection (usually "Yes"). Log what you approved
-   so you can report it to the user later. If the prompt appears to be
-   dangerous or irreversible (e.g. "delete all data", "force push to main"),
-   do NOT auto-approve — instead report the situation to the user and wait
-   for explicit instructions.
+   Log what you approved so you can report it to the user later. If the
+   prompt appears dangerous or irreversible (e.g. "delete all data",
+   "force push to main"), do NOT auto-approve — instead report the situation
+   to the user and wait for explicit instructions.
 4. Read each agent's result: `cat <resultFile>` (path returned by spawn)
    Do NOT read terminal output or try to parse TUI. The result file is the
    only reliable communication channel from sub-agents.
