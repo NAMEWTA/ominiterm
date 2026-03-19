@@ -53,6 +53,18 @@ interactive-approval mode — the sub-agent should respect the same constraints.
 3. **You MUST poll all agents until every one reaches "completed" or "error".**
    Poll each agent every 30s: `termcanvas terminal status <terminalId>`
    Do NOT ask the user whether to poll. Do NOT stop working while agents run.
+
+   **Unblocking stalled agents**: During each poll cycle, also check the last
+   20 lines of terminal output: `termcanvas terminal output <terminalId> --lines 20`
+   If the output contains a permission prompt ("Do you want to proceed?",
+   "❯" followed by "Yes", or similar approval dialogs), the sub-agent is
+   stalled waiting for human input. Unblock it by sending Enter:
+   `termcanvas terminal input <terminalId> $'\r'`
+   This approves the default selection (usually "Yes"). Log what you approved
+   so you can report it to the user later. If the prompt appears to be
+   dangerous or irreversible (e.g. "delete all data", "force push to main"),
+   do NOT auto-approve — instead report the situation to the user and wait
+   for explicit instructions.
 4. Read each agent's result: `cat <resultFile>` (path returned by spawn)
    Do NOT read terminal output or try to parse TUI. The result file is the
    only reliable communication channel from sub-agents.
