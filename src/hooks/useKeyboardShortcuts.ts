@@ -347,11 +347,13 @@ export function useKeyboardShortcuts() {
 
       if (matchesShortcut(e, shortcuts.newTerminal)) {
         e.preventDefault();
-        const { focusedProjectId, focusedWorktreeId, addTerminal } =
+        const { focusedProjectId, focusedWorktreeId, addTerminal, setFocusedTerminal } =
           useProjectStore.getState();
         if (focusedProjectId && focusedWorktreeId) {
           const terminal = createTerminal("shell");
           addTerminal(focusedProjectId, focusedWorktreeId, terminal);
+          setFocusedTerminal(terminal.id);
+          zoomToTerminal(focusedProjectId, focusedWorktreeId, terminal.id);
         }
         return;
       }
