@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import { useDrawingStore, type DrawingTool } from "../stores/drawingStore";
 import { useT } from "../i18n/useT";
 
@@ -54,6 +54,11 @@ export function DrawingPanel() {
     return () => window.removeEventListener("resize", onResize);
   }, [clampPos]);
 
+  // Re-clamp after layout toggle (dimensions change between vertical/horizontal)
+  useLayoutEffect(() => {
+    setPos((p) => clampPos(p.x, p.y));
+  }, [vertical, clampPos]);
+
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
       if (e.button !== 0) return;
@@ -87,7 +92,7 @@ export function DrawingPanel() {
   return (
     <div
       ref={panelRef}
-      className="fixed z-50 bg-[var(--bg)] border border-[var(--border)] rounded-lg shadow-lg"
+      className="fixed z-[95] bg-[var(--bg)] border border-[var(--border)] rounded-lg shadow-lg"
       style={{ left: pos.x, top: pos.y }}
     >
       {/* Drag handle + layout toggle */}
