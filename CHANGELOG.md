@@ -2,6 +2,15 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.4] - 2026-03-19
+
+### Fixed
+- Browser card: improve webview compatibility — add persistent session, allowpopups, sanitize User-Agent, handle new-window and load errors
+- Usage panel: filter out synthetic and unknown model entries from stats
+
+### Changed
+- Shortcuts: show keyboard hints on-demand instead of always visible
+
 ## [0.8.3] - 2026-03-19
 
 ### Added
