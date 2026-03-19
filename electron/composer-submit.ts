@@ -184,6 +184,14 @@ async function submitBracketedPaste(
       await deps.delayMs(adapter.pasteDelayMs);
     }
 
+    // When images were pasted, the CLI needs extra time to read and process
+    // the image files from disk before the submit key arrives. Without this
+    // the \r lands while the CLI is still loading images and gets treated as
+    // a literal newline in the input buffer instead of a submit action.
+    if (stagedImagePaths.length > 0) {
+      await deps.delayMs(200 * stagedImagePaths.length);
+    }
+
     writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
 
     return { ok: true, requestId, stagedImagePaths };
