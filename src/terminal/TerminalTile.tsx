@@ -240,20 +240,31 @@ export function TerminalTile({
     // Scroll-pinning: keep viewport pinned to bottom during streaming
     // unless the user has scrolled up to read history.
     //
-    // Single source of truth: onScroll captures ALL scroll methods (wheel,
-    // keyboard PageUp/Down, scrollbar drag, touch). A `programmaticScroll`
-    // guard prevents our own scrollToBottom() from falsely disabling follow.
+    // We listen to the viewport DOM element's native `scroll` event to
+    // track followBottom state. This captures ALL scroll sources (wheel,
+    // keyboard PageUp/Down, scrollbar drag, touch, programmatic).
     //
-    // Previous approach used wheel events to track intent, but that missed
-    // keyboard/scrollbar scrolling entirely — those paths left followBottom
-    // true and output kept snapping back to bottom.
+    // Previous approaches failed because:
+    // - xterm.onScroll only fires for buffer-level scrolls (new content
+    //   pushing into scrollback), NOT for user viewport scrolling
+    // - wheel events miss keyboard and scrollbar scrolling
+    // - per-write viewportY checks have a race condition with spinner
+    //   output during AI thinking (wasAtBottom captured before user scroll,
+    //   callback fires after and snaps back)
+    //
+    // A `programmaticScroll` counter distinguishes our scrollToBottom()
+    // calls from user-initiated scrolls. We use a counter (not a boolean)
+    // because the scroll event dispatches asynchronously — setTimeout(0)
+    // clears it after the event has been processed.
     let followBottom = true;
-    let programmaticScroll = false;
-    const scrollDisposable = xterm.onScroll(() => {
-      if (programmaticScroll) return;
+    let programmaticScrollCount = 0;
+    const viewportEl = xterm.element?.querySelector(".xterm-viewport");
+    const handleViewportScroll = () => {
+      if (programmaticScrollCount > 0) return;
       const buf = xterm.buffer.active;
       followBottom = buf.viewportY >= buf.baseY;
-    });
+    };
+    viewportEl?.addEventListener("scroll", handleViewportScroll, { passive: true });
 
     // GPU-accelerated rendering; fall back to Canvas2D when context limit is hit
     try {
@@ -473,9 +484,9 @@ export function TerminalTile({
             if (followBottom) {
               const buf = xterm.buffer.active;
               if (buf.viewportY < buf.baseY) {
-                programmaticScroll = true;
+                programmaticScrollCount++;
                 xterm.scrollToBottom();
-                programmaticScroll = false;
+                setTimeout(() => { programmaticScrollCount--; }, 0);
               }
             }
           });
@@ -568,7 +579,7 @@ export function TerminalTile({
       if (detectTimer) clearTimeout(detectTimer);
       sessionCancelRef.current?.();
       removeTurnComplete();
-      scrollDisposable.dispose();
+      viewportEl?.removeEventListener("scroll", handleViewportScroll);
       // Unwatch session watcher
       const state = useProjectStore.getState();
       const proj = state.projects.find((p) => p.id === projectId);
