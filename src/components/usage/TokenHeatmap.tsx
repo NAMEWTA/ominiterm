@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUsageStore, type HeatmapEntry } from "../../stores/usageStore";
 import { useT } from "../../i18n/useT";
@@ -105,11 +105,25 @@ interface TooltipProps {
 
 function HeatmapTooltip({ cell, triggerRect }: TooltipProps) {
   const t = useT();
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const spaceBelow = window.innerHeight - triggerRect.bottom;
   const flipUp = spaceBelow < 60;
 
+  useLayoutEffect(() => {
+    const el = tooltipRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const margin = 8;
+    if (rect.right > window.innerWidth - margin) {
+      el.style.left = `${parseFloat(el.style.left) - (rect.right - (window.innerWidth - margin))}px`;
+    } else if (rect.left < margin) {
+      el.style.left = `${parseFloat(el.style.left) + (margin - rect.left)}px`;
+    }
+  });
+
   return createPortal(
     <div
+      ref={tooltipRef}
       className="fixed z-[9999] pointer-events-none usage-tooltip-enter"
       style={{
         top: flipUp ? undefined : triggerRect.bottom + 4,

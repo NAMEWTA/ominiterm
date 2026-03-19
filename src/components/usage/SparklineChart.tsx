@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import type { UsageBucket } from "../../types";
 import { useT } from "../../i18n/useT";
 
@@ -97,20 +98,36 @@ interface SparklineTooltipProps {
   callsLabel: string;
 }
 
-function SparklineTooltip({ bucket, index, totalBars, callsLabel }: SparklineTooltipProps) {
-  // Position tooltip: center above the hovered bar, clamp to edges
-  const pct = ((index + 0.5) / totalBars) * 100;
-  const clampedPct = Math.max(20, Math.min(80, pct));
+function SparklineTooltip({ bucket, index, totalBars, containerRef, callsLabel }: SparklineTooltipProps) {
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
+  useLayoutEffect(() => {
+    const el = tooltipRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const margin = 8;
+    if (rect.right > window.innerWidth - margin) {
+      el.style.left = `${parseFloat(el.style.left) - (rect.right - (window.innerWidth - margin))}px`;
+    } else if (rect.left < margin) {
+      el.style.left = `${parseFloat(el.style.left) + (margin - rect.left)}px`;
+    }
+  });
+
+  const containerRect = containerRef.current?.getBoundingClientRect();
+  if (!containerRect) return null;
+
+  const barWidth = containerRect.width / totalBars;
+  const barCenterX = containerRect.left + (index + 0.5) * barWidth;
   const totalTokens = bucket.input + bucket.output + bucket.cacheRead + bucket.cacheCreate5m + bucket.cacheCreate1h;
 
-  return (
+  return createPortal(
     <div
-      className="absolute bottom-full mb-1.5 pointer-events-none usage-tooltip-enter"
+      ref={tooltipRef}
+      className="fixed z-[9999] pointer-events-none usage-tooltip-enter"
       style={{
-        left: `${clampedPct}%`,
+        bottom: window.innerHeight - containerRect.top + 6,
+        left: barCenterX,
         transform: "translateX(-50%)",
-        zIndex: 10,
       }}
     >
       <div
@@ -130,6 +147,7 @@ function SparklineTooltip({ bucket, index, totalBars, callsLabel }: SparklineToo
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

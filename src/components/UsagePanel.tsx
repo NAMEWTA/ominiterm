@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useRef, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUsageStore } from "../stores/usageStore";
 import { useCanvasStore } from "../stores/canvasStore";
@@ -96,6 +96,7 @@ function Bar({
 function HoverDetail({ children, tooltip }: { children: React.ReactNode; tooltip: React.ReactNode }) {
   const [show, setShow] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; flipUp: boolean } | null>(null);
 
   useEffect(() => {
@@ -110,6 +111,18 @@ function HoverDetail({ children, tooltip }: { children: React.ReactNode; tooltip
     });
   }, [show]);
 
+  useLayoutEffect(() => {
+    const el = tooltipRef.current;
+    if (!el || !show) return;
+    const rect = el.getBoundingClientRect();
+    const margin = 8;
+    if (rect.right > window.innerWidth - margin) {
+      el.style.left = `${parseFloat(el.style.left) - (rect.right - (window.innerWidth - margin))}px`;
+    } else if (rect.left < margin) {
+      el.style.left = `${parseFloat(el.style.left) + (margin - rect.left)}px`;
+    }
+  });
+
   return (
     <div
       ref={triggerRef}
@@ -119,6 +132,7 @@ function HoverDetail({ children, tooltip }: { children: React.ReactNode; tooltip
       {children}
       {show && pos && createPortal(
         <div
+          ref={tooltipRef}
           className="fixed z-[9999] pointer-events-none usage-tooltip-enter"
           style={{
             top: pos.flipUp ? undefined : pos.top,
