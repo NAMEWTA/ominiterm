@@ -202,4 +202,16 @@ export const zh = {
   usage_heatmap_more: "多",
   usage_heatmap_loading: "加载热力图…",
   usage_heatmap_error: "热力图加载失败",
+
+  // Welcome popup
+  welcome_title: "termcanvas",
+  welcome_heading: "欢迎使用 TermCanvas！",
+  welcome_desc: "在无限画布上管理终端。",
+  welcome_quick_start: "快速开始：",
+  welcome_step_1: "点击「Add Project」添加项目",
+  welcome_step_2: "在工作树中打开终端",
+  welcome_step_3: "自由平移和缩放画布",
+  welcome_shortcuts: "快捷键：",
+  welcome_github: "GitHub:",
+  welcome_dismiss: "按 Enter 或点击任意位置开始。",
 } as const;
