@@ -162,6 +162,10 @@ This teaches your main AI agent when and how to spawn sub-agents automatically.
 | Drawing | perfect-freehand |
 | Build | Vite |
 
+## Acknowledgements
+
+- [lazygit](https://github.com/jesseduffield/lazygit) — TermCanvas integrates lazygit as a built-in terminal type for visual git management on the canvas.
+
 ## Contributing & License
 
 Contributions welcome — fork, branch, and open a PR. Licensed under [MIT](LICENSE).

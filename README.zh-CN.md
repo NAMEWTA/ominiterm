@@ -162,6 +162,10 @@ hydra init    # 将 Hydra 使用说明添加到项目的 CLAUDE.md 和 AGENTS.md
 | 绘图 | perfect-freehand |
 | 构建 | Vite |
 
+## 致谢
+
+- [lazygit](https://github.com/jesseduffield/lazygit) — TermCanvas 集成了 lazygit 作为内置终端类型，在画布上提供可视化的 git 管理。
+
 ## 参与贡献 & 许可证
 
 欢迎贡献——Fork、创建分支、发起 PR。基于 [MIT](LICENSE) 许可。
