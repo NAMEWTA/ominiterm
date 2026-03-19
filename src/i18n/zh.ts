@@ -181,6 +181,8 @@ export const zh = {
   usage_cache_read: "缓存读",
   usage_cache_create: "缓存写",
   usage_tokens: "Tokens",
+  usage_cache_rate: "缓存率",
+  usage_cache_rate_overall: "整体",
   usage_no_data: "暂无用量数据",
   usage_today: "今天",
   usage_calls: "次调用",

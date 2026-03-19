@@ -252,6 +252,89 @@ function TokenBreakdown({
   );
 }
 
+function CacheRateSection({
+  t,
+  summary,
+  animate,
+}: {
+  t: ReturnType<typeof useT>;
+  summary: UsageSummary;
+  animate: boolean;
+}) {
+  // Group models into clients
+  const clients: { label: string; input: number; cacheRead: number }[] = [];
+  let claudeInput = 0, claudeCacheRead = 0;
+  let codexInput = 0, codexCacheRead = 0;
+
+  for (const m of summary.models) {
+    if (m.model === "codex") {
+      codexInput += m.input;
+      codexCacheRead += m.cacheRead;
+    } else {
+      claudeInput += m.input;
+      claudeCacheRead += m.cacheRead;
+    }
+  }
+
+  if (claudeInput + claudeCacheRead > 0) {
+    clients.push({ label: "Claude", input: claudeInput, cacheRead: claudeCacheRead });
+  }
+  if (codexInput + codexCacheRead > 0) {
+    clients.push({ label: "Codex", input: codexInput, cacheRead: codexCacheRead });
+  }
+
+  const overallInput = summary.totalInput;
+  const overallCacheRead = summary.totalCacheRead;
+  const overallTotal = overallInput + overallCacheRead;
+  if (overallTotal === 0) return null;
+
+  const overallRate = overallCacheRead / overallTotal;
+
+  const rows = [
+    { label: t.usage_cache_rate_overall, rate: overallRate, input: overallInput, cacheRead: overallCacheRead },
+    ...clients.map((c) => ({
+      label: c.label,
+      rate: c.input + c.cacheRead > 0 ? c.cacheRead / (c.input + c.cacheRead) : 0,
+      input: c.input,
+      cacheRead: c.cacheRead,
+    })),
+  ];
+
+  // Skip if only one client (overall == that client, redundant)
+  const showRows = clients.length > 1 ? rows : [rows[0]];
+
+  return (
+    <div className="px-3 py-2.5">
+      <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
+        {t.usage_cache_rate}
+      </span>
+      <div className="mt-2 flex flex-col gap-1.5">
+        {showRows.map((row, i) => (
+          <HoverDetail
+            key={row.label}
+            tooltip={
+              <div className="text-[10px] text-[var(--text-secondary)] tabular-nums" style={{ fontFamily: '"Geist Mono", monospace' }}>
+                Cache Read: {fmtTokens(row.cacheRead)} / Input: {fmtTokens(row.input + row.cacheRead)}
+              </div>
+            }
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-[var(--text-muted)] w-12 shrink-0 truncate">{row.label}</span>
+              <Bar value={row.rate * 100} max={100} color="#eab308" animate={animate} delay={i * 60} />
+              <span
+                className="text-[10px] text-[var(--text-muted)] shrink-0 w-8 text-right tabular-nums"
+                style={{ fontFamily: '"Geist Mono", monospace' }}
+              >
+                {Math.round(row.rate * 100)}%
+              </span>
+            </div>
+          </HoverDetail>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ProjectsSection({
   t,
   projects,
@@ -467,8 +550,12 @@ export function UsagePanel() {
               <div className="usage-section-enter" style={{ animationDelay: "100ms" }}>
                 <TokenBreakdown t={t} summary={summary} animate={true} />
               </div>
+              <div className="mx-3 h-px bg-[var(--border)]" />
+              <div className="usage-section-enter" style={{ animationDelay: "130ms" }}>
+                <CacheRateSection t={t} summary={summary} animate={true} />
+              </div>
               {summary.projects.length > 0 && <div className="mx-3 h-px bg-[var(--border)]" />}
-              <div className="usage-section-enter" style={{ animationDelay: "150ms" }}>
+              <div className="usage-section-enter" style={{ animationDelay: "160ms" }}>
                 <ProjectsSection t={t} projects={summary.projects} totalCost={summary.totalCost} animate={true} />
               </div>
               {summary.models.length > 0 && <div className="mx-3 h-px bg-[var(--border)]" />}

@@ -140,6 +140,11 @@ export interface ProjectUsage {
 
 export interface ModelUsage {
   model: string;
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheCreate5m: number;
+  cacheCreate1h: number;
   cost: number;
   calls: number;
 }

@@ -183,6 +183,8 @@ export const en = {
   usage_cache_read: "Cache R",
   usage_cache_create: "Cache W",
   usage_tokens: "Tokens",
+  usage_cache_rate: "Cache Rate",
+  usage_cache_rate_overall: "Overall",
   usage_no_data: "No usage data",
   usage_today: "Today",
   usage_calls: "calls",
