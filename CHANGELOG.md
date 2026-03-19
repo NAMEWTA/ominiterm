@@ -2,6 +2,12 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.7] - 2026-03-19
+
+### Fixed
+- Hydra: use resultFile as primary completion signal instead of relying solely on terminal status
+- Hydra: distinguish explicit permission prompts from idle prompts to prevent false stall detection
+
 ## [0.8.6] - 2026-03-19
 
 ### Fixed
