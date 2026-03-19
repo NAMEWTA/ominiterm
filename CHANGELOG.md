@@ -2,6 +2,20 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.3] - 2026-03-19
+
+### Added
+- Composer: add /skills slash command for Claude and Codex
+- Sidebar: unified Figma-style collapsible panels
+
+### Fixed
+- Hydra: add concrete permission self-check before spawning sub-agents
+- Composer: prevent slash command menu from reopening after dismiss
+- Composer: match Codex /skills description to actual CLI
+- Drawing panel: prevent panel from being hidden by composer and escaping viewport
+- Usage panel: align heatmap with GitHub contribution graph style
+- Usage panel: prevent tooltip clipping
+
 ## [0.8.2] - 2026-03-19
 
 ### Fixed
