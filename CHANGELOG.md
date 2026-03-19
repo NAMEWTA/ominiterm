@@ -2,6 +2,15 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.11] - 2026-03-20
+
+### Fixed
+- PTY: debounce output gate so submit key is sent after CLI finishes rendering, not on first output chunk
+- Keyboard: auto-focus first worktree after adding a new project via Cmd+O
+- Keyboard: auto-focus and zoom to new terminal after Cmd+T
+- Keyboard: preserve worktree focus after closing the last terminal with Cmd+D
+- Composer: forward backspace to terminal when input is empty
+
 ## [0.8.10] - 2026-03-19
 
 ### Fixed
