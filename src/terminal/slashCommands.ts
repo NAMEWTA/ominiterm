@@ -22,6 +22,7 @@ const CLAUDE_COMMANDS: readonly SlashCommand[] = [
   { command: "/review", description: "Review a pull request" },
   { command: "/status", description: "Show status information" },
   { command: "/terminal-setup", description: "Set up terminal integration" },
+  { command: "/skills", description: "List available skills" },
   { command: "/vim", description: "Toggle vim mode" },
 ] as const;
 
@@ -33,6 +34,7 @@ const CODEX_COMMANDS: readonly SlashCommand[] = [
   { command: "/history", description: "Show conversation history" },
   { command: "/compact", description: "Compact conversation" },
   { command: "/clear", description: "Clear conversation" },
+  { command: "/skills", description: "List available skills" },
 ] as const;
 
 const NO_COMMANDS: readonly SlashCommand[] = [];
