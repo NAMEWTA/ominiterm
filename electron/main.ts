@@ -547,8 +547,6 @@ function setupIpc() {
           (ptyId: number, data: string) => {
             ptyManager.write(ptyId, data);
           },
-          (ptyId: number, timeoutMs: number) =>
-            ptyManager.waitForOutput(ptyId, timeoutMs),
         ),
       );
 

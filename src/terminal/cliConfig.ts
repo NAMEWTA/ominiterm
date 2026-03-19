@@ -23,6 +23,7 @@ export interface ComposerAdapterConfig {
     platform: "darwin" | "win32" | "linux",
   ) => string;
   imageFallback: ComposerImageFallbackMode;
+  pasteDelayMs: number;
 }
 
 interface TerminalAdapterConfig {
@@ -54,6 +55,7 @@ const NO_COMPOSER: ComposerAdapterConfig = {
   supportsImages: false,
   pasteKeySequence: () => "",
   imageFallback: "error",
+  pasteDelayMs: 120,
 };
 
 export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
@@ -66,6 +68,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       supportsImages: false,
       pasteKeySequence: () => "",
       imageFallback: "error",
+      pasteDelayMs: 0,
     },
   },
   claude: {
@@ -83,6 +86,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       supportsImages: true,
       pasteKeySequence: () => "",
       imageFallback: "image-path",
+      pasteDelayMs: 120,
     },
   },
   codex: {
@@ -100,6 +104,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       supportsImages: true,
       pasteKeySequence: () => "",
       imageFallback: "error",
+      pasteDelayMs: 120,
     },
   },
   kimi: {
@@ -116,6 +121,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       supportsImages: true,
       pasteKeySequence: () => "",
       imageFallback: "image-path",
+      pasteDelayMs: 120,
     },
   },
   gemini: {
@@ -132,6 +138,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       supportsImages: true,
       pasteKeySequence: () => "",
       imageFallback: "image-path",
+      pasteDelayMs: 120,
     },
   },
   opencode: {
@@ -148,6 +155,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       supportsImages: true,
       pasteKeySequence: () => "",
       imageFallback: "image-path",
+      pasteDelayMs: 120,
     },
   },
   lazygit: {
@@ -164,6 +172,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       supportsImages: false,
       pasteKeySequence: () => "",
       imageFallback: "error",
+      pasteDelayMs: 0,
     },
   },
   tmux: {
@@ -180,6 +189,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       supportsImages: false,
       pasteKeySequence: () => "",
       imageFallback: "error",
+      pasteDelayMs: 0,
     },
   },
 };

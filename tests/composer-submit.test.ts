@@ -54,7 +54,7 @@ function createDeps(
         ptyWrites.push(data);
       },
       generateRequestId: () => "req-123",
-      waitForPtyOutput: async () => {},
+      delayMs: async () => {},
       ...overrides,
     },
     ptyWrites,

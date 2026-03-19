@@ -19,8 +19,7 @@ export interface ComposerSubmitDeps {
   dataUrlToPngBuffer: (dataUrl: string) => Buffer;
   writeToPty: (ptyId: number, data: string) => void;
   generateRequestId: () => string;
-  /** Resolves when the PTY produces output, or after timeout. */
-  waitForPtyOutput: (ptyId: number, timeoutMs: number) => Promise<void>;
+  delayMs: (ms: number) => Promise<void>;
 }
 
 interface ComposerSubmitIssue {
@@ -33,7 +32,6 @@ export function createDefaultComposerSubmitDeps(
   platform: "darwin" | "win32" | "linux",
   dataUrlToPngBuffer: (dataUrl: string) => Buffer,
   writeToPty: (ptyId: number, data: string) => void,
-  waitForPtyOutput: (ptyId: number, timeoutMs: number) => Promise<void>,
 ): ComposerSubmitDeps {
   return {
     platform,
@@ -43,7 +41,7 @@ export function createDefaultComposerSubmitDeps(
     writeToPty,
     generateRequestId: () =>
       `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-    waitForPtyOutput,
+    delayMs: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   };
 }
 
@@ -164,11 +162,11 @@ async function submitBracketedPaste(
     }
   }
 
-  // Build an ordered list of paste payloads. Between each paste and
-  // before the final \r, we wait for PTY output rather than using a
-  // fixed delay — the CLI re-renders after processing each paste,
-  // producing stdout. Seeing output confirms the paste state is
-  // committed, so the next write won't race against async state updates.
+  // Build an ordered list of paste payloads. The \r (Enter) is sent as a
+  // SEPARATE write after a delay. Ink's paste handler updates React state
+  // asynchronously; if \r arrives in the same write or too soon after the
+  // paste-end marker, the TUI processes Enter before the input state is
+  // updated and the submit is silently dropped.
   const pastes: { data: string; stage: ComposerSubmitIssueStage }[] = [];
   for (const imagePath of stagedImagePaths) {
     pastes.push({ data: imagePath, stage: "paste-image" });
@@ -184,9 +182,16 @@ async function submitBracketedPaste(
 
       writePtyData(request.ptyId, payload, deps, stage, "pty-write-failed");
 
-      // Wait for the CLI to process this paste before sending the next
-      // one or the submit key.
-      await deps.waitForPtyOutput(request.ptyId, 500);
+      if (i < pastes.length - 1) {
+        await deps.delayMs(adapter.pasteDelayMs);
+      }
+    }
+
+    // Delay before Enter so the CLI's paste handler can finish updating
+    // its input state. Without this, the \r arrives too early and is
+    // swallowed (text appears in input but never submits).
+    if (pastes.length > 0) {
+      await deps.delayMs(adapter.pasteDelayMs);
     }
 
     writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
