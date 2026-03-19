@@ -149,6 +149,10 @@ export function ComposerBar() {
   // Slash command autocomplete state
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+  // Track explicit dismissals (Escape / click-outside) so the useEffect
+  // doesn't re-open the menu when an unrelated dep like targetTerminal changes.
+  const slashDismissedRef = useRef(false);
+  const prevSlashDraftRef = useRef(draft);
 
   const slashCommands = useMemo(() => {
     if (!slashMenuOpen || !targetTerminal) return [];
@@ -159,7 +163,18 @@ export function ComposerBar() {
 
   // Open/close menu based on draft content
   useEffect(() => {
+    // Reset dismissed flag when the draft actually changes — the user is
+    // still typing, so they expect the menu to respond again.
+    if (prevSlashDraftRef.current !== draft) {
+      prevSlashDraftRef.current = draft;
+      slashDismissedRef.current = false;
+    }
+
     if (draft.startsWith("/") && targetTerminal) {
+      // If the user explicitly dismissed the menu (Escape / click-outside),
+      // don't re-open until the draft changes.
+      if (slashDismissedRef.current) return;
+
       const commands = filterSlashCommands(
         targetTerminal.type,
         draft.slice(1),
@@ -182,6 +197,11 @@ export function ComposerBar() {
     }
     setSlashMenuOpen(false);
   }, [draft, targetTerminal]);
+
+  const handleSlashClose = useCallback(() => {
+    slashDismissedRef.current = true;
+    setSlashMenuOpen(false);
+  }, []);
 
   const handleSlashSelect = useCallback(
     (command: string) => {
@@ -430,7 +450,7 @@ export function ComposerBar() {
                 commands={slashCommands}
                 selectedIndex={slashSelectedIndex}
                 onSelect={handleSlashSelect}
-                onClose={() => setSlashMenuOpen(false)}
+                onClose={handleSlashClose}
               />
             )}
             <textarea
@@ -462,7 +482,7 @@ export function ComposerBar() {
                   }
                   if (event.key === "Escape") {
                     event.preventDefault();
-                    setSlashMenuOpen(false);
+                    handleSlashClose();
                     return;
                   }
                 }
