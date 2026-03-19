@@ -467,10 +467,8 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         };
       }
 
-      // No adjacent terminal — clear focus
+      // No adjacent terminal — keep worktree focused so cmd+t still works
       return {
-        focusedProjectId: null,
-        focusedWorktreeId: null,
         projects: updatedProjects,
       };
     }),
