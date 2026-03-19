@@ -2,6 +2,11 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.12] - 2026-03-20
+
+### Fixed
+- Composer: restore fixed paste delay to fix image not recognized when sent with text
+
 ## [0.8.11] - 2026-03-20
 
 ### Fixed
