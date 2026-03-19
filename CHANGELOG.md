@@ -2,6 +2,18 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.1] - 2026-03-19
+
+### Fixed
+- Drawing panel: constrain drag to viewport bounds, preventing panel from being dragged off-screen
+- Composer: fix slash command selection resetting to first item on every keystroke
+- Cmd+O: center newly created project in current viewport instead of top-left
+- Usage panel: fix hover tooltip positioning (translateX offset) and i18n for heatmap tokens label
+- Usage panel: remove dead code (unused dayOfMonth field and tooltipRef)
+
+### Added
+- Usage panel: GitHub-style token heatmap calendar showing daily usage over 91 days
+
 ## [0.8.0] - 2026-03-19
 
 ### Added
