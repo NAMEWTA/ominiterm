@@ -2,6 +2,11 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.10] - 2026-03-19
+
+### Fixed
+- Terminal: fix scroll snapping back to bottom during AI thinking/streaming when user scrolls up
+
 ## [0.8.9] - 2026-03-19
 
 ### Fixed
