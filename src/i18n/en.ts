@@ -204,6 +204,18 @@ export const en = {
   usage_heatmap_more: "More",
   usage_heatmap_loading: "Loading heatmap…",
   usage_heatmap_error: "Failed to load heatmap",
+
+  // Welcome popup
+  welcome_title: "termcanvas",
+  welcome_heading: "Welcome to TermCanvas!",
+  welcome_desc: "Manage terminals on an infinite canvas.",
+  welcome_quick_start: "Quick Start:",
+  welcome_step_1: "Click \"Add Project\" to add a project",
+  welcome_step_2: "Open terminals in your worktrees",
+  welcome_step_3: "Pan & zoom the canvas freely",
+  welcome_shortcuts: "Key Shortcuts:",
+  welcome_github: "GitHub:",
+  welcome_dismiss: "Press Enter or click anywhere to start.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
