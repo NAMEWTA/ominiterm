@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import {
@@ -113,7 +115,7 @@ test("codex sends text via bracketed paste without clipboard", async () => {
   const result = await submitComposerRequest(request, deps);
 
   assert.equal(result.ok, true);
-  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~", "\r"]);
+  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~\r"]);
 });
 
 test("codex sends image paths via bracketed paste without clipboard", async () => {
@@ -138,10 +140,9 @@ test("codex sends image paths via bracketed paste without clipboard", async () =
     fileWrites[0].filePath.endsWith(path.join("req-123", "image-1.png")),
     true,
   );
-  assert.equal(ptyWrites.length, 3);
+  assert.equal(ptyWrites.length, 2);
   assert.match(ptyWrites[0], /^\x1b\[200~.*image-1\.png\x1b\[201~$/);
-  assert.equal(ptyWrites[1], "\x1b[200~check this\x1b[201~");
-  assert.equal(ptyWrites[2], "\r");
+  assert.equal(ptyWrites[1], "\x1b[200~check this\x1b[201~\r");
 });
 
 test("claude sends text via bracketed paste without clipboard", async () => {
@@ -155,7 +156,7 @@ test("claude sends text via bracketed paste without clipboard", async () => {
   const result = await submitComposerRequest(request, deps);
 
   assert.equal(result.ok, true);
-  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~", "\r"]);
+  assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~\r"]);
 });
 
 test("claude sends image paths via bracketed paste", async () => {
@@ -180,10 +181,9 @@ test("claude sends image paths via bracketed paste", async () => {
     fileWrites[0].filePath.endsWith(path.join("req-123", "image-1.png")),
     true,
   );
-  assert.equal(ptyWrites.length, 3);
+  assert.equal(ptyWrites.length, 2);
   assert.match(ptyWrites[0], /^\x1b\[200~.*image-1\.png\x1b\[201~$/);
-  assert.equal(ptyWrites[1], "\x1b[200~Inspect this screenshot\x1b[201~");
-  assert.equal(ptyWrites[2], "\r");
+  assert.equal(ptyWrites[1], "\x1b[200~Inspect this screenshot\x1b[201~\r");
 });
 
 test("shell writes text directly to the PTY", async () => {
@@ -234,5 +234,25 @@ test("shell reports PTY write failures with stage details", async () => {
   assert.equal(result.code, "pty-write-failed");
   assert.equal(result.stage, "paste-text");
   assert.equal(result.detail, "pty closed");
+});
+
+test("submitComposerRequest cleans up old composer request dirs", async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "tc-cleanup-"));
+  const composerDir = path.join(tmpDir, ".termcanvas", "composer");
+  const oldReqDir = path.join(composerDir, "req-old-aaa");
+  fs.mkdirSync(oldReqDir, { recursive: true });
+  fs.writeFileSync(path.join(oldReqDir, "image-1.png"), "old-image");
+
+  const request = createRequest({
+    worktreePath: tmpDir,
+    text: "hello",
+    images: [],
+  });
+  const { deps } = createDeps();
+
+  await submitComposerRequest(request, deps);
+
+  assert.equal(fs.existsSync(oldReqDir), false);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

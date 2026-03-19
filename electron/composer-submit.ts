@@ -122,19 +122,8 @@ function writePtyData(
 const BRACKETED_PASTE_START = "\x1b[200~";
 const BRACKETED_PASTE_END = "\x1b[201~";
 
-function writeBracketedPaste(
-  ptyId: number,
-  text: string,
-  deps: ComposerSubmitDeps,
-  stage: ComposerSubmitIssueStage,
-): void {
-  writePtyData(
-    ptyId,
-    BRACKETED_PASTE_START + text + BRACKETED_PASTE_END,
-    deps,
-    stage,
-    "pty-write-failed",
-  );
+function buildBracketedPaste(text: string): string {
+  return BRACKETED_PASTE_START + text + BRACKETED_PASTE_END;
 }
 
 async function submitBracketedPaste(
@@ -173,26 +162,37 @@ async function submitBracketedPaste(
     }
   }
 
+  // Build an ordered list of paste payloads. The \r is appended to the final
+  // write() so it lands in the same PTY kernel buffer as the paste-end marker.
+  // The CLI's stdin.read() returns both in one chunk, guaranteeing the submit
+  // is processed in the same event-loop tick — no race, no hardcoded delay.
+  const pastes: { data: string; stage: ComposerSubmitIssueStage }[] = [];
+  for (const imagePath of stagedImagePaths) {
+    pastes.push({ data: imagePath, stage: "paste-image" });
+  }
+  if (request.text.trim().length > 0) {
+    pastes.push({ data: request.text, stage: "paste-text" });
+  }
+
   try {
-    for (const imagePath of stagedImagePaths) {
-      writeBracketedPaste(request.ptyId, imagePath, deps, "paste-image");
-      await deps.delayMs(adapter.pasteDelayMs);
+    for (let i = 0; i < pastes.length; i++) {
+      const { data, stage } = pastes[i];
+      const isLast = i === pastes.length - 1;
+      const payload = isLast
+        ? buildBracketedPaste(data) + "\r"
+        : buildBracketedPaste(data);
+
+      writePtyData(request.ptyId, payload, deps, stage, isLast ? "submit-key-failed" : "pty-write-failed");
+
+      if (!isLast) {
+        await deps.delayMs(adapter.pasteDelayMs);
+      }
     }
 
-    if (request.text.trim().length > 0) {
-      writeBracketedPaste(request.ptyId, request.text, deps, "paste-text");
-      await deps.delayMs(adapter.pasteDelayMs);
+    // Edge case: no pastes at all (validated away earlier, but be defensive)
+    if (pastes.length === 0) {
+      writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
     }
-
-    // When images were pasted, the CLI needs extra time to read and process
-    // the image files from disk before the submit key arrives. Without this
-    // the \r lands while the CLI is still loading images and gets treated as
-    // a literal newline in the input buffer instead of a submit action.
-    if (stagedImagePaths.length > 0) {
-      await deps.delayMs(200 * stagedImagePaths.length);
-    }
-
-    writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
 
     return { ok: true, requestId, stagedImagePaths };
   } catch (error) {
@@ -247,10 +247,33 @@ async function submitDirectText(
   };
 }
 
+/**
+ * Remove staged image directories from previous composer submissions.
+ * Called at the start of every new submit so temp files don't accumulate.
+ */
+function cleanupOldComposerRequests(worktreePath: string): void {
+  const composerDir = path.join(worktreePath, ".termcanvas", "composer");
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(composerDir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    try {
+      fs.rmSync(path.join(composerDir, entry), { recursive: true, force: true });
+    } catch {
+      // best-effort
+    }
+  }
+}
+
 export async function submitComposerRequest(
   request: ComposerSubmitRequest,
   deps: ComposerSubmitDeps,
 ): Promise<ComposerSubmitResult> {
+  cleanupOldComposerRequests(request.worktreePath);
+
   const adapter = getComposerAdapter(request.terminalType);
   if (!adapter) {
     return createFailure({
