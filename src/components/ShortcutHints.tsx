@@ -43,6 +43,7 @@ export function ShortcutHints() {
     { key: shortcuts.newTerminal, desc: t.shortcut_new_terminal },
     { key: shortcuts.renameTerminalTitle, desc: t.shortcut_rename_terminal_title },
     { key: shortcuts.closeFocused, desc: t.shortcut_close_focused },
+    { key: shortcuts.toggleStarFocused, desc: t.shortcut_toggle_star_focused },
     { key: shortcuts.nextTerminal, desc: t.shortcut_next_terminal },
     { key: shortcuts.prevTerminal, desc: t.shortcut_prev_terminal },
     { key: shortcuts.clearFocus, desc: t.shortcut_clear_focus },

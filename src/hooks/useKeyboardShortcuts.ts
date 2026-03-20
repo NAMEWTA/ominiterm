@@ -295,6 +295,23 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      if (matchesShortcut(e, shortcuts.toggleStarFocused)) {
+        e.preventDefault();
+        const list = getAllTerminals();
+        const focusedIdx = getFocusedTerminalIndex(list);
+        if (focusedIdx !== -1) {
+          const focused = list[focusedIdx];
+          useProjectStore
+            .getState()
+            .toggleTerminalStarred(
+              focused.projectId,
+              focused.worktreeId,
+              focused.terminalId,
+            );
+        }
+        return;
+      }
+
       if (matchesShortcut(e, shortcuts.newTerminal)) {
         e.preventDefault();
         const { focusedProjectId, focusedWorktreeId, addTerminal, setFocusedTerminal } =

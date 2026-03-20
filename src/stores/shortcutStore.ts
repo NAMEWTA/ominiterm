@@ -13,6 +13,7 @@ export interface ShortcutMap {
   clearFocus: string;
   closeFocused: string;
   toggleRightPanel: string;
+  toggleStarFocused: string;
   spanDefault: string;
   spanWide: string;
   spanTall: string;
@@ -31,6 +32,7 @@ export const DEFAULT_SHORTCUTS: ShortcutMap = {
   clearFocus: "mod+e",
   closeFocused: "mod+d",
   toggleRightPanel: "mod+/",
+  toggleStarFocused: "mod+f",
   spanDefault: "mod+1",
   spanWide: "mod+2",
   spanTall: "mod+3",

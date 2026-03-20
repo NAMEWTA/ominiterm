@@ -33,6 +33,7 @@ const SHORTCUT_KEYS: { key: keyof ShortcutMap; labelKey: string }[] = [
   { key: "saveWorkspaceAs", labelKey: "shortcut_save_workspace_as" },
   { key: "renameTerminalTitle", labelKey: "shortcut_rename_terminal_title" },
   { key: "closeFocused", labelKey: "shortcut_close_focused" },
+  { key: "toggleStarFocused", labelKey: "shortcut_toggle_star_focused" },
   { key: "nextTerminal", labelKey: "shortcut_next_terminal" },
   { key: "prevTerminal", labelKey: "shortcut_prev_terminal" },
   { key: "clearFocus", labelKey: "shortcut_clear_focus" },

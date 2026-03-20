@@ -97,6 +97,7 @@ export const en = {
   shortcut_new_terminal: "New terminal",
   shortcut_rename_terminal_title: "Rename terminal",
   shortcut_close_focused: "Close focused",
+  shortcut_toggle_star_focused: "Star / unstar terminal",
   shortcut_next_terminal: "Next terminal",
   shortcut_prev_terminal: "Prev terminal",
   shortcut_clear_focus: "Toggle focus",
