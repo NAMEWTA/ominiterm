@@ -240,29 +240,26 @@ export function TerminalTile({
     // Scroll-pinning: keep viewport pinned to bottom during streaming
     // unless the user explicitly scrolled up to read history.
     //
-    // Previous approaches used the DOM `scroll` event + a programmatic
-    // scroll counter, but that can't reliably distinguish user scrolls
-    // from xterm's own internal auto-scroll, causing race conditions.
-    //
-    // This approach tracks user intent directly:
-    // - wheel (deltaY < 0) and PageUp/Home keydown → userScrolledUp = true
-    // - scroll event only re-enables follow when user has returned to bottom
-    // This is race-free because wheel/keydown are synchronous user actions.
+    // xterm v6 uses SmoothScrollableElement (not .xterm-viewport) for
+    // scrolling, so we listen on xterm.element which is a parent of all
+    // scroll-handling DOM.  xterm v6 also has a built-in isUserScrolling
+    // flag in BufferService that prevents ydisp from following ybase
+    // during writes — our explicit scrollToBottom() in the write callback
+    // is just a safety net and must NOT fire when the user scrolled up.
     let userScrolledUp = false;
-    const viewportEl = xterm.element?.querySelector(".xterm-viewport");
+    const xtermEl = xterm.element;
 
     const handleWheel = (e: Event) => {
       if ((e as WheelEvent).deltaY < 0) userScrolledUp = true;
     };
-    viewportEl?.addEventListener("wheel", handleWheel, { passive: true });
+    xtermEl?.addEventListener("wheel", handleWheel, { passive: true });
 
-    // Re-enable auto-follow when user scrolls back to the bottom
-    const handleViewportScroll = () => {
+    // Re-enable auto-follow when viewport returns to bottom
+    const handleScrollDisposable = xterm.onScroll(() => {
       if (!userScrolledUp) return;
       const buf = xterm.buffer.active;
       if (buf.viewportY >= buf.baseY) userScrolledUp = false;
-    };
-    viewportEl?.addEventListener("scroll", handleViewportScroll, { passive: true });
+    });
 
     // GPU-accelerated rendering; fall back to Canvas2D when context limit is hit
     try {
@@ -584,8 +581,8 @@ export function TerminalTile({
       if (detectTimer) clearTimeout(detectTimer);
       sessionCancelRef.current?.();
       removeTurnComplete();
-      viewportEl?.removeEventListener("wheel", handleWheel);
-      viewportEl?.removeEventListener("scroll", handleViewportScroll);
+      xtermEl?.removeEventListener("wheel", handleWheel);
+      handleScrollDisposable.dispose();
       // Unwatch session watcher
       const state = useProjectStore.getState();
       const proj = state.projects.find((p) => p.id === projectId);
@@ -634,14 +631,14 @@ export function TerminalTile({
     return () => cancelAnimationFrame(frame);
   }, [width, height, terminal.minimized]);
 
-  // Give xterm DOM focus when this terminal becomes the focused terminal
-  // and its input mode is "type" (shell, lazygit, tmux). This ensures
-  // keyboard shortcut-based terminal switching also moves DOM focus.
-  // "paste"-mode terminals rely on the Composer textarea for input.
+  // Give xterm DOM focus only for terminals that don't support the Composer
+  // (all current types use Composer, so this is a safeguard for future types).
+  // Composer-supported terminals keep DOM focus on the textarea so
+  // getPassthroughSequence can intercept and forward keystrokes.
   useEffect(() => {
     if (terminal.focused) {
       const adapter = getComposerAdapter(terminal.type);
-      if (!adapter || adapter.inputMode === "type") {
+      if (!adapter) {
         xtermRef.current?.focus();
       }
     }

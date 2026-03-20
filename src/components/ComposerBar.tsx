@@ -221,14 +221,14 @@ export function ComposerBar() {
 
   // Auto-focus Composer when target terminal changes so the user can
   // start typing immediately without an extra click.
-  // Skip for "type"-mode terminals (shell, lazygit, tmux) — those need
-  // xterm to hold DOM focus for real-time keystroke interaction.
+  // All terminal types route input through the Composer (type-mode
+  // terminals use getPassthroughSequence to forward keystrokes).
   const targetTerminalId = targetTerminal?.terminalId ?? null;
   useEffect(() => {
-    if (targetTerminalId && isTargetReady && targetAdapter?.inputMode !== "type") {
+    if (targetTerminalId && isTargetReady) {
       textareaRef.current?.focus();
     }
-  }, [targetTerminalId, isTargetReady, targetAdapter]);
+  }, [targetTerminalId, isTargetReady]);
 
   // Focus composer when an explicit focus shortcut is used (Cmd+[/], Cmd+E, etc.)
   useEffect(() => {

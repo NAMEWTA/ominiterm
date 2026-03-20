@@ -162,25 +162,24 @@ async function submitBracketedPaste(
     }
   }
 
-  // All bracketed pastes are sent in a SINGLE write so the CLI's stdin
-  // tokenizer (confirmed by reverse-engineering Claude Code's Ink-based
-  // parser) processes them in one feed() call — no race between pastes.
+  // Each bracketed paste must be a separate write so the CLI's stdin
+  // tokenizer treats image paths and text as distinct paste events.
+  // When joined into one write, the tokenizer concatenates image paths
+  // with user text instead of recognising them as separate inputs.
   //
   // The submit key (\r) MUST be a separate write after a delay: React 18
   // batches state updates, so if \r arrives in the same feed() call as
   // the paste events, the submit handler reads stale state and silently
   // drops the submission.
-  const parts: string[] = [];
-  for (const imagePath of stagedImagePaths) {
-    parts.push(buildBracketedPaste(imagePath));
-  }
-  if (request.text.trim().length > 0) {
-    parts.push(buildBracketedPaste(request.text));
-  }
-
   try {
-    if (parts.length > 0) {
-      writePtyData(request.ptyId, parts.join(""), deps, "paste-text", "pty-write-failed");
+    for (const imagePath of stagedImagePaths) {
+      writePtyData(request.ptyId, buildBracketedPaste(imagePath), deps, "paste-text", "pty-write-failed");
+    }
+    if (request.text.trim().length > 0) {
+      writePtyData(request.ptyId, buildBracketedPaste(request.text), deps, "paste-text", "pty-write-failed");
+    }
+
+    if (stagedImagePaths.length > 0 || request.text.trim().length > 0) {
       await deps.delayMs(adapter.pasteDelayMs);
     }
     writePtyData(request.ptyId, "\r", deps, "submit", "submit-key-failed");
