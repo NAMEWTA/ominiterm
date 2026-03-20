@@ -8,7 +8,21 @@ export interface CleanupArgs {
   force: boolean;
 }
 
+function printCleanupUsage(): never {
+  console.log("Usage: hydra cleanup <agentId> [options]");
+  console.log("       hydra cleanup --all [options]");
+  console.log("");
+  console.log("Options:");
+  console.log("  --all      Clean up all agents");
+  console.log("  --force    Force cleanup even if agent is still running");
+  process.exit(0);
+}
+
 export function parseCleanupArgs(args: string[]): CleanupArgs {
+  if (args.includes("--help") || args.includes("-h")) {
+    printCleanupUsage();
+  }
+
   const all = args.includes("--all");
   const force = args.includes("--force");
   const agentId = args.find((a) => !a.startsWith("--"));

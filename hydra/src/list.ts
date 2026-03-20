@@ -2,6 +2,14 @@ import path from "node:path";
 import { listAgents } from "./store.ts";
 
 export async function list(args: string[]): Promise<void> {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log("Usage: hydra list [options]");
+    console.log("");
+    console.log("Options:");
+    console.log("  --repo <path>  Filter agents by repository path");
+    process.exit(0);
+  }
+
   const repoIdx = args.indexOf("--repo");
   const repo = repoIdx >= 0 ? path.resolve(args[repoIdx + 1]) : undefined;
 

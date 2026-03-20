@@ -20,7 +20,24 @@ export interface SpawnArgs {
   autoApprove?: boolean;
 }
 
+function printSpawnUsage(): never {
+  console.log("Usage: hydra spawn [options]");
+  console.log("");
+  console.log("Options:");
+  console.log("  --task <desc>       Task description for the sub-agent (required)");
+  console.log("  --type <type>       Agent type: claude, codex (default: claude)");
+  console.log("  --repo <path>       Path to the git repository (required)");
+  console.log("  --worktree <path>   Use an existing worktree (read-only mode)");
+  console.log("  --base-branch <br>  Base branch for the new worktree (default: current)");
+  console.log("  --auto-approve      Run sub-agent in auto-approve mode");
+  process.exit(0);
+}
+
 export function parseSpawnArgs(args: string[]): SpawnArgs {
+  if (args.includes("--help") || args.includes("-h")) {
+    printSpawnUsage();
+  }
+
   const result: Partial<SpawnArgs> = { type: "claude" };
 
   for (let i = 0; i < args.length; i++) {
