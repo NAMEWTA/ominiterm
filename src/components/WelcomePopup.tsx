@@ -94,11 +94,16 @@ function MiniCanvas({
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
 
-  // Auto-zoom to focused terminal in steps 1-2, reset for step 3
+  // Auto-zoom to focused terminal, or fit-all when unfocused
   useEffect(() => {
-    if ((step === 1 || step === 2) && focusedIndex >= 0) {
-      const offset = CELL_OFFSETS[focusedIndex];
-      setTransform({ x: -offset.x, y: -offset.y, scale: FOCUS_SCALE });
+    if (step === 1 || step === 2) {
+      if (focusedIndex >= 0) {
+        const offset = CELL_OFFSETS[focusedIndex];
+        setTransform({ x: -offset.x, y: -offset.y, scale: FOCUS_SCALE });
+      } else {
+        // Unfocused → fit all
+        setTransform({ x: 0, y: 0, scale: 1 });
+      }
     }
     if (step === 3) {
       setTransform({ x: 0, y: 0, scale: 1 });
@@ -232,6 +237,7 @@ export function WelcomePopup({ onClose }: Props) {
   const backdropRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<TutorialStep>(0);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [focusToggleCount, setFocusToggleCount] = useState(0);
   const [switchCount, setSwitchCount] = useState(0);
   const [hasInteractedZoom, setHasInteractedZoom] = useState(false);
 
@@ -259,9 +265,21 @@ export function WelcomePopup({ onClose }: Props) {
       e.preventDefault();
       e.stopPropagation();
 
-      if (step === 1 && matchesShortcut(e, shortcuts.clearFocus)) {
-        setFocusedIndex(0);
-        setStep(2);
+      if (step === 1) {
+        if (matchesShortcut(e, shortcuts.clearFocus)) {
+          setFocusedIndex((prev) => {
+            if (prev === -1) return 0;    // unfocused → focus
+            return -1;                     // focused → unfocus (fit all)
+          });
+          setFocusToggleCount((c) => c + 1);
+          return;
+        }
+        if (e.key === "Enter" && focusToggleCount >= 2) {
+          // Re-focus and advance to step 2
+          setFocusedIndex(0);
+          setStep(2);
+          return;
+        }
         return;
       }
 
@@ -298,7 +316,7 @@ export function WelcomePopup({ onClose }: Props) {
 
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [step, switchCount, hasInteractedZoom, shortcuts, onClose]);
+  }, [step, focusToggleCount, switchCount, hasInteractedZoom, shortcuts, onClose]);
 
   const shortcutItems = [
     { key: shortcuts.addProject, en: en.shortcut_add_project, zh: zh.shortcut_add_project },
@@ -321,6 +339,15 @@ export function WelcomePopup({ onClose }: Props) {
   function getPrompt(): { en: string; zh: string } | null {
     switch (step) {
       case 1:
+        if (focusToggleCount >= 2 && focusedIndex === -1) {
+          return { en: en.onboarding_switch_continue, zh: zh.onboarding_switch_continue };
+        }
+        if (focusedIndex >= 0) {
+          return {
+            en: replaceToken(en.onboarding_unfocus_prompt, "{shortcut}", fmtClearFocus),
+            zh: replaceToken(zh.onboarding_unfocus_prompt, "{shortcut}", fmtClearFocus),
+          };
+        }
         return {
           en: replaceToken(en.onboarding_focus_prompt, "{shortcut}", fmtClearFocus),
           zh: replaceToken(zh.onboarding_focus_prompt, "{shortcut}", fmtClearFocus),

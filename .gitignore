@@ -18,6 +18,10 @@ Thumbs.db
 .worktrees/
 thirdparty/
 
+# Hydra temp files
+.hydra-result-*.md
+.hydra-task-*.md
+
 # Local workspace state
 .termcanvas/
 *.termcanvas

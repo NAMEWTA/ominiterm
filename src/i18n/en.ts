@@ -241,6 +241,7 @@ export const en = {
 
   // Onboarding tutorial
   onboarding_focus_prompt: "Press {shortcut} to focus a terminal",
+  onboarding_unfocus_prompt: "Press {shortcut} again to unfocus",
   onboarding_switch_prompt: "Press {next} / {prev} to switch terminals",
   onboarding_switch_continue: "Press Enter to continue",
   onboarding_zoom_prompt: "Scroll to zoom, drag to pan",

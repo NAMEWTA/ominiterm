@@ -239,6 +239,7 @@ export const zh = {
 
   // Onboarding tutorial
   onboarding_focus_prompt: "按 {shortcut} 聚焦终端",
+  onboarding_unfocus_prompt: "再按 {shortcut} 取消聚焦",
   onboarding_switch_prompt: "按 {next} / {prev} 切换终端",
   onboarding_switch_continue: "按 Enter 继续",
   onboarding_zoom_prompt: "滚轮缩放，拖拽平移",
