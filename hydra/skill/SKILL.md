@@ -46,9 +46,28 @@ How to tell if you are in auto-approve mode:
 Do NOT pass `--auto-approve` if you are running in a restricted or
 interactive-approval mode — the sub-agent should respect the same constraints.
 
+## Explore-first strategy (optional)
+
+For complex or unfamiliar codebases, spawn read-only explore agents **before**
+writing implementation task descriptions. This parallelizes investigation and
+keeps the results out of your own context window.
+
+1. Spawn 2-3 read-only agents with focused exploration tasks:
+   ```
+   hydra spawn --task "Find all callers of X and trace the data flow" --type <agent-type> --repo . --worktree .
+   hydra spawn --task "List existing test patterns for module Y" --type <agent-type> --repo . --worktree .
+   ```
+2. Poll and collect their results (same polling rules as below)
+3. Use the exploration results to write precise task descriptions for
+   implementation agents
+
+When to use: broad refactors, unfamiliar modules, unclear dependencies.
+When to skip: you already know the codebase, the task is well-scoped.
+
 ## Workflow
 
-1. Investigate the problem yourself first, form a clear task description
+1. Investigate the problem yourself first (or use the explore-first strategy
+   above for broader tasks), then form a clear task description
 2. Spawn agents (pick the right mode above)
 3. **You MUST poll all agents until every one reaches "completed" or "error".**
    Poll each agent every 30s: `termcanvas terminal status <terminalId>`
