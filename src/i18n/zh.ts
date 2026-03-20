@@ -247,6 +247,10 @@ export const zh = {
   usage_heatmap_more: "多",
   usage_heatmap_loading: "加载热力图…",
   usage_heatmap_error: "热力图加载失败",
+  usage_quota: "Claude 额度",
+  usage_quota_5h: "5h",
+  usage_quota_7d: "7d",
+  usage_quota_resets: "重置",
 
   // Auth
   auth_login_github: "使用 GitHub 登录",

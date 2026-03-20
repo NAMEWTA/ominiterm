@@ -249,6 +249,10 @@ export const en = {
   usage_heatmap_more: "More",
   usage_heatmap_loading: "Loading heatmap…",
   usage_heatmap_error: "Failed to load heatmap",
+  usage_quota: "Claude Quota",
+  usage_quota_5h: "5h",
+  usage_quota_7d: "7d",
+  usage_quota_resets: "resets",
 
   // Auth
   auth_login_github: "Login with GitHub",
