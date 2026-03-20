@@ -228,5 +228,15 @@ export const zh = {
   welcome_step_3: "自由平移和缩放画布",
   welcome_shortcuts: "快捷键：",
   welcome_github: "GitHub:",
-  welcome_dismiss: "按 Enter 或点击任意位置开始。",
+  welcome_dismiss: "按 Enter 进入交互教程，按 Escape 跳过。",
+
+  // Onboarding tutorial
+  onboarding_focus_prompt: "按 {shortcut} 聚焦终端",
+  onboarding_switch_prompt: "按 {next} / {prev} 切换终端",
+  onboarding_switch_continue: "按 Enter 继续",
+  onboarding_zoom_prompt: "滚轮缩放，拖拽平移",
+  onboarding_zoom_continue: "按 Enter 继续",
+  onboarding_complete: "准备好了！按 {shortcut} 添加你的第一个项目。",
+  onboarding_complete_dismiss: "按 Enter 或 Escape 关闭。",
+  onboarding_skip: "Escape 跳过",
 } as const;

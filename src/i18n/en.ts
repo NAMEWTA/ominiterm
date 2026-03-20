@@ -230,7 +230,17 @@ export const en = {
   welcome_step_3: "Pan & zoom the canvas freely",
   welcome_shortcuts: "Key Shortcuts:",
   welcome_github: "GitHub:",
-  welcome_dismiss: "Press Enter or click anywhere to start.",
+  welcome_dismiss: "Press Enter to start the interactive tutorial, or Escape to skip.",
+
+  // Onboarding tutorial
+  onboarding_focus_prompt: "Press {shortcut} to focus a terminal",
+  onboarding_switch_prompt: "Press {next} / {prev} to switch terminals",
+  onboarding_switch_continue: "Press Enter to continue",
+  onboarding_zoom_prompt: "Scroll to zoom, drag to pan",
+  onboarding_zoom_continue: "Press Enter to continue",
+  onboarding_complete: "Ready! Press {shortcut} to add your first project.",
+  onboarding_complete_dismiss: "Press Enter or Escape to close.",
+  onboarding_skip: "Escape to skip",
 } as const;
 
 export type TranslationKey = keyof typeof en;
