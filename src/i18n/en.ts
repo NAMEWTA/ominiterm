@@ -127,6 +127,8 @@ export const en = {
   font_downloading: "Downloading\u2026",
   font_download_failed: "Download failed",
   animation_blur: "Focus animation blur",
+  composer_toggle: "Composer input bar",
+  composer_toggle_desc: "When off, focusing a terminal sends input directly",
   shortcuts_reset: "Reset to defaults",
   shortcuts_press_hint: "Press shortcut\u2026",
   shortcuts_conflict: "Conflicts with another shortcut",

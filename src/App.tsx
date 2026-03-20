@@ -5,6 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { NotificationToast } from "./components/NotificationToast";
 import { initUpdaterListeners } from "./stores/updaterStore";
 import { ComposerBar } from "./components/ComposerBar";
+import { usePreferencesStore } from "./stores/preferencesStore";
 import { DrawingPanel } from "./toolbar/DrawingPanel";
 import { ShortcutHints } from "./components/ShortcutHints";
 import { CompletionGlow } from "./components/CompletionGlow";
@@ -328,6 +329,7 @@ export function App() {
   useAutoSave();
   useWorkspaceOpen();
   useKeyboardShortcuts();
+  const composerEnabled = usePreferencesStore((s) => s.composerEnabled);
   const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
     useCloseHandler();
 
@@ -454,7 +456,7 @@ export function App() {
       <CompletionGlow />
       <ShortcutHints />
       <UsagePanel />
-      <ComposerBar />
+      {composerEnabled && <ComposerBar />}
       <NotificationToast />
       {showCloseDialog && (
         <CloseDialog

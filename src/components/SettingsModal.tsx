@@ -78,7 +78,7 @@ function ShortcutRow({
 
 export function SettingsModal({ onClose }: Props) {
   const { locale, setLocale } = useLocaleStore();
-  const { animationBlur, setAnimationBlur, terminalFontSize, setTerminalFontSize, terminalFontFamily, setTerminalFontFamily } = usePreferencesStore();
+  const { animationBlur, setAnimationBlur, terminalFontSize, setTerminalFontSize, terminalFontFamily, setTerminalFontFamily, composerEnabled, setComposerEnabled } = usePreferencesStore();
   const [fontSizeDraft, setFontSizeDraft] = useState(terminalFontSize);
   const { shortcuts, setShortcut, resetAll } = useShortcutStore();
   const [downloadedFonts, setDownloadedFonts] = useState<Set<string>>(new Set());
@@ -363,6 +363,32 @@ export function SettingsModal({ onClose }: Props) {
                   >
                     {animationBlur === 0 ? "Off" : `${animationBlur.toFixed(1)}`}
                   </span>
+                </div>
+              </div>
+
+              {/* Composer toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[13px] text-[var(--text-secondary)]">
+                    {t.composer_toggle}
+                  </span>
+                  <span className="text-[11px] text-[var(--text-muted)]">
+                    {t.composer_toggle_desc}
+                  </span>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    className={composerEnabled ? activeBtn : inactiveBtn}
+                    onClick={() => setComposerEnabled(true)}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={!composerEnabled ? activeBtn : inactiveBtn}
+                    onClick={() => setComposerEnabled(false)}
+                  >
+                    Off
+                  </button>
                 </div>
               </div>
 

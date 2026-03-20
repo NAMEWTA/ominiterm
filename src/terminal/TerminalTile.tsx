@@ -651,18 +651,29 @@ export function TerminalTile({
     return () => cancelAnimationFrame(frame);
   }, [width, height, terminal.minimized]);
 
-  // Give xterm DOM focus only for terminals that don't support the Composer
-  // (all current types use Composer, so this is a safeguard for future types).
-  // Composer-supported terminals keep DOM focus on the textarea so
-  // getPassthroughSequence can intercept and forward keystrokes.
+  // Give xterm DOM focus when composer is disabled or terminal type
+  // doesn't support the Composer.
+  const composerEnabled = usePreferencesStore((s) => s.composerEnabled);
   useEffect(() => {
     if (terminal.focused) {
       const adapter = getComposerAdapter(terminal.type);
-      if (!adapter) {
+      if (!adapter || !composerEnabled) {
         xtermRef.current?.focus();
       }
     }
-  }, [terminal.focused, terminal.type]);
+  }, [terminal.focused, terminal.type, composerEnabled]);
+
+  // Listen for explicit xterm focus requests (when composer is disabled)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === terminal.id) {
+        xtermRef.current?.focus();
+      }
+    };
+    window.addEventListener("termcanvas:focus-xterm", handler);
+    return () => window.removeEventListener("termcanvas:focus-xterm", handler);
+  }, [terminal.id]);
 
   // Update xterm theme when app theme changes
   useEffect(() => {
@@ -896,7 +907,7 @@ export function TerminalTile({
         }}
         onClick={() => {
           const adapter = getComposerAdapter(terminal.type);
-          if (!adapter || adapter.inputMode === "type") {
+          if (!adapter || adapter.inputMode === "type" || !composerEnabled) {
             xtermRef.current?.focus();
           }
         }}

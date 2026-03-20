@@ -11,14 +11,17 @@ interface PreferencesStore {
   terminalFontSize: number;
   /** Terminal font ID from fontRegistry */
   terminalFontFamily: string;
+  /** When false, composer bar is hidden and xterm gets direct focus */
+  composerEnabled: boolean;
   setAnimationBlur: (value: number) => void;
   setTerminalFontSize: (value: number) => void;
   setTerminalFontFamily: (fontId: string) => void;
+  setComposerEnabled: (value: boolean) => void;
 }
 
 const STORAGE_KEY = "termcanvas-preferences";
 
-function loadPreferences(): { animationBlur: number; terminalFontSize: number; terminalFontFamily: string } {
+function loadPreferences(): { animationBlur: number; terminalFontSize: number; terminalFontFamily: string; composerEnabled: boolean } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -37,15 +40,18 @@ function loadPreferences(): { animationBlur: number; terminalFontSize: number; t
       const ff = parsed.terminalFontFamily;
       if (typeof ff === "string" && ff.length > 0) fontFamily = ff;
 
-      return { animationBlur: blur, terminalFontSize: fontSize, terminalFontFamily: fontFamily };
+      let composerEnabled = true;
+      if (parsed.composerEnabled === false) composerEnabled = false;
+
+      return { animationBlur: blur, terminalFontSize: fontSize, terminalFontFamily: fontFamily, composerEnabled };
     }
   } catch {
     // ignore
   }
-  return { animationBlur: DEFAULT_BLUR, terminalFontSize: DEFAULT_FONT_SIZE, terminalFontFamily: "geist-mono" };
+  return { animationBlur: DEFAULT_BLUR, terminalFontSize: DEFAULT_FONT_SIZE, terminalFontFamily: "geist-mono", composerEnabled: true };
 }
 
-function savePreferences(state: { animationBlur: number; terminalFontSize: number; terminalFontFamily: string }) {
+function savePreferences(state: { animationBlur: number; terminalFontSize: number; terminalFontFamily: string; composerEnabled: boolean }) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -55,6 +61,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
   animationBlur: initialPrefs.animationBlur,
   terminalFontSize: initialPrefs.terminalFontSize,
   terminalFontFamily: initialPrefs.terminalFontFamily,
+  composerEnabled: initialPrefs.composerEnabled,
   setAnimationBlur: (value) => {
     const clamped = Math.round(Math.max(0, Math.min(3, value)) * 10) / 10;
     set({ animationBlur: clamped });
@@ -68,5 +75,9 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
   setTerminalFontFamily: (fontId) => {
     set({ terminalFontFamily: fontId });
     savePreferences({ ...get(), terminalFontFamily: fontId });
+  },
+  setComposerEnabled: (value) => {
+    set({ composerEnabled: value });
+    savePreferences({ ...get(), composerEnabled: value });
   },
 }));

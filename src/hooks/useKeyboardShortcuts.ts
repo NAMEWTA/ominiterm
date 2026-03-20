@@ -14,6 +14,7 @@ import {
 } from "../stores/shortcutStore";
 import { useT } from "../i18n/useT";
 import { useComposerStore } from "../stores/composerStore";
+import { usePreferencesStore } from "../stores/preferencesStore";
 import { useWorkspaceStore } from "../stores/workspaceStore";
 import {
   packTerminals,
@@ -445,10 +446,26 @@ export function useKeyboardShortcuts() {
           return;
         }
 
-        useProjectStore.getState().setFocusedTerminal(terminal.id);
-        useComposerStore
-          .getState()
-          .enterRenameTerminalTitleMode(terminal.id, terminal.customTitle ?? "");
+        const { composerEnabled } = usePreferencesStore.getState();
+        if (composerEnabled) {
+          useProjectStore.getState().setFocusedTerminal(terminal.id);
+          useComposerStore
+            .getState()
+            .enterRenameTerminalTitleMode(terminal.id, terminal.customTitle ?? "");
+        } else {
+          const newTitle = window.prompt(
+            t.composer_rename_title_placeholder,
+            terminal.customTitle ?? "",
+          );
+          if (newTitle !== null) {
+            useProjectStore.getState().updateTerminalCustomTitle(
+              focused.projectId,
+              focused.worktreeId,
+              terminal.id,
+              newTitle,
+            );
+          }
+        }
         return;
       }
 

@@ -15,6 +15,7 @@ import {
 } from "./terminalState";
 import { normalizeProjectsFocus } from "./projectFocus";
 import { useWorkspaceStore } from "./workspaceStore";
+import { usePreferencesStore } from "./preferencesStore";
 
 interface ProjectStore {
   projects: ProjectData[];
@@ -646,7 +647,12 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       };
     });
     if (terminalId && options?.focusComposer !== false) {
-      window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
+      const composerEnabled = usePreferencesStore.getState().composerEnabled;
+      if (composerEnabled) {
+        window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
+      } else {
+        window.dispatchEvent(new CustomEvent("termcanvas:focus-xterm", { detail: terminalId }));
+      }
     }
   },
 
