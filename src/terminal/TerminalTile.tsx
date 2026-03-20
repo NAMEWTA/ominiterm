@@ -238,36 +238,29 @@ export function TerminalTile({
     xterm.open(containerRef.current);
 
     // Scroll-pinning: keep viewport pinned to bottom during streaming
-    // unless the user has scrolled up to read history.
+    // unless the user explicitly scrolled up to read history.
     //
-    // We listen to the viewport DOM element's native `scroll` event to
-    // track followBottom state. This captures ALL scroll sources (wheel,
-    // keyboard PageUp/Down, scrollbar drag, touch, programmatic).
+    // Previous approaches used the DOM `scroll` event + a programmatic
+    // scroll counter, but that can't reliably distinguish user scrolls
+    // from xterm's own internal auto-scroll, causing race conditions.
     //
-    // Previous approaches failed because:
-    // - xterm.onScroll only fires for buffer-level scrolls (new content
-    //   pushing into scrollback), NOT for user viewport scrolling
-    // - wheel events miss keyboard and scrollbar scrolling
-    // - per-write viewportY checks have a race condition with spinner
-    //   output during AI thinking (wasAtBottom captured before user scroll,
-    //   callback fires after and snaps back)
-    //
-    // A `programmaticScroll` counter distinguishes our scrollToBottom()
-    // calls from user-initiated scrolls. We use a counter (not a boolean)
-    // because the scroll event dispatches asynchronously — setTimeout(0)
-    // clears it after the event has been processed.
-    let followBottom = true;
-    let programmaticScrollCount = 0;
+    // This approach tracks user intent directly:
+    // - wheel (deltaY < 0) and PageUp/Home keydown → userScrolledUp = true
+    // - scroll event only re-enables follow when user has returned to bottom
+    // This is race-free because wheel/keydown are synchronous user actions.
+    let userScrolledUp = false;
     const viewportEl = xterm.element?.querySelector(".xterm-viewport");
+
+    const handleWheel = (e: Event) => {
+      if ((e as WheelEvent).deltaY < 0) userScrolledUp = true;
+    };
+    viewportEl?.addEventListener("wheel", handleWheel, { passive: true });
+
+    // Re-enable auto-follow when user scrolls back to the bottom
     const handleViewportScroll = () => {
+      if (!userScrolledUp) return;
       const buf = xterm.buffer.active;
-      const atBottom = buf.viewportY >= buf.baseY;
-      // Only skip when at bottom during a programmatic scroll — if the user
-      // has scrolled away from the bottom we must honour it even when
-      // programmatic scrolls are in flight, otherwise followBottom never
-      // becomes false during streaming output.
-      if (atBottom && programmaticScrollCount > 0) return;
-      followBottom = atBottom;
+      if (buf.viewportY >= buf.baseY) userScrolledUp = false;
     };
     viewportEl?.addEventListener("scroll", handleViewportScroll, { passive: true });
 
@@ -291,12 +284,18 @@ export function TerminalTile({
     // Let Cmd key combos propagate to the app shortcut handler
     // (Ctrl must still reach xterm for terminal signals like Ctrl+C)
     xterm.attachCustomKeyEventHandler((e) => {
-      if (e.type === "keydown" && e.metaKey) {
-        // Cmd+Backspace → Ctrl+U (kill line: delete from cursor to line start)
-        if (e.key === "Backspace") {
-          window.termcanvas.terminal.input(id, "\x15");
+      if (e.type === "keydown") {
+        // PageUp / Home → user wants to read history
+        if (e.key === "PageUp" || e.key === "Home") {
+          userScrolledUp = true;
         }
-        return false;
+        if (e.metaKey) {
+          // Cmd+Backspace → Ctrl+U (kill line: delete from cursor to line start)
+          if (e.key === "Backspace") {
+            if (ptyId !== null) window.termcanvas.terminal.input(ptyId, "\x15");
+          }
+          return false;
+        }
       }
       return true;
     });
@@ -492,13 +491,8 @@ export function TerminalTile({
       (id: number, data: string) => {
         if (id === ptyId) {
           xterm.write(data, () => {
-            if (followBottom) {
-              const buf = xterm.buffer.active;
-              if (buf.viewportY < buf.baseY) {
-                programmaticScrollCount++;
-                xterm.scrollToBottom();
-                setTimeout(() => { programmaticScrollCount--; }, 0);
-              }
+            if (!userScrolledUp) {
+              xterm.scrollToBottom();
             }
           });
           triggerDetection();
@@ -590,6 +584,7 @@ export function TerminalTile({
       if (detectTimer) clearTimeout(detectTimer);
       sessionCancelRef.current?.();
       removeTurnComplete();
+      viewportEl?.removeEventListener("wheel", handleWheel);
       viewportEl?.removeEventListener("scroll", handleViewportScroll);
       // Unwatch session watcher
       const state = useProjectStore.getState();
