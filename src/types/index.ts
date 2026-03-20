@@ -248,6 +248,10 @@ export interface TermCanvasAPI {
     isRegistered: () => Promise<boolean>;
     register: () => Promise<boolean>;
     unregister: () => Promise<boolean>;
+    validateCommand: (command: string, args?: string[]) => Promise<
+      | { ok: true; resolvedPath: string; version: string | null }
+      | { ok: false; error: string }
+    >;
   };
   composer: {
     submit: (request: ComposerSubmitRequest) => Promise<ComposerSubmitResult>;

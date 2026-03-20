@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocaleStore } from "../stores/localeStore";
 import { usePreferencesStore } from "../stores/preferencesStore";
+import type { TerminalType } from "../types";
 import {
   useShortcutStore,
   formatShortcut,
@@ -73,6 +74,113 @@ function ShortcutRow({
           {isRecording ? t.shortcuts_press_hint : formatShortcut(value, isMac)}
         </button>
       </div>
+    </div>
+  );
+}
+
+const AGENT_TYPES = ["claude", "codex", "kimi", "gemini", "opencode"] as const;
+
+type ValidateResult =
+  | { ok: true; resolvedPath: string; version: string | null }
+  | { ok: false; error: string };
+
+function AgentsTabContent() {
+  const t = useT();
+  const { cliCommands, setCli } = usePreferencesStore();
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [statuses, setStatuses] = useState<Record<string, ValidateResult | null>>({});
+
+  // Auto-detect on mount
+  useEffect(() => {
+    for (const agent of AGENT_TYPES) {
+      const command = cliCommands[agent]?.command ?? agent;
+      setStatuses((prev) => ({ ...prev, [agent]: null }));
+      window.termcanvas.cli.validateCommand(command).then((result) => {
+        setStatuses((prev) => ({ ...prev, [agent]: result }));
+      });
+    }
+  }, []);
+
+  const handleValidate = (agent: TerminalType) => {
+    const command = drafts[agent]?.trim() || cliCommands[agent]?.command || agent;
+    setStatuses((prev) => ({ ...prev, [agent]: null }));
+    window.termcanvas.cli.validateCommand(command).then((result) => {
+      setStatuses((prev) => ({ ...prev, [agent]: result }));
+    });
+  };
+
+  const handleSave = (agent: TerminalType) => {
+    const command = drafts[agent]?.trim();
+    if (command) {
+      setCli(agent, { command, args: [] });
+    } else {
+      setCli(agent, null);
+    }
+    handleValidate(agent);
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-[12px] text-[var(--text-muted)] mb-2">
+        {t.agent_default_hint}
+      </p>
+      {AGENT_TYPES.map((agent) => {
+        const status = statuses[agent] ?? null;
+        const saved = cliCommands[agent]?.command;
+        const draft = drafts[agent] ?? saved ?? "";
+
+        return (
+          <div
+            key={agent}
+            className="flex items-center gap-2 py-2 border-b border-[var(--border)]"
+          >
+            <span className="text-[13px] text-[var(--text-primary)] w-20 shrink-0 capitalize">
+              {agent}
+            </span>
+
+            <input
+              type="text"
+              className="flex-1 min-w-0 px-2 py-1 rounded-md text-[13px] bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
+              placeholder={
+                status?.ok
+                  ? t.agent_command_placeholder(status.resolvedPath)
+                  : agent
+              }
+              value={draft}
+              onChange={(e) =>
+                setDrafts((prev) => ({ ...prev, [agent]: e.target.value }))
+              }
+              onBlur={() => handleSave(agent)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave(agent);
+              }}
+            />
+
+            <button
+              className="px-2 py-1 rounded-md text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--surface)] hover:bg-[var(--border)] transition-colors duration-100 shrink-0"
+              onClick={() => handleValidate(agent)}
+            >
+              {t.agent_validate}
+            </button>
+
+            <span
+              className={`text-[11px] shrink-0 min-w-[80px] text-right ${
+                status === null
+                  ? "text-[var(--text-muted)]"
+                  : status.ok
+                    ? "text-[var(--green,#4ade80)]"
+                    : "text-[var(--red,#f87171)]"
+              }`}
+            >
+              {status === null
+                ? t.agent_status_checking
+                : status.ok
+                  ? t.agent_status_found(status.version ?? "unknown")
+                  : t.agent_status_not_found}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -197,6 +305,12 @@ export function SettingsModal({ onClose }: Props) {
             onClick={() => setTab("shortcuts")}
           >
             {t.settings_shortcuts}
+          </button>
+          <button
+            className={tabBtn(tab === "agents")}
+            onClick={() => setTab("agents")}
+          >
+            {t.settings_agents}
           </button>
         </div>
 
@@ -482,6 +596,8 @@ export function SettingsModal({ onClose }: Props) {
               </div>
             </div>
           )}
+
+          {tab === "agents" && <AgentsTabContent />}
         </div>
       </div>
     </div>
