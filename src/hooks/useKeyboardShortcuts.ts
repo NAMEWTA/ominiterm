@@ -34,6 +34,17 @@ function getAllTerminals() {
   return getTerminalFocusOrder(projects);
 }
 
+function getStarredTerminals() {
+  const { projects } = useProjectStore.getState();
+  const all = getTerminalFocusOrder(projects);
+  return all.filter((item) => {
+    const project = projects.find((p) => p.id === item.projectId);
+    const worktree = project?.worktrees.find((w) => w.id === item.worktreeId);
+    const terminal = worktree?.terminals.find((t) => t.id === item.terminalId);
+    return terminal?.starred;
+  });
+}
+
 function getFocusedTerminalIndex(list: ReturnType<typeof getAllTerminals>) {
   const { projects } = useProjectStore.getState();
   for (const p of projects) {
@@ -467,6 +478,32 @@ export function useKeyboardShortcuts() {
         const prevIndex =
           currentIndex <= 0 ? list.length - 1 : currentIndex - 1;
         const prev = list[prevIndex];
+        useProjectStore.getState().setFocusedTerminal(prev.terminalId);
+        zoomToTerminal(prev.projectId, prev.worktreeId, prev.terminalId);
+        return;
+      }
+
+      if (matchesShortcut(e, shortcuts.nextStarred)) {
+        e.preventDefault();
+        const starred = getStarredTerminals();
+        if (starred.length === 0) return;
+        const currentIndex = getFocusedTerminalIndex(starred);
+        const nextIndex =
+          currentIndex === -1 ? 0 : (currentIndex + 1) % starred.length;
+        const next = starred[nextIndex];
+        useProjectStore.getState().setFocusedTerminal(next.terminalId);
+        zoomToTerminal(next.projectId, next.worktreeId, next.terminalId);
+        return;
+      }
+
+      if (matchesShortcut(e, shortcuts.prevStarred)) {
+        e.preventDefault();
+        const starred = getStarredTerminals();
+        if (starred.length === 0) return;
+        const currentIndex = getFocusedTerminalIndex(starred);
+        const prevIndex =
+          currentIndex <= 0 ? starred.length - 1 : currentIndex - 1;
+        const prev = starred[prevIndex];
         useProjectStore.getState().setFocusedTerminal(prev.terminalId);
         zoomToTerminal(prev.projectId, prev.worktreeId, prev.terminalId);
         return;

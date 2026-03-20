@@ -34,6 +34,8 @@ const SHORTCUT_KEYS: { key: keyof ShortcutMap; labelKey: string }[] = [
   { key: "renameTerminalTitle", labelKey: "shortcut_rename_terminal_title" },
   { key: "closeFocused", labelKey: "shortcut_close_focused" },
   { key: "toggleStarFocused", labelKey: "shortcut_toggle_star_focused" },
+  { key: "nextStarred", labelKey: "shortcut_next_starred" },
+  { key: "prevStarred", labelKey: "shortcut_prev_starred" },
   { key: "nextTerminal", labelKey: "shortcut_next_terminal" },
   { key: "prevTerminal", labelKey: "shortcut_prev_terminal" },
   { key: "clearFocus", labelKey: "shortcut_clear_focus" },

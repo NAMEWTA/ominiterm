@@ -96,6 +96,8 @@ export const zh = {
   shortcut_rename_terminal_title: "重命名终端",
   shortcut_close_focused: "关闭当前",
   shortcut_toggle_star_focused: "收藏 / 取消收藏",
+  shortcut_next_starred: "下一收藏",
+  shortcut_prev_starred: "上一收藏",
   shortcut_next_terminal: "下一终端",
   shortcut_prev_terminal: "上一终端",
   shortcut_clear_focus: "切换聚焦",
