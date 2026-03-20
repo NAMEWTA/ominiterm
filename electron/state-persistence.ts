@@ -2,7 +2,11 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
-export const TERMCANVAS_DIR = path.join(os.homedir(), ".termcanvas");
+const isDev = !!process.env.VITE_DEV_SERVER_URL;
+export const TERMCANVAS_DIR = path.join(
+  os.homedir(),
+  isDev ? ".termcanvas-dev" : ".termcanvas",
+);
 const STATE_FILE = path.join(TERMCANVAS_DIR, "state.json");
 
 export class StatePersistence {

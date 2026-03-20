@@ -150,7 +150,7 @@ function createWindow() {
 }
 
 // ── Debug file logger for session capture investigation ──
-const DEBUG_LOG = path.join(os.homedir(), ".termcanvas", "session-debug.log");
+const DEBUG_LOG = path.join(TERMCANVAS_DIR, "session-debug.log");
 function dbg(msg: string) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
   try { fs.appendFileSync(DEBUG_LOG, line); } catch { /* ignore */ }
