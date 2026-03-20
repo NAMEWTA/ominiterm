@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { shouldIgnoreShortcutTarget } from "../src/hooks/shortcutTarget.ts";
-import { eventToShortcut, matchesShortcut } from "../src/stores/shortcutStore.ts";
+import {
+  DEFAULT_SHORTCUTS,
+  eventToShortcut,
+  matchesShortcut,
+} from "../src/stores/shortcutStore.ts";
 
 function withPlatform(
   platform: "darwin" | "win32" | "linux",
@@ -115,4 +119,8 @@ test("editable targets allow command shortcuts to reach the app on macOS", () =>
       true,
     );
   });
+});
+
+test("rename title shortcut defaults to mod+semicolon", () => {
+  assert.equal(DEFAULT_SHORTCUTS.renameTerminalTitle, "mod+;");
 });

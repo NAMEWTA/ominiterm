@@ -13,6 +13,7 @@ import {
   type ShortcutMap,
 } from "../stores/shortcutStore";
 import { useT } from "../i18n/useT";
+import { useComposerStore } from "../stores/composerStore";
 import {
   packTerminals,
   computeWorktreeSize,
@@ -353,6 +354,37 @@ export function useKeyboardShortcuts() {
           setFocusedTerminal(terminal.id);
           zoomToTerminal(focusedProjectId, focusedWorktreeId, terminal.id);
         }
+        return;
+      }
+
+      if (matchesShortcut(e, shortcuts.renameTerminalTitle)) {
+        e.preventDefault();
+        const list = getAllTerminals();
+        const focusedIdx = getFocusedTerminalIndex(list);
+        if (focusedIdx === -1) {
+          useNotificationStore
+            .getState()
+            .notify("warn", t.composer_rename_title_missing_target);
+          return;
+        }
+
+        const focused = list[focusedIdx];
+        const project = useProjectStore
+          .getState()
+          .projects.find((p) => p.id === focused.projectId);
+        const worktree = project?.worktrees.find((w) => w.id === focused.worktreeId);
+        const terminal = worktree?.terminals.find((term) => term.id === focused.terminalId);
+        if (!terminal) {
+          useNotificationStore
+            .getState()
+            .notify("warn", t.composer_rename_title_missing_target);
+          return;
+        }
+
+        useProjectStore.getState().setFocusedTerminal(terminal.id);
+        useComposerStore
+          .getState()
+          .enterRenameTerminalTitleMode(terminal.id, terminal.customTitle ?? "");
         return;
       }
 

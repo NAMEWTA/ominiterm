@@ -184,9 +184,6 @@ export function TerminalTile({
     y: number;
   } | null>(null);
   const [showCopiedToast, setShowCopiedToast] = useState(false);
-  const [customTitleDraft, setCustomTitleDraft] = useState(
-    terminal.customTitle ?? "",
-  );
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const displayTitleRef = useRef(getTerminalDisplayTitle(terminal));
   const tileRef = useRef<HTMLDivElement>(null);
@@ -203,17 +200,12 @@ export function TerminalTile({
     updateTerminalStatus,
     updateTerminalSessionId,
     updateTerminalType,
-    updateTerminalCustomTitle,
     setFocusedTerminal,
   } = useProjectStore();
 
   const { notify } = useNotificationStore();
   const t = useT();
   const config = TYPE_CONFIG[terminal.type] ?? { color: "#888", label: terminal.type };
-
-  useEffect(() => {
-    setCustomTitleDraft(terminal.customTitle ?? "");
-  }, [terminal.customTitle]);
 
   useEffect(() => {
     displayTitleRef.current = getTerminalDisplayTitle(terminal);
@@ -768,13 +760,6 @@ export function TerminalTile({
     removeTerminal(projectId, worktreeId, terminal.id);
   }, [projectId, worktreeId, terminal.id, removeTerminal]);
 
-  const commitCustomTitle = useCallback(
-    (nextValue: string) => {
-      updateTerminalCustomTitle(projectId, worktreeId, terminal.id, nextValue);
-    },
-    [projectId, worktreeId, terminal.id, updateTerminalCustomTitle],
-  );
-
   return (
     <div
       ref={tileRef}
@@ -836,33 +821,17 @@ export function TerminalTile({
         >
           {terminal.title}
         </span>
-        <input
-          className="h-6 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-[11px] text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:outline-none"
+        <div
+          className={`h-6 min-w-0 flex-1 rounded-md border px-2 text-[11px] leading-[22px] ${
+            terminal.customTitle
+              ? "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]"
+              : "border-dashed border-[var(--border)] bg-[var(--bg)] text-[var(--text-faint)]"
+          }`}
           style={{ fontFamily: '"Geist Mono", monospace' }}
-          value={customTitleDraft}
-          placeholder={t.terminal_custom_title_placeholder}
-          onMouseDown={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-          onFocus={() => setFocusedTerminal(terminal.id)}
-          onChange={(e) => setCustomTitleDraft(e.target.value)}
-          onBlur={() => commitCustomTitle(customTitleDraft)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commitCustomTitle(customTitleDraft);
-              e.currentTarget.blur();
-              return;
-            }
-
-            if (e.key === "Escape") {
-              e.preventDefault();
-              const resetValue = terminal.customTitle ?? "";
-              setCustomTitleDraft(resetValue);
-              e.currentTarget.blur();
-            }
-          }}
-        />
+          title={terminal.customTitle || t.terminal_custom_title_placeholder}
+        >
+          {terminal.customTitle || t.terminal_custom_title_placeholder}
+        </div>
         <div className="flex items-center gap-0.5">
           <button
             className="text-[var(--text-faint)] hover:text-[var(--text-primary)] transition-colors duration-150 p-1 rounded-md hover:bg-[var(--border)]"

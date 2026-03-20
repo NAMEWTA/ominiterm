@@ -80,6 +80,7 @@ export type TerminalOrigin = "user" | "agent";
 export interface TerminalData {
   id: string;
   title: string;
+  customTitle?: string;
   type: TerminalType;
   minimized: boolean;
   focused: boolean;

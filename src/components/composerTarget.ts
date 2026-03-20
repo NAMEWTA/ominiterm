@@ -3,6 +3,7 @@ import type {
   TerminalStatus,
   TerminalType,
 } from "../types/index.ts";
+import { getTerminalDisplayTitle } from "../stores/terminalState.ts";
 
 export interface SupportedTerminalOption {
   terminalId: string;
@@ -33,11 +34,11 @@ export function getSupportedTerminals(
         options.push({
           terminalId: terminal.id,
           ptyId: terminal.ptyId,
-          title: terminal.title,
+          title: getTerminalDisplayTitle(terminal),
           type: terminal.type,
           status: terminal.status,
           worktreePath: worktree.path,
-          label: `${project.name} / ${worktree.name} / ${terminal.title}`,
+          label: `${project.name} / ${worktree.name} / ${getTerminalDisplayTitle(terminal)}`,
           focused: terminal.focused,
         });
       }

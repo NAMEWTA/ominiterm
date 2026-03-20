@@ -74,6 +74,7 @@ export const en = {
   terminal_exited: (title: string, code: number) =>
     `Terminal "${title}" exited with code ${code}.`,
   terminal_copied: "Copied",
+  terminal_custom_title_placeholder: "Add marker",
 
   // DrawingPanel
   tool_select: "Select",
@@ -88,6 +89,7 @@ export const en = {
   shortcut_add_project: "Add project",
   shortcut_toggle_sidebar: "Toggle sidebar",
   shortcut_new_terminal: "New terminal",
+  shortcut_rename_terminal_title: "Rename terminal",
   shortcut_close_focused: "Close focused",
   shortcut_next_terminal: "Next terminal",
   shortcut_prev_terminal: "Prev terminal",
@@ -140,6 +142,12 @@ export const en = {
   composer_submitting: "Sending\u2026",
   composer_empty_state: "No terminals available",
   composer_no_target_state: "No terminal selected",
+  composer_rename_title_missing_target: "Focus a terminal before renaming it.",
+  composer_rename_title_placeholder:
+    "Rename the focused terminal marker. Enter saves, Escape cancels.",
+  composer_rename_title_note:
+    "Rename mode. Enter saves the marker, Escape cancels, empty clears it.",
+  composer_rename_title_submit: "Save",
   composer_no_target_placeholder:
     "Select or focus a terminal to enable composer sending.",
   composer_placeholder:

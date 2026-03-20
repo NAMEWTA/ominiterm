@@ -8,7 +8,11 @@ import type {
   TerminalOrigin,
 } from "../types";
 import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
-import { DEFAULT_SPAN, withUpdatedTerminalType } from "./terminalState";
+import {
+  DEFAULT_SPAN,
+  withUpdatedTerminalCustomTitle,
+  withUpdatedTerminalType,
+} from "./terminalState";
 import { normalizeProjectsFocus } from "./projectFocus";
 
 interface ProjectStore {
@@ -74,6 +78,12 @@ interface ProjectStore {
     terminalId: string,
     type: TerminalType,
   ) => void;
+  updateTerminalCustomTitle: (
+    projectId: string,
+    worktreeId: string,
+    terminalId: string,
+    customTitle: string,
+  ) => void;
   updateTerminalSpan: (
     projectId: string,
     worktreeId: string,
@@ -86,7 +96,10 @@ interface ProjectStore {
     terminalId: string,
     newIndex: number,
   ) => void;
-  setFocusedTerminal: (terminalId: string | null) => void;
+  setFocusedTerminal: (
+    terminalId: string | null,
+    options?: { focusComposer?: boolean },
+  ) => void;
   setFocusedWorktree: (
     projectId: string | null,
     worktreeId: string | null,
@@ -530,6 +543,17 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       ),
     })),
 
+  updateTerminalCustomTitle: (projectId, worktreeId, terminalId, customTitle) =>
+    set((state) => ({
+      projects: mapTerminals(
+        state.projects,
+        projectId,
+        worktreeId,
+        terminalId,
+        (t) => withUpdatedTerminalCustomTitle(t, customTitle),
+      ),
+    })),
+
   updateTerminalSpan: (projectId, worktreeId, terminalId, span) =>
     set((state) => ({
       projects: resolveOverlaps(
@@ -565,7 +589,7 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       ),
     })),
 
-  setFocusedTerminal: (terminalId) => {
+  setFocusedTerminal: (terminalId, options) => {
     set((state) => {
       let projectId: string | null = null;
       let worktreeId: string | null = null;
@@ -594,7 +618,7 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         })),
       };
     });
-    if (terminalId) {
+    if (terminalId && options?.focusComposer !== false) {
       window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
     }
   },

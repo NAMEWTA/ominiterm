@@ -26,6 +26,7 @@ const SHORTCUT_KEYS: { key: keyof ShortcutMap; labelKey: string }[] = [
   { key: "addProject", labelKey: "shortcut_add_project" },
   { key: "toggleSidebar", labelKey: "shortcut_toggle_sidebar" },
   { key: "newTerminal", labelKey: "shortcut_new_terminal" },
+  { key: "renameTerminalTitle", labelKey: "shortcut_rename_terminal_title" },
   { key: "nextTerminal", labelKey: "shortcut_next_terminal" },
   { key: "prevTerminal", labelKey: "shortcut_prev_terminal" },
   { key: "clearFocus", labelKey: "shortcut_clear_focus" },

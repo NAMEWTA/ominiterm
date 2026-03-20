@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useProjectStore } from "../stores/projectStore";
+import {
+  findTerminalById,
+  useProjectStore,
+} from "../stores/projectStore";
 import { useComposerStore } from "../stores/composerStore";
 import { useNotificationStore } from "../stores/notificationStore";
 import { useCanvasStore, SIDEBAR_WIDTH, RIGHT_PANEL_WIDTH, COLLAPSED_TAB_WIDTH } from "../stores/canvasStore";
@@ -121,16 +124,23 @@ export function ComposerBar() {
     images,
     isSubmitting,
     error,
+    mode,
+    renameTerminalId,
     setDraft,
     addImages,
     removeImage,
     clear,
     setSubmitting,
     setError,
+    exitRenameTerminalTitleMode,
   } = useComposerStore();
   const projects = useProjectStore((s) => s.projects);
+  const updateTerminalCustomTitle = useProjectStore(
+    (s) => s.updateTerminalCustomTitle,
+  );
   const composerLeft = useCanvasStore((s) => s.sidebarCollapsed ? COLLAPSED_TAB_WIDTH : SIDEBAR_WIDTH);
   const composerRight = useCanvasStore((s) => s.rightPanelCollapsed ? COLLAPSED_TAB_WIDTH : RIGHT_PANEL_WIDTH);
+  const isRenameMode = mode === "renameTerminalTitle";
 
   const supportedTerminals = useMemo(
     () =>
@@ -149,6 +159,13 @@ export function ComposerBar() {
     ? getComposerAdapter(targetTerminal.type)
     : null;
   const isTargetReady = targetState === "ready";
+  const renameTarget = useMemo(
+    () =>
+      renameTerminalId
+        ? findTerminalById(projects, renameTerminalId)
+        : null,
+    [projects, renameTerminalId],
+  );
 
   // Slash command autocomplete state
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -175,6 +192,11 @@ export function ComposerBar() {
 
   // Open/close menu based on draft content
   useEffect(() => {
+    if (isRenameMode) {
+      setSlashMenuOpen(false);
+      return;
+    }
+
     // Reset dismissed flag when the draft actually changes — the user is
     // still typing, so they expect the menu to respond again.
     if (prevSlashDraftRef.current !== draft) {
@@ -209,7 +231,7 @@ export function ComposerBar() {
       }
     }
     setSlashMenuOpen(false);
-  }, [draft, targetTerminal]);
+  }, [draft, isRenameMode, targetTerminal]);
 
   const handleSlashClose = useCallback(() => {
     slashDismissedRef.current = true;
@@ -245,6 +267,8 @@ export function ComposerBar() {
 
   const handleImagePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (isRenameMode) return;
+
       if (!targetTerminal || !targetAdapter) {
         const message = t.composer_missing_target;
         setError(message);
@@ -288,7 +312,7 @@ export function ComposerBar() {
         notify("error", message);
       }
     },
-    [addImages, notify, setError, t, targetAdapter, targetTerminal],
+    [addImages, isRenameMode, notify, setError, t, targetAdapter, targetTerminal],
   );
 
   const handleDrop = useCallback(
@@ -296,6 +320,8 @@ export function ComposerBar() {
       event.preventDefault();
       dragCounterRef.current = 0;
       setIsDragOver(false);
+
+      if (isRenameMode) return;
 
       const files = Array.from(event.dataTransfer.files);
       if (files.length === 0) return;
@@ -370,11 +396,30 @@ export function ComposerBar() {
         }
       }
     },
-    [addImages, notify, setDraft, setError, t, targetAdapter, targetTerminal],
+    [addImages, isRenameMode, notify, setDraft, setError, t, targetAdapter, targetTerminal],
   );
 
   const handleSubmit = useCallback(async () => {
     if (useComposerStore.getState().isSubmitting) return;
+
+    if (isRenameMode) {
+      if (!renameTarget) {
+        setError(t.composer_rename_title_missing_target);
+        notify("warn", t.composer_rename_title_missing_target);
+        return;
+      }
+
+      updateTerminalCustomTitle(
+        renameTarget.projectId,
+        renameTarget.worktreeId,
+        renameTarget.terminal.id,
+        draft,
+      );
+      setError(null);
+      exitRenameTerminalTitleMode();
+      requestAnimationFrame(() => textareaRef.current?.focus());
+      return;
+    }
 
     if (!targetTerminal) {
       setError(t.composer_missing_target);
@@ -450,14 +495,20 @@ export function ComposerBar() {
     draft,
     images,
     notify,
+    exitRenameTerminalTitleMode,
+    isRenameMode,
+    renameTarget,
     setError,
     setSubmitting,
     targetTerminal,
     t,
+    updateTerminalCustomTitle,
   ]);
 
   let placeholder: string = t.composer_empty_state;
-  if (targetState === "no-target") {
+  if (isRenameMode) {
+    placeholder = t.composer_rename_title_placeholder;
+  } else if (targetState === "no-target") {
     placeholder = t.composer_no_target_placeholder;
   } else if (targetState === "ready") {
     placeholder = targetAdapter?.supportsImages
@@ -473,13 +524,23 @@ export function ComposerBar() {
   }
 
   let note: string = t.composer_no_target_note;
-  if (targetState === "empty") {
+  if (isRenameMode) {
+    note = t.composer_rename_title_note;
+  } else if (targetState === "empty") {
     note = t.composer_empty_state;
   } else if (targetState === "ready") {
     note = targetAdapter?.supportsImages
       ? t.composer_note
       : t.composer_note_text_only;
   }
+  const isComposerDisabled = isRenameMode
+    ? renameTarget === null || isSubmitting
+    : !isTargetReady || isSubmitting;
+  const submitLabel = isRenameMode
+    ? t.composer_rename_title_submit
+    : isSubmitting
+      ? t.composer_submitting
+      : t.composer_submit;
 
   return (
     <div
@@ -581,6 +642,20 @@ export function ComposerBar() {
               onChange={(event) => setDraft(event.target.value)}
               onPaste={handleImagePaste}
               onKeyDown={(event) => {
+                if (isRenameMode) {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    exitRenameTerminalTitleMode();
+                    return;
+                  }
+
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void handleSubmit();
+                  }
+                  return;
+                }
+
                 // Slash command menu keyboard navigation
                 if (slashMenuOpen && slashCommands.length > 0) {
                   if (event.key === "ArrowDown") {
@@ -633,20 +708,25 @@ export function ComposerBar() {
                 }
               }}
               rows={2}
-              placeholder={note}
-              disabled={!isTargetReady || isSubmitting}
+              placeholder={placeholder}
+              disabled={isComposerDisabled}
               className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-3 pr-14 py-2 text-[13px] text-[var(--text-primary)] outline-none transition-colors duration-150 placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
             />
             <button
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-[var(--accent)] px-2.5 py-1 text-[11px] font-medium text-white transition-all duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => void handleSubmit()}
-              disabled={!isTargetReady || isSubmitting}
+              disabled={isComposerDisabled}
             >
-              {isSubmitting ? t.composer_submitting : t.composer_submit}
+              {submitLabel}
             </button>
           </div>
           {error && (
             <div className="mt-1 text-[11px] text-[var(--red)] px-1">{error}</div>
+          )}
+          {!error && (
+            <div className="mt-1 px-1 text-[11px] text-[var(--text-muted)]">
+              {note}
+            </div>
           )}
         </div>
       </div>

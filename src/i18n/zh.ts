@@ -72,6 +72,7 @@ export const zh = {
   terminal_exited: (title: string, code: number) =>
     `终端 "${title}" 已退出，退出码 ${code}。`,
   terminal_copied: "已复制",
+  terminal_custom_title_placeholder: "添加标记",
 
   // DrawingPanel
   tool_select: "选择",
@@ -86,6 +87,7 @@ export const zh = {
   shortcut_add_project: "添加项目",
   shortcut_toggle_sidebar: "切换侧栏",
   shortcut_new_terminal: "新建终端",
+  shortcut_rename_terminal_title: "重命名终端",
   shortcut_close_focused: "关闭当前",
   shortcut_next_terminal: "下一终端",
   shortcut_prev_terminal: "上一终端",
@@ -138,6 +140,12 @@ export const zh = {
   composer_submitting: "发送中…",
   composer_empty_state: "当前没有可用终端",
   composer_no_target_state: "当前未选中终端",
+  composer_rename_title_missing_target: "请先聚焦一个终端，再修改标题。",
+  composer_rename_title_placeholder:
+    "修改当前聚焦终端的标记。Enter 保存，Escape 取消。",
+  composer_rename_title_note:
+    "标题编辑模式。Enter 保存标记，Escape 取消，留空会清除标记。",
+  composer_rename_title_submit: "保存",
   composer_no_target_placeholder:
     "请先选择或聚焦一个终端，然后再通过 composer 发送。",
   composer_placeholder:

@@ -37,6 +37,7 @@ function migrateProjects(projects: unknown[]): ProjectData[] {
       terminals: (wt.terminals ?? []).map((t: any) => ({
         id: t.id,
         title: t.title,
+        customTitle: t.customTitle,
         type: t.type,
         minimized: t.minimized ?? false,
         focused: t.focused ?? false,
@@ -293,6 +294,7 @@ export function App() {
                 terminals: w.terminals.map((t: any) => ({
                   id: t.id,
                   title: t.title,
+                  customTitle: t.customTitle,
                   type: t.type,
                   status: t.status,
                   ptyId: t.ptyId,
@@ -347,6 +349,7 @@ export function App() {
                 JSON.stringify({
                   id: t.id,
                   title: t.title,
+                  customTitle: t.customTitle,
                   type: t.type,
                   status: t.status,
                   ptyId: t.ptyId,
