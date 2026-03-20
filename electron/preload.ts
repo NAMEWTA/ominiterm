@@ -152,6 +152,10 @@ contextBridge.exposeInMainWorld("termcanvas", {
       ipcRenderer.invoke("usage:query", dateStr),
     heatmap: () =>
       ipcRenderer.invoke("usage:heatmap"),
+    queryCloud: (dateStr: string) =>
+      ipcRenderer.invoke("usage:query-cloud", dateStr),
+    heatmapCloud: () =>
+      ipcRenderer.invoke("usage:heatmap-cloud"),
   },
   insights: {
     generate: (cliTool: "claude" | "codex") =>

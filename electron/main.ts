@@ -27,7 +27,8 @@ import {
 } from "./composer-submit";
 import { collectUsage, collectHeatmapData } from "./usage-collector";
 import { setupAutoUpdater, stopAutoUpdater } from "./auto-updater";
-import { initAuth, login, logout, getAuthUser, getDeviceId, handleAuthCallback, onAuthStateChange } from "./auth";
+import { initAuth, login, logout, getAuthUser, getDeviceId, handleAuthCallback, onAuthStateChange, isLoggedIn } from "./auth";
+import { queryCloudUsage, queryCloudHeatmap, backfillHistory, flushSyncQueue } from "./usage-sync";
 import type { ComposerSubmitRequest } from "../src/types";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -639,6 +640,14 @@ function setupIpc() {
     return await collectHeatmapData();
   });
 
+  ipcMain.handle("usage:query-cloud", async (_event, dateStr: string) => {
+    return await queryCloudUsage(dateStr);
+  });
+
+  ipcMain.handle("usage:heatmap-cloud", async () => {
+    return await queryCloudHeatmap();
+  });
+
   // Insights
   ipcMain.handle("insights:generate", async (_event, cliTool: "claude" | "codex") => {
     const { generateInsights } = await import("./insights-engine");
@@ -982,12 +991,23 @@ app.whenReady().then(async () => {
   createWindow();
   if (mainWindow) setupAutoUpdater(mainWindow);
 
-  // Forward auth state changes to renderer
+  // Forward auth state changes to renderer, trigger backfill on login
   onAuthStateChange((user) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("auth:state-changed", user);
     }
+    if (user) {
+      backfillHistory().catch((err) => console.error("[Auth] Backfill error:", err));
+      flushSyncQueue().catch((err) => console.error("[Auth] Queue flush error:", err));
+    }
   });
+
+  // Periodically flush the sync queue (every 5 minutes)
+  setInterval(() => {
+    if (isLoggedIn()) {
+      flushSyncQueue().catch((err) => console.error("[UsageSync] Periodic flush error:", err));
+    }
+  }, 5 * 60_000);
 
   // Handle termcanvas:// protocol on macOS
   app.on("open-url", async (_event, url) => {
