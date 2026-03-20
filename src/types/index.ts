@@ -165,6 +165,16 @@ export interface UsageSummary {
   models: ModelUsage[];
 }
 
+export interface QuotaData {
+  fiveHour: { utilization: number; resetsAt: string };
+  sevenDay: { utilization: number; resetsAt: string };
+  fetchedAt: number;
+}
+
+export type QuotaFetchResult =
+  | { ok: true; data: QuotaData }
+  | { ok: false; rateLimited: boolean };
+
 export interface DeviceUsage {
   deviceId: string;
   tokens: number;
@@ -271,6 +281,9 @@ export interface TermCanvasAPI {
   usage: {
     query: (dateStr: string) => Promise<UsageSummary>;
     heatmap: () => Promise<Record<string, { tokens: number; cost: number }>>;
+  };
+  quota: {
+    fetch: () => Promise<QuotaFetchResult>;
   };
   app: {
     platform: "darwin" | "win32" | "linux";
