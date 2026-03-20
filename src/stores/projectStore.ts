@@ -565,7 +565,7 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       ),
     })),
 
-  setFocusedTerminal: (terminalId) =>
+  setFocusedTerminal: (terminalId) => {
     set((state) => {
       let projectId: string | null = null;
       let worktreeId: string | null = null;
@@ -593,7 +593,11 @@ export const useProjectStore = create<ProjectStore>((set) => ({
           })),
         })),
       };
-    }),
+    });
+    if (terminalId) {
+      window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
+    }
+  },
 
   setFocusedWorktree: (projectId, worktreeId) =>
     set((state) => ({

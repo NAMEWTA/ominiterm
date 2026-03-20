@@ -322,7 +322,6 @@ export function useKeyboardShortcuts() {
             lastFocusedRef.current;
           useProjectStore.getState().setFocusedTerminal(terminalId);
           zoomToTerminal(projectId, worktreeId, terminalId);
-          window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
         } else if (list.length > 0) {
           // Never focused → focus the first terminal
           const first = list[0];
@@ -333,7 +332,6 @@ export function useKeyboardShortcuts() {
           };
           useProjectStore.getState().setFocusedTerminal(first.terminalId);
           zoomToTerminal(first.projectId, first.worktreeId, first.terminalId);
-          window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
         }
         return;
       }
@@ -354,7 +352,6 @@ export function useKeyboardShortcuts() {
           addTerminal(focusedProjectId, focusedWorktreeId, terminal);
           setFocusedTerminal(terminal.id);
           zoomToTerminal(focusedProjectId, focusedWorktreeId, terminal.id);
-          window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
         }
         return;
       }
@@ -386,7 +383,6 @@ export function useKeyboardShortcuts() {
         const next = list[nextIndex];
         useProjectStore.getState().setFocusedTerminal(next.terminalId);
         zoomToTerminal(next.projectId, next.worktreeId, next.terminalId);
-        window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
         return;
       }
 
@@ -400,7 +396,6 @@ export function useKeyboardShortcuts() {
         const prev = list[prevIndex];
         useProjectStore.getState().setFocusedTerminal(prev.terminalId);
         zoomToTerminal(prev.projectId, prev.worktreeId, prev.terminalId);
-        window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
         return;
       }
 
