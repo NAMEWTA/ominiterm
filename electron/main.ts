@@ -670,41 +670,12 @@ function setupIpc() {
         const { net } = await import("electron");
         const tmpZip = path.join(fontsDir, `_download_${Date.now()}.zip`);
 
-        await new Promise<void>((resolve, reject) => {
-          const request = net.request(url);
-          const chunks: Buffer[] = [];
-          request.on("response", (response) => {
-            if (
-              (response.statusCode === 301 || response.statusCode === 302) &&
-              response.headers.location
-            ) {
-              const redirectUrl = Array.isArray(response.headers.location)
-                ? response.headers.location[0]
-                : response.headers.location;
-              const redirectReq = net.request(redirectUrl);
-              const rChunks: Buffer[] = [];
-              redirectReq.on("response", (rRes) => {
-                rRes.on("data", (chunk) => rChunks.push(chunk));
-                rRes.on("end", () => {
-                  fs.writeFileSync(tmpZip, Buffer.concat(rChunks));
-                  resolve();
-                });
-                rRes.on("error", reject);
-              });
-              redirectReq.on("error", reject);
-              redirectReq.end();
-              return;
-            }
-            response.on("data", (chunk) => chunks.push(chunk));
-            response.on("end", () => {
-              fs.writeFileSync(tmpZip, Buffer.concat(chunks));
-              resolve();
-            });
-            response.on("error", reject);
-          });
-          request.on("error", reject);
-          request.end();
-        });
+        const response = await net.fetch(url);
+        if (!response.ok) {
+          return { ok: false, error: `HTTP ${response.status} ${response.statusText}` };
+        }
+        const buf = Buffer.from(await response.arrayBuffer());
+        fs.writeFileSync(tmpZip, buf);
 
         // Extract target font file from zip
         const zipList = execSync(`unzip -l "${tmpZip}"`, {
