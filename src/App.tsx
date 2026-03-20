@@ -238,13 +238,13 @@ function CloseDialog({
             {t.cancel}
           </button>
           <button
-            className="px-3 py-1.5 rounded-md text-[13px] text-[#ee0000] hover:bg-[#220000] transition-colors duration-150"
+            className="px-3 py-1.5 rounded-md text-[13px] text-[var(--red)] hover:bg-[var(--surface-hover)] transition-colors duration-150"
             onClick={onDiscard}
           >
             {t.dont_save}
           </button>
           <button
-            className="px-3 py-1.5 rounded-md text-[13px] text-[var(--text-primary)] bg-[#0070f3] hover:bg-[#005cc5] transition-colors duration-150"
+            className="px-3 py-1.5 rounded-md text-[13px] text-white bg-[var(--accent)] hover:brightness-110 transition-all duration-150"
             onClick={onSave}
           >
             {t.save}

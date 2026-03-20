@@ -63,7 +63,7 @@ export function WelcomePopup({ onClose }: Props) {
           <div className="w-[3px] h-3 rounded-full bg-amber-500/60 shrink-0" />
           <span
             className="text-[11px] font-medium"
-            style={{ color: "#50e3c2" }}
+            style={{ color: "var(--cyan)" }}
           >
             welcome
           </span>

@@ -7,13 +7,13 @@ import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
 import type { TerminalStatus, TerminalType } from "../types";
 
 const STATUS_COLOR: Record<TerminalStatus, string> = {
-  running: "#50e3c2",
-  active: "#50e3c2",
-  waiting: "#f5a623",
-  completed: "#3b82f6",
-  success: "#50e3c2",
-  error: "#ee0000",
-  idle: "#444",
+  running: "var(--cyan)",
+  active: "var(--cyan)",
+  waiting: "var(--amber)",
+  completed: "var(--accent)",
+  success: "var(--cyan)",
+  error: "var(--red)",
+  idle: "var(--text-muted)",
 };
 
 const TYPE_LABEL: Record<TerminalType, string> = {
@@ -209,7 +209,7 @@ export function Sidebar() {
                   className="group w-full text-left px-4 py-1.5 text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors duration-150 truncate relative"
                   onClick={() => handleFocus(project.id)}
                 >
-                  <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-[#0070f3] opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
+                  <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
                   {project.name}
                 </button>
                 {terminals.length > 0 && (

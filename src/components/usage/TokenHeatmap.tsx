@@ -24,11 +24,11 @@ function fmtTokens(n: number): string {
 
 const HEATMAP_DAYS = 91;
 const COLOR_LEVELS = [
-  "var(--border)",        // level 0: no data
-  "rgba(0,112,243,0.2)",  // level 1
-  "rgba(0,112,243,0.4)",  // level 2
-  "rgba(0,112,243,0.65)", // level 3
-  "rgba(0,112,243,0.9)",  // level 4
+  "var(--border)",               // level 0: no data
+  "color-mix(in srgb, var(--accent) 20%, transparent)",  // level 1
+  "color-mix(in srgb, var(--accent) 40%, transparent)",  // level 2
+  "color-mix(in srgb, var(--accent) 65%, transparent)",  // level 3
+  "color-mix(in srgb, var(--accent) 90%, transparent)",  // level 4
 ];
 
 interface CellData {

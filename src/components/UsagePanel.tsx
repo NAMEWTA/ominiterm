@@ -383,7 +383,7 @@ function ProjectsSection({
               >
                 {p.name}
               </span>
-              <Bar value={p.cost} max={maxCost} color="#0070f3" animate={animate} delay={i * 60} />
+              <Bar value={p.cost} max={maxCost} color="var(--accent)" animate={animate} delay={i * 60} />
               <span
                 className="text-[10px] text-[var(--text-muted)] shrink-0 w-8 text-right tabular-nums"
                 style={{ fontFamily: '"Geist Mono", monospace' }}

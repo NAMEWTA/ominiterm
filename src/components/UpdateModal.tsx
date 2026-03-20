@@ -105,7 +105,7 @@ export function UpdateModal({ onClose }: Props) {
           {status === "error" && (
             <button
               onClick={handleRetry}
-              className="px-4 py-1.5 text-[12px] font-medium text-white bg-[var(--accent)] rounded-lg hover:bg-[#005cc5] transition-colors"
+              className="px-4 py-1.5 text-[12px] font-medium text-white bg-[var(--accent)] rounded-lg hover:brightness-110 transition-all"
             >
               Retry
             </button>
@@ -113,7 +113,7 @@ export function UpdateModal({ onClose }: Props) {
           {status === "ready" && (
             <button
               onClick={handleInstall}
-              className="px-4 py-1.5 text-[12px] font-medium text-white bg-[var(--accent)] rounded-lg hover:bg-[#005cc5] transition-colors"
+              className="px-4 py-1.5 text-[12px] font-medium text-white bg-[var(--accent)] rounded-lg hover:brightness-110 transition-all"
             >
               Restart & Update
             </button>

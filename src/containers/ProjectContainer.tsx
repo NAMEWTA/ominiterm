@@ -73,7 +73,7 @@ export function ProjectContainer({ project }: Props) {
         onDoubleClick={() => toggleProjectCollapse(project.id)}
       >
         <span
-          className="text-[11px] font-medium text-[#0070f3]"
+          className="text-[11px] font-medium text-[var(--accent)]"
           style={{ fontFamily: '"Geist Mono", monospace' }}
         >
           {t.project_label}

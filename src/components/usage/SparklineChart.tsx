@@ -46,7 +46,7 @@ export function SparklineChart({ buckets, animate }: SparklineChartProps) {
                 backgroundColor: isFuture
                   ? "var(--border)"
                   : isActive
-                    ? "#0070f3"
+                    ? "var(--accent)"
                     : "var(--border)",
                 opacity: isFuture ? 0.3 : isActive ? 0.5 + (h / 100) * 0.5 : 0.3,
                 transformOrigin: "bottom",

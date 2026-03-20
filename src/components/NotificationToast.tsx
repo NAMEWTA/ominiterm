@@ -1,9 +1,9 @@
 import { useNotificationStore } from "../stores/notificationStore";
 
 const typeConfig = {
-  error: { color: "#ee0000", label: "Error" },
-  warn: { color: "#f5a623", label: "Warning" },
-  info: { color: "#888", label: "Info" },
+  error: { color: "var(--red)", label: "Error" },
+  warn: { color: "var(--amber)", label: "Warning" },
+  info: { color: "var(--text-muted)", label: "Info" },
 };
 
 export function NotificationToast() {
