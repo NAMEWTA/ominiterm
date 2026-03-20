@@ -127,6 +127,8 @@ export const zh = {
   animation_blur: "聚焦动画模糊",
   composer_toggle: "Composer 输入栏",
   composer_toggle_desc: "实验性功能。开启后通过底部输入栏发送内容到终端，支持图片粘贴",
+  drawing_toggle: "画板工具",
+  drawing_toggle_desc: "实验性功能。在画布上进行自由绘图和标注",
   shortcuts_reset: "恢复默认",
   shortcuts_press_hint: "按下快捷键…",
   shortcuts_conflict: "与其他快捷键冲突",
@@ -141,6 +143,18 @@ export const zh = {
   cli_registered: "已注册",
   cli_not_registered: "未注册",
   cli_registering: "注册中…",
+
+  // CLI Agent Settings
+  settings_agents: "Agent",
+  agent_status_found: (version: string) => `已找到 (${version})`,
+  agent_status_not_found: "未找到",
+  agent_status_checking: "检测中…",
+  agent_validate: "验证",
+  agent_command_placeholder: (detectedPath: string) => detectedPath,
+  agent_default_hint: "留空使用默认值",
+  cli_launch_error_title: (command: string) =>
+    `${command} CLI 未配置或无法启动。`,
+  cli_launch_error_action: "打开设置",
 
   // Composer
   composer_label: "Composer",

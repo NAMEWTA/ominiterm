@@ -144,6 +144,18 @@ export const en = {
   cli_not_registered: "Not registered",
   cli_registering: "Registering\u2026",
 
+  // CLI Agent Settings
+  settings_agents: "Agents",
+  agent_status_found: (version: string) => `Found (${version})`,
+  agent_status_not_found: "Not found",
+  agent_status_checking: "Checking\u2026",
+  agent_validate: "Validate",
+  agent_command_placeholder: (detectedPath: string) => detectedPath,
+  agent_default_hint: "Leave empty to use default",
+  cli_launch_error_title: (command: string) =>
+    `${command} CLI is not configured or cannot be launched.`,
+  cli_launch_error_action: "Open Settings",
+
   // Composer
   composer_label: "Composer",
   composer_target_label: "Target",
