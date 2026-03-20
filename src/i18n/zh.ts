@@ -149,9 +149,9 @@ export const zh = {
   composer_no_target_state: "当前未选中终端",
   composer_rename_title_missing_target: "请先聚焦一个终端，再修改标题。",
   composer_rename_title_placeholder:
-    "修改当前聚焦终端的标记。Enter 保存，Escape 取消。",
+    "修改当前聚焦终端的标题。Enter 保存，Escape 取消。",
   composer_rename_title_note:
-    "标题编辑模式。Enter 保存标记，Escape 取消，留空会清除标记。",
+    "标题编辑模式。Enter 保存标题，Escape 取消，留空会清除标题。",
   composer_rename_title_submit: "保存",
   composer_no_target_placeholder:
     "请先选择或聚焦一个终端，然后再通过 composer 发送。",
