@@ -314,6 +314,7 @@ export function TerminalTile({
     registerTerminal(terminal.id, xterm, serializeAddon);
 
     let ptyId: number | null = null;
+    const cliOverride = usePreferencesStore.getState().cliCommands[terminal.type] ?? undefined;
     const wasResumeAttempt = !!terminal.sessionId && !!getTerminalLaunchOptions(terminal.type, terminal.sessionId, terminal.autoApprove);
     let hasRespawned = false;
     let inputDisposable: { dispose(): void } | null = null;
@@ -334,6 +335,7 @@ export function TerminalTile({
         terminal.type,
         resumeSessionId,
         terminal.autoApprove,
+        cliOverride,
       );
       if (launch) {
         opts.shell = launch.shell;
@@ -417,11 +419,25 @@ export function TerminalTile({
           window.termcanvas.terminal.resize(id, cols, rows);
         })
         .catch((err) => {
-          notify("error", t.failed_create_pty(displayTitleRef.current, err));
+          const errStr = err instanceof Error ? err.message : String(err);
+          const isNotFound =
+            errStr.includes("Executable not found") ||
+            errStr.includes("executable-not-found");
+
+          notify("error", t.failed_create_pty(displayTitleRef.current, errStr));
           updateTerminalStatus(projectId, worktreeId, terminal.id, "error");
-          xterm.write(
-            `\r\n\x1b[31m[Error] Failed to create terminal: ${err}\x1b[0m\r\n`,
-          );
+
+          if (isNotFound) {
+            const command = launch?.shell ?? terminal.type;
+            xterm.write(
+              `\r\n\x1b[31m${t.cli_launch_error_title(command)}\x1b[0m\r\n` +
+              `\r\n\x1b[33m${t.cli_launch_error_action}: Settings > Agents\x1b[0m\r\n`,
+            );
+          } else {
+            xterm.write(
+              `\r\n\x1b[31m[Error] Failed to create terminal: ${errStr}\x1b[0m\r\n`,
+            );
+          }
         });
     };
 
