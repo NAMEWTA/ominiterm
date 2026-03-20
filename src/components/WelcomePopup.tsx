@@ -1,7 +1,18 @@
-import { useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type MouseEvent as ReactMouseEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 import { en } from "../i18n/en";
 import { zh } from "../i18n/zh";
-import { useShortcutStore, formatShortcut } from "../stores/shortcutStore";
+import {
+  useShortcutStore,
+  formatShortcut,
+  matchesShortcut,
+} from "../stores/shortcutStore";
 
 const isMac = (window.termcanvas?.app.platform ?? "darwin") === "darwin";
 
@@ -19,19 +30,254 @@ function Bi({ en: enText, zh: zhText }: { en: string; zh: string }) {
   );
 }
 
+const TERMINALS = [
+  {
+    name: "node",
+    color: "var(--cyan)",
+    lines: [
+      { text: "$ node server.js", color: "var(--text-muted)" },
+      { text: "listening on :3000", color: "var(--green)" },
+    ],
+  },
+  {
+    name: "build",
+    color: "var(--amber)",
+    lines: [
+      { text: "$ npm run build", color: "var(--text-muted)" },
+      { text: "✓ built in 1.2s", color: "var(--green)" },
+    ],
+  },
+  {
+    name: "git",
+    color: "var(--cyan)",
+    lines: [
+      { text: "$ git status", color: "var(--text-muted)" },
+      { text: "nothing to commit", color: "var(--text-secondary)" },
+    ],
+  },
+  {
+    name: "test",
+    color: "var(--green)",
+    lines: [
+      { text: "$ npm test", color: "var(--text-muted)" },
+      { text: "4 passing (12ms)", color: "var(--green)" },
+    ],
+  },
+] as const;
+
+type TutorialStep = 0 | 1 | 2 | 3 | 4;
+
+function replaceToken(template: string, token: string, value: string): string {
+  return template.replace(token, value);
+}
+
+function MiniCanvas({
+  focusedIndex,
+  step,
+  onZoomOrPan,
+}: {
+  focusedIndex: number;
+  step: TutorialStep;
+  onZoomOrPan: () => void;
+}) {
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
+
+  const handleWheel = useCallback(
+    (e: ReactWheelEvent<HTMLDivElement>) => {
+      if (step !== 3) return;
+      e.stopPropagation();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setTransform((current) => ({
+        ...current,
+        scale: Math.max(0.5, Math.min(2, current.scale + delta)),
+      }));
+      onZoomOrPan();
+    },
+    [step, onZoomOrPan],
+  );
+
+  const handleMouseDown = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      if (step !== 3) return;
+      setIsDragging(true);
+      dragStart.current = {
+        x: e.clientX,
+        y: e.clientY,
+        tx: transform.x,
+        ty: transform.y,
+      };
+    },
+    [step, transform.x, transform.y],
+  );
+
+  useEffect(() => {
+    if (step !== 3) {
+      setIsDragging(false);
+      return;
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStart.current.x;
+      const dy = e.clientY - dragStart.current.y;
+      setTransform((current) => ({
+        ...current,
+        x: dragStart.current.tx + dx,
+        y: dragStart.current.ty + dy,
+      }));
+      onZoomOrPan();
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [step, isDragging, onZoomOrPan]);
+
+  return (
+    <div
+      className="relative rounded bg-[var(--bg-secondary)] overflow-hidden select-none"
+      style={{
+        height: 220,
+        cursor: step === 3 ? (isDragging ? "grabbing" : "grab") : "default",
+      }}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+    >
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{
+          transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+          transition: isDragging ? "none" : "transform 150ms ease-out",
+        }}
+      >
+        <div className="grid grid-cols-2 gap-2">
+          {TERMINALS.map((term, index) => (
+            <div
+              key={term.name}
+              className="rounded border transition-all duration-200"
+              style={{
+                width: 120,
+                height: 80,
+                borderColor:
+                  focusedIndex === index
+                    ? "rgba(0,112,243,0.6)"
+                    : "var(--border)",
+                boxShadow:
+                  focusedIndex === index
+                    ? "0 0 12px rgba(0,112,243,0.45)"
+                    : "none",
+                background: "var(--bg)",
+              }}
+            >
+              <div className="flex items-center gap-1 px-1.5 py-0.5 border-b border-[var(--border)]">
+                <div
+                  className="w-[3px] h-[7px] rounded-full shrink-0"
+                  style={{ background: term.color }}
+                />
+                <span className="text-[9px] text-[var(--text-secondary)] truncate">
+                  {term.name}
+                </span>
+              </div>
+              <div className="px-1.5 py-1 space-y-0.5">
+                {term.lines.map((line, lineIndex) => (
+                  <div
+                    key={lineIndex}
+                    className="text-[8px] leading-tight truncate"
+                    style={{ color: line.color }}
+                  >
+                    {line.text}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function WelcomePopup({ onClose }: Props) {
   const shortcuts = useShortcutStore((s) => s.shortcuts);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const [step, setStep] = useState<TutorialStep>(0);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [switchCount, setSwitchCount] = useState(0);
+  const [hasInteractedZoom, setHasInteractedZoom] = useState(false);
+
+  const handleZoomOrPan = useCallback(() => {
+    setHasInteractedZoom(true);
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === "Escape") {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+
+      if (step === 0) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          setStep(1);
+        }
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (step === 1 && matchesShortcut(e, shortcuts.clearFocus)) {
+        setFocusedIndex(0);
+        setStep(2);
+        return;
+      }
+
+      if (step === 2) {
+        if (matchesShortcut(e, shortcuts.nextTerminal)) {
+          setFocusedIndex((index) => (index + 1) % TERMINALS.length);
+          setSwitchCount((count) => count + 1);
+          return;
+        }
+
+        if (matchesShortcut(e, shortcuts.prevTerminal)) {
+          setFocusedIndex((index) => (index - 1 + TERMINALS.length) % TERMINALS.length);
+          setSwitchCount((count) => count + 1);
+          return;
+        }
+
+        if (e.key === "Enter" && switchCount >= 2) {
+          setStep(3);
+          return;
+        }
+      }
+
+      if (step === 3 && e.key === "Enter" && hasInteractedZoom) {
+        setStep(4);
+        return;
+      }
+
+      if (step === 4 && e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [step, switchCount, hasInteractedZoom, shortcuts, onClose]);
 
   const shortcutItems = [
     { key: shortcuts.addProject, en: en.shortcut_add_project, zh: zh.shortcut_add_project },
@@ -45,6 +291,51 @@ export function WelcomePopup({ onClose }: Props) {
     { en: en.welcome_step_2, zh: zh.welcome_step_2 },
     { en: en.welcome_step_3, zh: zh.welcome_step_3 },
   ];
+
+  const fmtClearFocus = formatShortcut(shortcuts.clearFocus, isMac);
+  const fmtNext = formatShortcut(shortcuts.nextTerminal, isMac);
+  const fmtPrev = formatShortcut(shortcuts.prevTerminal, isMac);
+  const fmtAddProject = formatShortcut(shortcuts.addProject, isMac);
+
+  function getPrompt(): { en: string; zh: string } | null {
+    switch (step) {
+      case 1:
+        return {
+          en: replaceToken(en.onboarding_focus_prompt, "{shortcut}", fmtClearFocus),
+          zh: replaceToken(zh.onboarding_focus_prompt, "{shortcut}", fmtClearFocus),
+        };
+      case 2:
+        if (switchCount >= 2) {
+          return { en: en.onboarding_switch_continue, zh: zh.onboarding_switch_continue };
+        }
+        return {
+          en: replaceToken(
+            replaceToken(en.onboarding_switch_prompt, "{next}", fmtNext),
+            "{prev}",
+            fmtPrev,
+          ),
+          zh: replaceToken(
+            replaceToken(zh.onboarding_switch_prompt, "{next}", fmtNext),
+            "{prev}",
+            fmtPrev,
+          ),
+        };
+      case 3:
+        if (hasInteractedZoom) {
+          return { en: en.onboarding_zoom_continue, zh: zh.onboarding_zoom_continue };
+        }
+        return { en: en.onboarding_zoom_prompt, zh: zh.onboarding_zoom_prompt };
+      case 4:
+        return {
+          en: replaceToken(en.onboarding_complete, "{shortcut}", fmtAddProject),
+          zh: replaceToken(zh.onboarding_complete, "{shortcut}", fmtAddProject),
+        };
+      default:
+        return null;
+    }
+  }
+
+  const prompt = getPrompt();
 
   return (
     <div
@@ -87,72 +378,100 @@ export function WelcomePopup({ onClose }: Props) {
 
         {/* Content */}
         <div className="px-4 pb-5 pt-1 text-[13px] leading-relaxed overflow-y-auto min-h-0">
-          <div className="text-[var(--text-muted)] mb-3">
-            $ cat welcome.txt
-          </div>
+          {step === 0 ? (
+            <>
+              <div className="text-[var(--text-muted)] mb-3">
+                $ cat welcome.txt
+              </div>
 
-          {/* Heading */}
-          <div className="mb-4">
-            <div className="font-medium text-[14px]">
-              <Bi en={en.welcome_heading} zh={zh.welcome_heading} />
-            </div>
-            <div className="text-[13px]">
-              <Bi en={en.welcome_desc} zh={zh.welcome_desc} />
-            </div>
-          </div>
-
-          {/* Quick start */}
-          <div className="mb-4">
-            <div className="mb-1 font-medium">
-              <Bi en={en.welcome_quick_start} zh={zh.welcome_quick_start} />
-            </div>
-            <div className="space-y-0.5 pl-2">
-              {steps.map((step, i) => (
-                <div key={i}>
-                  <span className="text-[var(--text-muted)]">{i + 1}.</span>{" "}
-                  <Bi en={step.en} zh={step.zh} />
+              <div className="mb-4">
+                <div className="font-medium text-[14px]">
+                  <Bi en={en.welcome_heading} zh={zh.welcome_heading} />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Shortcuts */}
-          <div className="mb-4">
-            <div className="mb-1 font-medium">
-              <Bi en={en.welcome_shortcuts} zh={zh.welcome_shortcuts} />
-            </div>
-            <div className="space-y-0.5 pl-2">
-              {shortcutItems.map((item) => (
-                <div key={item.key} className="flex gap-2">
-                  <span className="text-[var(--accent)] shrink-0">
-                    {formatShortcut(item.key, isMac)}
-                  </span>
-                  <span>
-                    <Bi en={item.en} zh={item.zh} />
-                  </span>
+                <div className="text-[13px]">
+                  <Bi en={en.welcome_desc} zh={zh.welcome_desc} />
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* GitHub */}
-          <div className="mb-4 text-[var(--text-secondary)]">
-            GitHub:{" "}
-            <a
-              href="https://github.com/blueberrycongee/termcanvas"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--accent)] hover:underline cursor-pointer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              github.com/blueberrycongee/termcanvas
-            </a>
-          </div>
+              <div className="mb-4">
+                <div className="mb-1 font-medium">
+                  <Bi en={en.welcome_quick_start} zh={zh.welcome_quick_start} />
+                </div>
+                <div className="space-y-0.5 pl-2">
+                  {steps.map((stepItem, index) => (
+                    <div key={index}>
+                      <span className="text-[var(--text-muted)]">{index + 1}.</span>{" "}
+                      <Bi en={stepItem.en} zh={stepItem.zh} />
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          {/* Dismiss */}
-          <div className="text-[12px]">
-            <Bi en={en.welcome_dismiss} zh={zh.welcome_dismiss} />
-          </div>
+              <div className="mb-4">
+                <div className="mb-1 font-medium">
+                  <Bi en={en.welcome_shortcuts} zh={zh.welcome_shortcuts} />
+                </div>
+                <div className="space-y-0.5 pl-2">
+                  {shortcutItems.map((item) => (
+                    <div key={item.key} className="flex gap-2">
+                      <span className="text-[var(--accent)] shrink-0">
+                        {formatShortcut(item.key, isMac)}
+                      </span>
+                      <span>
+                        <Bi en={item.en} zh={item.zh} />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-4 text-[var(--text-secondary)]">
+                GitHub:{" "}
+                <a
+                  href="https://github.com/blueberrycongee/termcanvas"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--accent)] hover:underline cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  github.com/blueberrycongee/termcanvas
+                </a>
+              </div>
+
+              <div className="text-[12px]">
+                <Bi en={en.welcome_dismiss} zh={zh.welcome_dismiss} />
+              </div>
+            </>
+          ) : (
+            <>
+              <MiniCanvas
+                focusedIndex={focusedIndex}
+                step={step}
+                onZoomOrPan={handleZoomOrPan}
+              />
+
+              <div className="mt-3 text-center">
+                {prompt && (
+                  <div className="text-[13px]">
+                    <Bi en={prompt.en} zh={prompt.zh} />
+                  </div>
+                )}
+                {step === 4 && (
+                  <div className="text-[11px] mt-1 text-[var(--text-faint)]">
+                    <Bi
+                      en={en.onboarding_complete_dismiss}
+                      zh={zh.onboarding_complete_dismiss}
+                    />
+                  </div>
+                )}
+                {step >= 1 && step <= 3 && (
+                  <div className="text-[11px] mt-1 text-[var(--text-faint)]">
+                    <Bi en={en.onboarding_skip} zh={zh.onboarding_skip} />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
