@@ -297,6 +297,14 @@ export function TerminalTile({
       return true;
     });
 
+    // Auto-copy: write selected text to clipboard on selection change.
+    // Since DOM focus stays on the composer textarea, Cmd+C won't reach
+    // xterm's built-in copy — this bridges the gap.
+    const selectionDisposable = xterm.onSelectionChange(() => {
+      const text = xterm.getSelection();
+      if (text) navigator.clipboard.writeText(text);
+    });
+
     // Re-apply theme after open() to ensure canvas paints correctly
     xterm.options.theme = XTERM_THEMES[useThemeStore.getState().theme];
 
@@ -583,6 +591,7 @@ export function TerminalTile({
       removeTurnComplete();
       xtermEl?.removeEventListener("wheel", handleWheel);
       handleScrollDisposable.dispose();
+      selectionDisposable.dispose();
       // Unwatch session watcher
       const state = useProjectStore.getState();
       const proj = state.projects.find((p) => p.id === projectId);
