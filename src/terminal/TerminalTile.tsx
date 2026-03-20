@@ -239,29 +239,10 @@ export function TerminalTile({
     xterm.loadAddon(serializeAddon);
     xterm.open(containerRef.current);
 
-    // Scroll-pinning: keep viewport pinned to bottom during streaming
-    // unless the user explicitly scrolled up to read history.
-    //
-    // xterm v6 uses SmoothScrollableElement (not .xterm-viewport) for
-    // scrolling, so we listen on xterm.element which is a parent of all
-    // scroll-handling DOM.  xterm v6 also has a built-in isUserScrolling
-    // flag in BufferService that prevents ydisp from following ybase
-    // during writes — our explicit scrollToBottom() in the write callback
-    // is just a safety net and must NOT fire when the user scrolled up.
-    let userScrolledUp = false;
-    const xtermEl = xterm.element;
-
-    const handleWheel = (e: Event) => {
-      if ((e as WheelEvent).deltaY < 0) userScrolledUp = true;
-    };
-    xtermEl?.addEventListener("wheel", handleWheel, { passive: true });
-
-    // Re-enable auto-follow when viewport returns to bottom
-    const handleScrollDisposable = xterm.onScroll(() => {
-      if (!userScrolledUp) return;
-      const buf = xterm.buffer.active;
-      if (buf.viewportY >= buf.baseY) userScrolledUp = false;
-    });
+    // Scroll-pinning: xterm v6 has built-in isUserScrolling in
+    // BufferService — when the user scrolls up, ydisp stops following
+    // ybase during writes.  We must NOT call scrollToBottom() in the
+    // write callback because that would override xterm's protection.
 
     // GPU-accelerated rendering; fall back to Canvas2D when context limit is hit
     try {
@@ -284,10 +265,6 @@ export function TerminalTile({
     // (Ctrl must still reach xterm for terminal signals like Ctrl+C)
     xterm.attachCustomKeyEventHandler((e) => {
       if (e.type === "keydown") {
-        // PageUp / Home → user wants to read history
-        if (e.key === "PageUp" || e.key === "Home") {
-          userScrolledUp = true;
-        }
         if (e.metaKey) {
           // Cmd+Backspace → Ctrl+U (kill line: delete from cursor to line start)
           if (e.key === "Backspace") {
@@ -502,11 +479,7 @@ export function TerminalTile({
     const removeOutput = window.termcanvas.terminal.onOutput(
       (id: number, data: string) => {
         if (id === ptyId) {
-          xterm.write(data, () => {
-            if (!userScrolledUp) {
-              xterm.scrollToBottom();
-            }
-          });
+          xterm.write(data);
           triggerDetection();
 
           // Throttled activity notification (at most once per 3s)
@@ -596,8 +569,6 @@ export function TerminalTile({
       if (detectTimer) clearTimeout(detectTimer);
       sessionCancelRef.current?.();
       removeTurnComplete();
-      xtermEl?.removeEventListener("wheel", handleWheel);
-      handleScrollDisposable.dispose();
       selectionDisposable.dispose();
       // Unwatch session watcher
       const state = useProjectStore.getState();
