@@ -9,6 +9,8 @@ import {
   type ShortcutMap,
 } from "../stores/shortcutStore";
 import { useT } from "../i18n/useT";
+import { FONT_REGISTRY } from "../terminal/fontRegistry";
+import { loadFont } from "../terminal/fontLoader";
 
 const platform = window.termcanvas?.app.platform ?? "darwin";
 const isMac = platform === "darwin";
@@ -74,9 +76,11 @@ function ShortcutRow({
 
 export function SettingsModal({ onClose }: Props) {
   const { locale, setLocale } = useLocaleStore();
-  const { animationBlur, setAnimationBlur, terminalFontSize, setTerminalFontSize } = usePreferencesStore();
+  const { animationBlur, setAnimationBlur, terminalFontSize, setTerminalFontSize, terminalFontFamily, setTerminalFontFamily } = usePreferencesStore();
   const [fontSizeDraft, setFontSizeDraft] = useState(terminalFontSize);
   const { shortcuts, setShortcut, resetAll } = useShortcutStore();
+  const [downloadedFonts, setDownloadedFonts] = useState<Set<string>>(new Set());
+  const [downloadingFont, setDownloadingFont] = useState<string | null>(null);
   const t = useT();
   const [tab, setTab] = useState<Tab>("general");
   const [recordingKey, setRecordingKey] = useState<keyof ShortcutMap | null>(
@@ -89,6 +93,12 @@ export function SettingsModal({ onClose }: Props) {
 
   useEffect(() => {
     window.termcanvas?.cli.isRegistered().then(setCliRegistered);
+  }, []);
+
+  useEffect(() => {
+    window.termcanvas.fonts.listDownloaded().then((files) => {
+      setDownloadedFonts(new Set(files));
+    });
   }, []);
 
   // Close on Escape (when not recording)
@@ -234,6 +244,87 @@ export function SettingsModal({ onClose }: Props) {
                   >
                     {fontSizeDraft}px
                   </span>
+                </div>
+              </div>
+
+              {/* Terminal font */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[13px] text-[var(--text-secondary)]">
+                  {t.terminal_font}
+                </span>
+                <div className="flex flex-col gap-0.5 max-h-[240px] overflow-y-auto rounded-md border border-[var(--border)] p-1">
+                  {FONT_REGISTRY.map((font) => {
+                    const isBuiltin = font.source === "builtin";
+                    const isDownloaded = downloadedFonts.has(font.fileName);
+                    const isAvailable = isBuiltin || isDownloaded;
+                    const isSelected = terminalFontFamily === font.id;
+                    const isDownloading = downloadingFont === font.id;
+
+                    return (
+                      <button
+                        key={font.id}
+                        className={`flex items-center justify-between px-3 py-2 rounded-md text-left transition-colors duration-100 ${
+                          isSelected
+                            ? "bg-[var(--accent)]/15 text-[var(--text-primary)]"
+                            : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                        }`}
+                        onClick={() => {
+                          if (isAvailable) setTerminalFontFamily(font.id);
+                        }}
+                        disabled={!isAvailable && !isDownloading}
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-[13px]">{font.name}</span>
+                          {isAvailable && (
+                            <span
+                              className="text-[12px] text-[var(--text-muted)] truncate"
+                              style={{ fontFamily: `${font.cssFamily}, monospace` }}
+                            >
+                              {"AaBbCc 0123 \u2192\u2192 {}"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                          {isBuiltin && (
+                            <span className="text-[11px] text-[var(--text-muted)] px-1.5 py-0.5 rounded bg-[var(--surface)]">
+                              {t.font_builtin}
+                            </span>
+                          )}
+                          {!isBuiltin && isDownloaded && (
+                            <span className="text-[11px] text-[var(--text-muted)] px-1.5 py-0.5 rounded bg-[var(--surface)]">
+                              {t.font_downloaded}
+                            </span>
+                          )}
+                          {!isBuiltin && !isDownloaded && !isDownloading && (
+                            <button
+                              className="text-[11px] text-[var(--accent)] hover:text-[var(--text-primary)] px-1.5 py-0.5 rounded bg-[var(--surface)] hover:bg-[var(--border)] transition-colors duration-100"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setDownloadingFont(font.id);
+                                const result = await window.termcanvas.fonts.download(
+                                  font.url,
+                                  font.fileName,
+                                );
+                                if (result.ok) {
+                                  const fontsDir = await window.termcanvas.fonts.getPath();
+                                  await loadFont(font, fontsDir);
+                                  setDownloadedFonts((prev) => new Set([...prev, font.fileName]));
+                                }
+                                setDownloadingFont(null);
+                              }}
+                            >
+                              {t.font_download}
+                            </button>
+                          )}
+                          {isDownloading && (
+                            <span className="text-[11px] text-[var(--text-muted)] px-1.5 py-0.5">
+                              {t.font_downloading}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
