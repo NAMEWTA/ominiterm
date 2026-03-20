@@ -78,7 +78,7 @@ function ShortcutRow({
 
 export function SettingsModal({ onClose }: Props) {
   const { locale, setLocale } = useLocaleStore();
-  const { animationBlur, setAnimationBlur, terminalFontSize, setTerminalFontSize, terminalFontFamily, setTerminalFontFamily, composerEnabled, setComposerEnabled } = usePreferencesStore();
+  const { animationBlur, setAnimationBlur, terminalFontSize, setTerminalFontSize, terminalFontFamily, setTerminalFontFamily, composerEnabled, setComposerEnabled, drawingEnabled, setDrawingEnabled } = usePreferencesStore();
   const [fontSizeDraft, setFontSizeDraft] = useState(terminalFontSize);
   const { shortcuts, setShortcut, resetAll } = useShortcutStore();
   const [downloadedFonts, setDownloadedFonts] = useState<Set<string>>(new Set());
@@ -386,6 +386,32 @@ export function SettingsModal({ onClose }: Props) {
                   <button
                     className={!composerEnabled ? activeBtn : inactiveBtn}
                     onClick={() => setComposerEnabled(false)}
+                  >
+                    Off
+                  </button>
+                </div>
+              </div>
+
+              {/* Drawing toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[13px] text-[var(--text-secondary)]">
+                    {t.drawing_toggle}
+                  </span>
+                  <span className="text-[11px] text-[var(--text-muted)]">
+                    {t.drawing_toggle_desc}
+                  </span>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    className={drawingEnabled ? activeBtn : inactiveBtn}
+                    onClick={() => setDrawingEnabled(true)}
+                  >
+                    On
+                  </button>
+                  <button
+                    className={!drawingEnabled ? activeBtn : inactiveBtn}
+                    onClick={() => setDrawingEnabled(false)}
                   >
                     Off
                   </button>

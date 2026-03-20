@@ -68,7 +68,7 @@ export function Canvas() {
       <BoxSelectOverlay />
 
       {/* Drawing overlay - outside transform div, uses its own <g> transform */}
-      <DrawingLayer />
+      {usePreferencesStore((s) => s.drawingEnabled) && <DrawingLayer />}
 
       {/* Empty state */}
       {projects.length === 0 && (

@@ -330,6 +330,7 @@ export function App() {
   useWorkspaceOpen();
   useKeyboardShortcuts();
   const composerEnabled = usePreferencesStore((s) => s.composerEnabled);
+  const drawingEnabled = usePreferencesStore((s) => s.drawingEnabled);
   const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
     useCloseHandler();
 
@@ -452,7 +453,7 @@ export function App() {
       <Toolbar onShowTutorial={() => setShowWelcome(true)} />
       <Sidebar />
       <Canvas />
-      <DrawingPanel />
+      {drawingEnabled && <DrawingPanel />}
       <CompletionGlow />
       <ShortcutHints />
       <UsagePanel />
