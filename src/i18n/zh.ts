@@ -244,7 +244,7 @@ export const zh = {
   onboarding_switch_continue: "按 Enter 继续",
   onboarding_zoom_prompt: "滚轮缩放，拖拽平移",
   onboarding_zoom_continue: "按 Enter 继续",
-  onboarding_complete: "准备好了！按 {shortcut} 添加你的第一个项目。",
+  onboarding_complete: "教程完成！关闭此窗口后，按 {shortcut} 添加你的第一个项目。",
   onboarding_complete_dismiss: "按 Enter 或 Escape 关闭。",
   onboarding_skip: "Escape 跳过",
 } as const;

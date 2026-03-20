@@ -246,7 +246,7 @@ export const en = {
   onboarding_switch_continue: "Press Enter to continue",
   onboarding_zoom_prompt: "Scroll to zoom, drag to pan",
   onboarding_zoom_continue: "Press Enter to continue",
-  onboarding_complete: "Ready! Press {shortcut} to add your first project.",
+  onboarding_complete: "Tutorial complete! Close this window, then press {shortcut} to add your first project.",
   onboarding_complete_dismiss: "Press Enter or Escape to close.",
   onboarding_skip: "Escape to skip",
 } as const;
