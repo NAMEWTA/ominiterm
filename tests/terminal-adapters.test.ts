@@ -51,3 +51,23 @@ test("getTerminalLaunchOptions reuses centralized launch config", () => {
     args: ["resume", "session-1"],
   });
 });
+
+test("getTerminalLaunchOptions applies cliOverride command", () => {
+  const result = getTerminalLaunchOptions("claude", undefined, false, {
+    command: "/custom/bin/claude",
+    args: [],
+  });
+  assert.ok(result);
+  assert.equal(result.shell, "/custom/bin/claude");
+  assert.deepEqual(result.args, []);
+});
+
+test("getTerminalLaunchOptions prepends cliOverride args", () => {
+  const result = getTerminalLaunchOptions("claude", "session-1", false, {
+    command: "claude",
+    args: ["--extra"],
+  });
+  assert.ok(result);
+  assert.equal(result.shell, "claude");
+  assert.deepEqual(result.args, ["--extra", "--resume", "session-1"]);
+});

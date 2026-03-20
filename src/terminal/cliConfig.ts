@@ -3,6 +3,7 @@ import type {
   TerminalStatus,
   TerminalType,
 } from "../types";
+import type { CliCommandConfig } from "../stores/preferencesStore";
 
 export type ComposerImageFallbackMode = "image-path" | "error";
 export type ComposerInputMode = "type" | "bracketed-paste";
@@ -209,10 +210,13 @@ export function getTerminalLaunchOptions(
   type: TerminalType,
   sessionId: string | undefined,
   autoApprove?: boolean,
+  cliOverride?: CliCommandConfig,
 ): { shell: string; args: string[] } | null {
   const config = TERMINAL_CONFIG[type].launch;
   if (!config) return null;
 
+  const shell = cliOverride?.command || config.shell;
+  const extraArgs = cliOverride?.args ?? [];
   const base = sessionId ? config.resumeArgs(sessionId) : config.newArgs();
   const extra =
     autoApprove && !sessionId && config.autoApproveArgs
@@ -220,8 +224,8 @@ export function getTerminalLaunchOptions(
       : [];
 
   return {
-    shell: config.shell,
-    args: [...extra, ...base],
+    shell,
+    args: [...extraArgs, ...extra, ...base],
   };
 }
 
