@@ -43,11 +43,11 @@ export const XTERM_THEMES: Record<Theme, ITheme> = {
     brightWhite: "#fafafa",
   },
   light: {
-    background: "#f5f4f1",
+    background: "#eae8e4",
     foreground: "#1c1917",
     cursor: "#1c1917",
-    cursorAccent: "#f5f4f1",
-    selectionBackground: "rgba(37, 99, 235, 0.15)",
+    cursorAccent: "#eae8e4",
+    selectionBackground: "rgba(37, 99, 235, 0.18)",
     black: "#1c1917",
     red: "#dc2626",
     green: "#16a34a",
@@ -63,6 +63,6 @@ export const XTERM_THEMES: Record<Theme, ITheme> = {
     brightBlue: "#3b82f6",
     brightMagenta: "#8b5cf6",
     brightCyan: "#14b8a6",
-    brightWhite: "#fafaf9",
+    brightWhite: "#f3f2ef",
   },
 };
