@@ -2,6 +2,11 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.16] - 2026-03-20
+
+### Fixed
+- Terminal: remove manual scroll management that overrode xterm v6 built-in scroll-pinning, fixing viewport snapping to bottom during AI streaming output
+
 ## [0.8.15] - 2026-03-20
 
 ### Fixed
