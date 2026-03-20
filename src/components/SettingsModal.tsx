@@ -379,17 +379,18 @@ export function SettingsModal({ onClose }: Props) {
                     const isDownloading = downloadingFont === font.id;
 
                     return (
-                      <button
+                      <div
                         key={font.id}
                         className={`flex items-center justify-between px-3 py-2 rounded-md text-left transition-colors duration-100 ${
                           isSelected
                             ? "bg-[var(--accent)]/15 text-[var(--text-primary)]"
-                            : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                            : isAvailable
+                              ? "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] cursor-pointer"
+                              : "text-[var(--text-secondary)]"
                         }`}
                         onClick={() => {
                           if (isAvailable) setTerminalFontFamily(font.id);
                         }}
-                        disabled={!isAvailable && !isDownloading}
                       >
                         <div className="flex flex-col gap-0.5 min-w-0">
                           <span className="text-[13px]">{font.name}</span>
@@ -447,12 +448,16 @@ export function SettingsModal({ onClose }: Props) {
                             </button>
                           )}
                           {isDownloading && (
-                            <span className="text-[11px] text-[var(--text-muted)] px-1.5 py-0.5">
+                            <span className="text-[11px] text-[var(--text-muted)] px-1.5 py-0.5 flex items-center gap-1">
+                              <svg className="animate-spin h-3 w-3" viewBox="0 0 16 16" fill="none">
+                                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.3" />
+                                <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              </svg>
                               {t.font_downloading}
                             </span>
                           )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
