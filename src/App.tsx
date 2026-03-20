@@ -249,10 +249,11 @@ function useCloseHandler() {
       if (workspacePath) {
         await window.termcanvas.workspace.saveToPath(workspacePath, snap);
       } else {
-        const saved = await window.termcanvas.workspace.save(snap);
-        if (!saved) {
+        const savedPath = await window.termcanvas.workspace.save(snap);
+        if (!savedPath) {
           return;
         }
+        useWorkspaceStore.getState().setWorkspacePath(savedPath);
       }
       await window.termcanvas.state.save(JSON.parse(snap));
       useWorkspaceStore.getState().markClean();

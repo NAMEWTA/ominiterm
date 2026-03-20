@@ -222,7 +222,7 @@ export interface TermCanvasAPI {
     save: (state: unknown) => Promise<void>;
   };
   workspace: {
-    save: (data: string) => Promise<boolean>;
+    save: (data: string) => Promise<string | null>;
     open: () => Promise<string | null>;
     saveToPath: (filePath: string, data: string) => Promise<void>;
     setTitle: (title: string) => Promise<void>;

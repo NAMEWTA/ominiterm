@@ -381,10 +381,11 @@ export function useKeyboardShortcuts() {
         } else {
           window.termcanvas.workspace
             .save(snap)
-            .then(async (saved) => {
-              if (!saved) {
+            .then(async (savedPath) => {
+              if (!savedPath) {
                 return;
               }
+              useWorkspaceStore.getState().setWorkspacePath(savedPath);
               await window.termcanvas.state.save(JSON.parse(snap));
               useWorkspaceStore.getState().markClean();
               updateWindowTitle();
@@ -403,10 +404,11 @@ export function useKeyboardShortcuts() {
         const snap = snapshotState();
         window.termcanvas.workspace
           .save(snap)
-          .then(async (saved) => {
-            if (!saved) {
+          .then(async (savedPath) => {
+            if (!savedPath) {
               return;
             }
+            useWorkspaceStore.getState().setWorkspacePath(savedPath);
             await window.termcanvas.state.save(JSON.parse(snap));
             useWorkspaceStore.getState().markClean();
             updateWindowTitle();
