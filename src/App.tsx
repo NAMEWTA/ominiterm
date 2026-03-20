@@ -17,6 +17,7 @@ import { useBrowserCardStore } from "./stores/browserCardStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { serializeAllTerminals } from "./terminal/terminalRegistry";
 import { useT } from "./i18n/useT";
+import { loadAllDownloadedFonts } from "./terminal/fontLoader";
 import type { ProjectData } from "./types";
 
 function migrateProjects(projects: unknown[]): ProjectData[] {
@@ -268,6 +269,11 @@ export function App() {
 
   // Wire IPC updater events into the zustand store (once)
   useEffect(() => initUpdaterListeners(), []);
+
+  // Load downloaded fonts on startup
+  useEffect(() => {
+    loadAllDownloadedFonts();
+  }, []);
 
   useEffect(() => {
     const api = {
