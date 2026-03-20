@@ -11,6 +11,7 @@ import {
 import { useT } from "../i18n/useT";
 import { FONT_REGISTRY } from "../terminal/fontRegistry";
 import { loadFont } from "../terminal/fontLoader";
+import { useNotificationStore } from "../stores/notificationStore";
 
 const platform = window.termcanvas?.app.platform ?? "darwin";
 const isMac = platform === "darwin";
@@ -301,14 +302,26 @@ export function SettingsModal({ onClose }: Props) {
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 setDownloadingFont(font.id);
-                                const result = await window.termcanvas.fonts.download(
-                                  font.url,
-                                  font.fileName,
-                                );
-                                if (result.ok) {
-                                  const fontsDir = await window.termcanvas.fonts.getPath();
-                                  await loadFont(font, fontsDir);
-                                  setDownloadedFonts((prev) => new Set([...prev, font.fileName]));
+                                try {
+                                  const result = await window.termcanvas.fonts.download(
+                                    font.url,
+                                    font.fileName,
+                                  );
+                                  if (result.ok) {
+                                    const fontsDir = await window.termcanvas.fonts.getPath();
+                                    await loadFont(font, fontsDir);
+                                    setDownloadedFonts((prev) => new Set([...prev, font.fileName]));
+                                  } else {
+                                    useNotificationStore.getState().notify(
+                                      "error",
+                                      `${t.font_download_failed}: ${result.error ?? font.name}`,
+                                    );
+                                  }
+                                } catch (err) {
+                                  useNotificationStore.getState().notify(
+                                    "error",
+                                    `${t.font_download_failed}: ${err instanceof Error ? err.message : font.name}`,
+                                  );
                                 }
                                 setDownloadingFont(null);
                               }}
