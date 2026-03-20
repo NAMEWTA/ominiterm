@@ -120,6 +120,20 @@ contextBridge.exposeInMainWorld("termcanvas", {
     unregister: () =>
       ipcRenderer.invoke("cli:unregister") as Promise<boolean>,
   },
+  fonts: {
+    getPath: () =>
+      ipcRenderer.invoke("font:get-path") as Promise<string>,
+    listDownloaded: () =>
+      ipcRenderer.invoke("font:list-downloaded") as Promise<string[]>,
+    check: (fileName: string) =>
+      ipcRenderer.invoke("font:check", fileName) as Promise<boolean>,
+    download: (url: string, fileName: string) =>
+      ipcRenderer.invoke("font:download", url, fileName) as Promise<{
+        ok: boolean;
+        path?: string;
+        error?: string;
+      }>,
+  },
   composer: {
     submit: (request: unknown) =>
       ipcRenderer.invoke("composer:submit", request),
