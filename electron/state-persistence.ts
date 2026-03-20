@@ -28,6 +28,8 @@ export class StatePersistence {
   }
 
   save(state: unknown) {
-    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf-8");
+    const tmp = STATE_FILE + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(state, null, 2), "utf-8");
+    fs.renameSync(tmp, STATE_FILE);
   }
 }
