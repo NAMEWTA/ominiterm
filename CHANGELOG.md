@@ -2,6 +2,26 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.21] - 2026-03-21
+
+### Added
+- Settings: Agents tab with auto-detect, manual CLI path override, and Validate button for claude/codex/kimi/gemini/opencode
+- Settings: CLI command configuration persisted in preferences (cliCommands)
+- IPC: cli:validate-command resolves executable path and reports version
+- Terminal: actionable error message when agent CLI is not found, pointing to Settings > Agents
+- Settings: drawing tools toggle (default off)
+- Usage: monthly cost total in usage panel
+
+### Changed
+- Terminal: getTerminalLaunchOptions accepts optional cliOverride from user preferences
+- Settings: modal state extracted to zustand store, openable from any component to a specific tab
+- PTY: structured PtyLaunchError with code and command fields
+
+### Fixed
+- Font download button unresponsive due to disabled parent element
+- Composer: default to off, marked as experimental
+- i18n: corrected Chinese terminal title placeholder and composer rename prompts
+
 ## [0.8.20] - 2026-03-20
 
 ### Added
