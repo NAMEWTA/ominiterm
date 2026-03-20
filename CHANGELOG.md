@@ -2,6 +2,13 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.13] - 2026-03-20
+
+### Fixed
+- Terminal: rewrite scroll-pinning to use input events (wheel/keydown) instead of scroll events, fixing viewport not following output during AI streaming
+- Terminal: fix Cmd+Backspace referencing undeclared variable
+- Composer: send all bracketed pastes in a single write to eliminate race condition
+
 ## [0.8.12] - 2026-03-20
 
 ### Fixed
