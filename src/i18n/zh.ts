@@ -238,6 +238,7 @@ export const zh = {
   welcome_dismiss: "按 Enter 进入交互教程，按 Escape 跳过。",
 
   // Onboarding tutorial
+  onboarding_dblclick_prompt: "双击终端标题栏聚焦",
   onboarding_focus_prompt: "按 {shortcut} 聚焦终端",
   onboarding_unfocus_prompt: "再按 {shortcut} 取消聚焦",
   onboarding_switch_prompt: "按 {next} / {prev} 切换终端",

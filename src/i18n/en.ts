@@ -240,6 +240,7 @@ export const en = {
   welcome_dismiss: "Press Enter to start the interactive tutorial, or Escape to skip.",
 
   // Onboarding tutorial
+  onboarding_dblclick_prompt: "Double-click a terminal title bar to focus it",
   onboarding_focus_prompt: "Press {shortcut} to focus a terminal",
   onboarding_unfocus_prompt: "Press {shortcut} again to unfocus",
   onboarding_switch_prompt: "Press {next} / {prev} to switch terminals",

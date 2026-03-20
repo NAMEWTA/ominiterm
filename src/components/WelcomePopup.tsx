@@ -65,7 +65,7 @@ const TERMINALS = [
   },
 ] as const;
 
-type TutorialStep = 0 | 1 | 2 | 3 | 4;
+type TutorialStep = 0 | 1 | 2 | 3 | 4 | 5;
 
 // Terminal cell center offsets from grid center.
 // Grid: 2 cols × 2 rows, cell 120×80, gap 8px → total 248×168.
@@ -85,10 +85,12 @@ function MiniCanvas({
   focusedIndex,
   step,
   onZoomOrPan,
+  onTerminalDoubleClick,
 }: {
   focusedIndex: number;
   step: TutorialStep;
   onZoomOrPan: () => void;
+  onTerminalDoubleClick: (index: number) => void;
 }) {
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isDragging, setIsDragging] = useState(false);
@@ -96,23 +98,22 @@ function MiniCanvas({
 
   // Auto-zoom to focused terminal, or fit-all when unfocused
   useEffect(() => {
-    if (step === 1 || step === 2) {
+    if (step >= 1 && step <= 3) {
       if (focusedIndex >= 0) {
         const offset = CELL_OFFSETS[focusedIndex];
         setTransform({ x: -offset.x, y: -offset.y, scale: FOCUS_SCALE });
       } else {
-        // Unfocused → fit all
         setTransform({ x: 0, y: 0, scale: 1 });
       }
     }
-    if (step === 3) {
+    if (step === 4) {
       setTransform({ x: 0, y: 0, scale: 1 });
     }
   }, [step, focusedIndex]);
 
   const handleWheel = useCallback(
     (e: ReactWheelEvent<HTMLDivElement>) => {
-      if (step !== 3) return;
+      if (step !== 4) return;
       e.stopPropagation();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       setTransform((current) => ({
@@ -126,7 +127,7 @@ function MiniCanvas({
 
   const handleMouseDown = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
-      if (step !== 3) return;
+      if (step !== 4) return;
       setIsDragging(true);
       dragStart.current = {
         x: e.clientX,
@@ -173,7 +174,7 @@ function MiniCanvas({
       className="relative rounded bg-[var(--bg-secondary)] overflow-hidden select-none"
       style={{
         height: 220,
-        cursor: step === 3 ? (isDragging ? "grabbing" : "grab") : "default",
+        cursor: step === 4 ? (isDragging ? "grabbing" : "grab") : "default",
       }}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
@@ -204,7 +205,10 @@ function MiniCanvas({
                 background: "var(--bg)",
               }}
             >
-              <div className="flex items-center gap-1 px-1.5 py-0.5 border-b border-[var(--border)]">
+              <div
+                className="flex items-center gap-1 px-1.5 py-0.5 border-b border-[var(--border)] cursor-pointer"
+                onDoubleClick={() => onTerminalDoubleClick(index)}
+              >
                 <div
                   className="w-[3px] h-[7px] rounded-full shrink-0"
                   style={{ background: term.color }}
@@ -237,6 +241,7 @@ export function WelcomePopup({ onClose }: Props) {
   const backdropRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<TutorialStep>(0);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [hasDoubleClicked, setHasDoubleClicked] = useState(false);
   const [focusToggleCount, setFocusToggleCount] = useState(0);
   const [switchCount, setSwitchCount] = useState(0);
   const [hasInteractedZoom, setHasInteractedZoom] = useState(false);
@@ -244,6 +249,17 @@ export function WelcomePopup({ onClose }: Props) {
   const handleZoomOrPan = useCallback(() => {
     setHasInteractedZoom(true);
   }, []);
+
+  const handleTerminalDoubleClick = useCallback(
+    (index: number) => {
+      // Double-click works in step 1 (dedicated) and later steps
+      if (step >= 1) {
+        setFocusedIndex(index);
+        setHasDoubleClicked(true);
+      }
+    },
+    [step],
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -265,12 +281,21 @@ export function WelcomePopup({ onClose }: Props) {
       e.preventDefault();
       e.stopPropagation();
 
-      // Steps 1 & 2 share the same navigation shortcuts (matching real app)
-      if (step === 1 || step === 2) {
+      // Step 1: double-click (handled via mouse, Enter advances)
+      if (step === 1) {
+        if (e.key === "Enter" && hasDoubleClicked) {
+          setFocusedIndex(-1);
+          setStep(2);
+        }
+        return;
+      }
+
+      // Steps 2 & 3 share navigation shortcuts (matching real app)
+      if (step === 2 || step === 3) {
         if (matchesShortcut(e, shortcuts.clearFocus)) {
           setFocusedIndex((prev) => {
-            if (prev === -1) return 0;    // unfocused → focus
-            return -1;                     // focused → unfocus (fit all)
+            if (prev === -1) return 0;
+            return -1;
           });
           setFocusToggleCount((c) => c + 1);
           return;
@@ -280,8 +305,8 @@ export function WelcomePopup({ onClose }: Props) {
           setFocusedIndex((prev) =>
             prev === -1 ? 0 : (prev + 1) % TERMINALS.length,
           );
-          if (step === 1) setFocusToggleCount((c) => Math.max(c, 1));
-          if (step === 2) setSwitchCount((c) => c + 1);
+          if (step === 2) setFocusToggleCount((c) => Math.max(c, 1));
+          if (step === 3) setSwitchCount((c) => c + 1);
           return;
         }
 
@@ -289,40 +314,38 @@ export function WelcomePopup({ onClose }: Props) {
           setFocusedIndex((prev) =>
             prev === -1 ? TERMINALS.length - 1 : (prev - 1 + TERMINALS.length) % TERMINALS.length,
           );
-          if (step === 1) setFocusToggleCount((c) => Math.max(c, 1));
-          if (step === 2) setSwitchCount((c) => c + 1);
+          if (step === 2) setFocusToggleCount((c) => Math.max(c, 1));
+          if (step === 3) setSwitchCount((c) => c + 1);
           return;
         }
 
         if (e.key === "Enter") {
-          if (step === 1 && focusToggleCount >= 2) {
+          if (step === 2 && focusToggleCount >= 2) {
             setFocusedIndex(0);
-            setStep(2);
+            setStep(3);
             return;
           }
-          if (step === 2 && switchCount >= 2) {
-            setStep(3);
+          if (step === 3 && switchCount >= 2) {
+            setStep(4);
             return;
           }
         }
         return;
       }
 
-      if (step === 3 && e.key === "Enter" && hasInteractedZoom) {
-        setStep(4);
+      if (step === 4 && e.key === "Enter" && hasInteractedZoom) {
+        setStep(5);
         return;
       }
 
-      if (step === 4 && e.key === "Enter") {
-        e.preventDefault();
-        e.stopPropagation();
+      if (step === 5 && e.key === "Enter") {
         onClose();
       }
     };
 
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [step, focusToggleCount, switchCount, hasInteractedZoom, shortcuts, onClose]);
+  }, [step, hasDoubleClicked, focusToggleCount, switchCount, hasInteractedZoom, shortcuts, onClose]);
 
   const shortcutItems = [
     { key: shortcuts.addProject, en: en.shortcut_add_project, zh: zh.shortcut_add_project },
@@ -345,6 +368,11 @@ export function WelcomePopup({ onClose }: Props) {
   function getPrompt(): { en: string; zh: string } | null {
     switch (step) {
       case 1:
+        if (hasDoubleClicked) {
+          return { en: en.onboarding_switch_continue, zh: zh.onboarding_switch_continue };
+        }
+        return { en: en.onboarding_dblclick_prompt, zh: zh.onboarding_dblclick_prompt };
+      case 2:
         if (focusToggleCount >= 2 && focusedIndex === -1) {
           return { en: en.onboarding_switch_continue, zh: zh.onboarding_switch_continue };
         }
@@ -358,7 +386,7 @@ export function WelcomePopup({ onClose }: Props) {
           en: replaceToken(en.onboarding_focus_prompt, "{shortcut}", fmtClearFocus),
           zh: replaceToken(zh.onboarding_focus_prompt, "{shortcut}", fmtClearFocus),
         };
-      case 2:
+      case 3:
         if (switchCount >= 2) {
           return { en: en.onboarding_switch_continue, zh: zh.onboarding_switch_continue };
         }
@@ -374,12 +402,12 @@ export function WelcomePopup({ onClose }: Props) {
             fmtPrev,
           ),
         };
-      case 3:
+      case 4:
         if (hasInteractedZoom) {
           return { en: en.onboarding_zoom_continue, zh: zh.onboarding_zoom_continue };
         }
         return { en: en.onboarding_zoom_prompt, zh: zh.onboarding_zoom_prompt };
-      case 4:
+      case 5:
         return {
           en: replaceToken(en.onboarding_complete, "{shortcut}", fmtAddProject),
           zh: replaceToken(zh.onboarding_complete, "{shortcut}", fmtAddProject),
@@ -502,6 +530,7 @@ export function WelcomePopup({ onClose }: Props) {
                 focusedIndex={focusedIndex}
                 step={step}
                 onZoomOrPan={handleZoomOrPan}
+                onTerminalDoubleClick={handleTerminalDoubleClick}
               />
 
               <div className="mt-3 text-center">
@@ -510,7 +539,7 @@ export function WelcomePopup({ onClose }: Props) {
                     <Bi en={prompt.en} zh={prompt.zh} />
                   </div>
                 )}
-                {step === 4 && (
+                {step === 5 && (
                   <div className="text-[11px] mt-1 text-[var(--text-faint)]">
                     <Bi
                       en={en.onboarding_complete_dismiss}
@@ -518,7 +547,7 @@ export function WelcomePopup({ onClose }: Props) {
                     />
                   </div>
                 )}
-                {step >= 1 && step <= 3 && (
+                {step >= 1 && step <= 4 && (
                   <div className="text-[11px] mt-1 text-[var(--text-faint)]">
                     <Bi en={en.onboarding_skip} zh={zh.onboarding_skip} />
                   </div>
