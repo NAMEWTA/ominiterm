@@ -6,6 +6,7 @@ import type {
 
 export type ComposerImageFallbackMode = "image-path" | "error";
 export type ComposerInputMode = "type" | "bracketed-paste";
+export type ComposerPasteStrategy = "aggregate" | "separate";
 
 interface TerminalLaunchConfig {
   shell: string;
@@ -24,6 +25,7 @@ export interface ComposerAdapterConfig {
   ) => string;
   imageFallback: ComposerImageFallbackMode;
   pasteDelayMs: number;
+  pasteStrategy: ComposerPasteStrategy;
 }
 
 interface TerminalAdapterConfig {
@@ -56,6 +58,7 @@ const NO_COMPOSER: ComposerAdapterConfig = {
   pasteKeySequence: () => "",
   imageFallback: "error",
   pasteDelayMs: 120,
+  pasteStrategy: "separate",
 };
 
 export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
@@ -69,6 +72,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteKeySequence: () => "",
       imageFallback: "error",
       pasteDelayMs: 0,
+      pasteStrategy: "separate",
     },
   },
   claude: {
@@ -87,6 +91,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteKeySequence: () => "",
       imageFallback: "image-path",
       pasteDelayMs: 120,
+      pasteStrategy: "aggregate",
     },
   },
   codex: {
@@ -105,6 +110,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteKeySequence: () => "",
       imageFallback: "error",
       pasteDelayMs: 120,
+      pasteStrategy: "separate",
     },
   },
   kimi: {
@@ -122,6 +128,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteKeySequence: () => "",
       imageFallback: "image-path",
       pasteDelayMs: 120,
+      pasteStrategy: "separate",
     },
   },
   gemini: {
@@ -139,6 +146,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteKeySequence: () => "",
       imageFallback: "image-path",
       pasteDelayMs: 120,
+      pasteStrategy: "separate",
     },
   },
   opencode: {
@@ -156,6 +164,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteKeySequence: () => "",
       imageFallback: "image-path",
       pasteDelayMs: 120,
+      pasteStrategy: "separate",
     },
   },
   lazygit: {
@@ -173,6 +182,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteKeySequence: () => "",
       imageFallback: "error",
       pasteDelayMs: 0,
+      pasteStrategy: "separate",
     },
   },
   tmux: {
@@ -190,6 +200,7 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteKeySequence: () => "",
       imageFallback: "error",
       pasteDelayMs: 0,
+      pasteStrategy: "separate",
     },
   },
 };

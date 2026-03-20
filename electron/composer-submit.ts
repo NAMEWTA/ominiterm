@@ -162,21 +162,35 @@ async function submitBracketedPaste(
     }
   }
 
-  // Each bracketed paste must be a separate write so the CLI's stdin
-  // tokenizer treats image paths and text as distinct paste events.
-  // When joined into one write, the tokenizer concatenates image paths
-  // with user text instead of recognising them as separate inputs.
+  // "aggregate" strategy (Claude Code): combine all image paths and text
+  // into a single bracketed paste separated by newlines. Claude's paste
+  // handler has a 100ms debounce that joins separate paste events into one
+  // string — sending them separately causes concatenation without
+  // delimiters. A single paste with \n separators lets Claude's own
+  // splitting logic (.split("\n")) correctly identify image paths vs text.
   //
-  // The submit key (\r) MUST be a separate write after a delay: React 18
-  // batches state updates, so if \r arrives in the same feed() call as
-  // the paste events, the submit handler reads stale state and silently
-  // drops the submission.
+  // "separate" strategy (Codex, etc.): send each image path as its own
+  // bracketed paste, then text as another. These CLIs parse each paste
+  // event independently without aggregation.
+  //
+  // The submit key (\r) is always a separate write after a delay so the
+  // CLI's paste handler can finish updating state before submission.
   try {
-    for (const imagePath of stagedImagePaths) {
-      writePtyData(request.ptyId, buildBracketedPaste(imagePath), deps, "paste-text", "pty-write-failed");
-    }
-    if (request.text.trim().length > 0) {
-      writePtyData(request.ptyId, buildBracketedPaste(request.text), deps, "paste-text", "pty-write-failed");
+    if (adapter.pasteStrategy === "aggregate") {
+      const lines = [...stagedImagePaths];
+      if (request.text.trim().length > 0) {
+        lines.push(request.text);
+      }
+      if (lines.length > 0) {
+        writePtyData(request.ptyId, buildBracketedPaste(lines.join("\n")), deps, "paste-text", "pty-write-failed");
+      }
+    } else {
+      for (const imagePath of stagedImagePaths) {
+        writePtyData(request.ptyId, buildBracketedPaste(imagePath), deps, "paste-image", "pty-write-failed");
+      }
+      if (request.text.trim().length > 0) {
+        writePtyData(request.ptyId, buildBracketedPaste(request.text), deps, "paste-text", "pty-write-failed");
+      }
     }
 
     if (stagedImagePaths.length > 0 || request.text.trim().length > 0) {

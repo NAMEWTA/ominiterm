@@ -160,7 +160,7 @@ test("claude sends text via bracketed paste without clipboard", async () => {
   assert.deepEqual(ptyWrites, ["\x1b[200~fix the bug\x1b[201~", "\r"]);
 });
 
-test("claude sends image paths via bracketed paste", async () => {
+test("claude aggregates image path and text into single bracketed paste", async () => {
   const request = createRequest({
     terminalType: "claude",
     text: "Inspect this screenshot",
@@ -182,10 +182,10 @@ test("claude sends image paths via bracketed paste", async () => {
     fileWrites[0].filePath.endsWith(path.join("req-123", "image-1.png")),
     true,
   );
-  assert.equal(ptyWrites.length, 3);
-  assert.match(ptyWrites[0], /^\x1b\[200~.*image-1\.png\x1b\[201~$/);
-  assert.equal(ptyWrites[1], "\x1b[200~Inspect this screenshot\x1b[201~");
-  assert.equal(ptyWrites[2], "\r");
+  // aggregate strategy: one paste with image path + \n + text, then \r
+  assert.equal(ptyWrites.length, 2);
+  assert.match(ptyWrites[0], /^\x1b\[200~.*image-1\.png\nInspect this screenshot\x1b\[201~$/);
+  assert.equal(ptyWrites[1], "\r");
 });
 
 test("shell writes text directly to the PTY", async () => {
