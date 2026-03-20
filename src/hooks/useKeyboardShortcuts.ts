@@ -393,18 +393,14 @@ export function useKeyboardShortcuts() {
             .getState()
             .enterRenameTerminalTitleMode(terminal.id, terminal.customTitle ?? "");
         } else {
-          const newTitle = window.prompt(
-            t.composer_rename_title_placeholder,
-            terminal.customTitle ?? "",
+          useProjectStore
+            .getState()
+            .setFocusedTerminal(terminal.id, { focusComposer: false });
+          window.dispatchEvent(
+            new CustomEvent("termcanvas:focus-custom-title", {
+              detail: terminal.id,
+            }),
           );
-          if (newTitle !== null) {
-            useProjectStore.getState().updateTerminalCustomTitle(
-              focused.projectId,
-              focused.worktreeId,
-              terminal.id,
-              newTitle,
-            );
-          }
         }
         return;
       }

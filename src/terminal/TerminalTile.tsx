@@ -188,10 +188,13 @@ export function TerminalTile({
     y: number;
   } | null>(null);
   const [showCopiedToast, setShowCopiedToast] = useState(false);
+  const [isEditingCustomTitle, setIsEditingCustomTitle] = useState(false);
+  const [customTitleDraft, setCustomTitleDraft] = useState(terminal.customTitle ?? "");
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const displayTitleRef = useRef(getTerminalDisplayTitle(terminal));
   const tileRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const customTitleInputRef = useRef<HTMLInputElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -201,6 +204,7 @@ export function TerminalTile({
     removeTerminal,
     toggleTerminalMinimize,
     toggleTerminalStarred,
+    updateTerminalCustomTitle,
     updateTerminalPtyId,
     updateTerminalStatus,
     updateTerminalSessionId,
@@ -215,6 +219,46 @@ export function TerminalTile({
   useEffect(() => {
     displayTitleRef.current = getTerminalDisplayTitle(terminal);
   }, [terminal.title, terminal.customTitle]);
+
+  useEffect(() => {
+    if (!isEditingCustomTitle) {
+      setCustomTitleDraft(terminal.customTitle ?? "");
+    }
+  }, [isEditingCustomTitle, terminal.customTitle]);
+
+  const startCustomTitleEdit = useCallback(() => {
+    setCustomTitleDraft(terminal.customTitle ?? "");
+    setIsEditingCustomTitle(true);
+  }, [terminal.customTitle]);
+
+  const stopCustomTitleEdit = useCallback(() => {
+    setIsEditingCustomTitle(false);
+  }, []);
+
+  const saveCustomTitleEdit = useCallback(() => {
+    updateTerminalCustomTitle(
+      projectId,
+      worktreeId,
+      terminal.id,
+      customTitleDraft,
+    );
+    setIsEditingCustomTitle(false);
+  }, [
+    customTitleDraft,
+    projectId,
+    terminal.id,
+    updateTerminalCustomTitle,
+    worktreeId,
+  ]);
+
+  useEffect(() => {
+    if (!isEditingCustomTitle) return;
+
+    requestAnimationFrame(() => {
+      customTitleInputRef.current?.focus();
+      customTitleInputRef.current?.select();
+    });
+  }, [isEditingCustomTitle]);
 
   const isSelected = useSelectionStore((s) =>
     s.selectedItems.some(
@@ -696,6 +740,17 @@ export function TerminalTile({
     return () => window.removeEventListener("termcanvas:focus-xterm", handler);
   }, [terminal.id]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === terminal.id) {
+        startCustomTitleEdit();
+      }
+    };
+    window.addEventListener("termcanvas:focus-custom-title", handler);
+    return () => window.removeEventListener("termcanvas:focus-custom-title", handler);
+  }, [startCustomTitleEdit, terminal.id]);
+
   // Update xterm theme when app theme changes
   useEffect(() => {
     const unsubscribe = useThemeStore.subscribe((state) => {
@@ -861,6 +916,11 @@ export function TerminalTile({
           }`}
           style={{ fontFamily: '"Geist Mono", monospace' }}
           title={terminal.customTitle || t.terminal_custom_title_placeholder}
+          onMouseDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            startCustomTitleEdit();
+          }}
         >
           <div className="flex h-full items-center gap-1.5 min-w-0">
             <button
@@ -886,9 +946,30 @@ export function TerminalTile({
                 />
               </svg>
             </button>
-            <span className="min-w-0 flex-1 truncate leading-[22px]">
-              {terminal.customTitle || t.terminal_custom_title_placeholder}
-            </span>
+            {isEditingCustomTitle ? (
+              <input
+                ref={customTitleInputRef}
+                className="min-w-0 flex-1 bg-transparent outline-none leading-[22px] text-[var(--text-primary)]"
+                value={customTitleDraft}
+                placeholder={t.terminal_custom_title_placeholder}
+                onChange={(e) => setCustomTitleDraft(e.target.value)}
+                onBlur={saveCustomTitleEdit}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveCustomTitleEdit();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    stopCustomTitleEdit();
+                  }
+                }}
+              />
+            ) : (
+              <span className="min-w-0 flex-1 truncate leading-[22px]">
+                {terminal.customTitle || t.terminal_custom_title_placeholder}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-0.5">
