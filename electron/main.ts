@@ -456,6 +456,19 @@ function setupIpc() {
     return true;
   });
 
+  ipcMain.handle(
+    "workspace:save-to-path",
+    (_event, filePath: string, data: string) => {
+      fs.writeFileSync(filePath, data, "utf-8");
+    },
+  );
+
+  ipcMain.handle("workspace:set-title", (_event, title: string) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setTitle(title);
+    }
+  });
+
   ipcMain.handle("workspace:open", async () => {
     const result = await dialog.showOpenDialog(mainWindow!, {
       title: "Open Workspace",
