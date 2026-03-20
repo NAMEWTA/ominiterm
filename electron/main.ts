@@ -667,14 +667,16 @@ function setupIpc() {
       }
 
       try {
-        const { net } = await import("electron");
         const tmpZip = path.join(fontsDir, `_download_${Date.now()}.zip`);
 
-        const response = await net.fetch(url);
+        const response = await fetch(url);
         if (!response.ok) {
           return { ok: false, error: `HTTP ${response.status} ${response.statusText}` };
         }
         const buf = Buffer.from(await response.arrayBuffer());
+        if (buf.length < 100) {
+          return { ok: false, error: "Downloaded file is too small, likely not a valid archive" };
+        }
         fs.writeFileSync(tmpZip, buf);
 
         // Extract target font file from zip
