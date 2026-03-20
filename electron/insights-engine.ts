@@ -733,9 +733,9 @@ export async function generateInsights(
   try {
     const mod = "./insights-report";
     const reportModule = (await import(mod)) as {
-      generateReport: (result: InsightsResult) => Promise<string>;
+      generateReport: (result: InsightsResult) => string;
     };
-    const reportPath = await reportModule.generateReport(insightsResult);
+    const reportPath = reportModule.generateReport(insightsResult);
     return { ok: true, reportPath };
   } catch (err) {
     return {
