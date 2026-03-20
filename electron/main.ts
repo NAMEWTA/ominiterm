@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, nativeImage, shell } from "electron";
 import { execSync } from "child_process";
+import https from "https";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -669,11 +670,26 @@ function setupIpc() {
       try {
         const tmpZip = path.join(fontsDir, `_download_${Date.now()}.zip`);
 
-        const response = await fetch(url);
-        if (!response.ok) {
-          return { ok: false, error: `HTTP ${response.status} ${response.statusText}` };
-        }
-        const buf = Buffer.from(await response.arrayBuffer());
+        const buf = await new Promise<Buffer>((resolve, reject) => {
+          const follow = (u: string, redirects = 0) => {
+            if (redirects > 5) { reject(new Error("Too many redirects")); return; }
+            https.get(u, (res) => {
+              if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+                follow(res.headers.location, redirects + 1);
+                return;
+              }
+              if (res.statusCode !== 200) {
+                reject(new Error(`HTTP ${res.statusCode}`));
+                return;
+              }
+              const chunks: Buffer[] = [];
+              res.on("data", (chunk) => chunks.push(chunk));
+              res.on("end", () => resolve(Buffer.concat(chunks)));
+              res.on("error", reject);
+            }).on("error", reject);
+          };
+          follow(url);
+        });
         if (buf.length < 100) {
           return { ok: false, error: "Downloaded file is too small, likely not a valid archive" };
         }
