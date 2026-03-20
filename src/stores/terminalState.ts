@@ -35,6 +35,15 @@ export function withUpdatedTerminalCustomTitle(
   };
 }
 
+export function withToggledTerminalStarred(
+  terminal: TerminalData,
+): TerminalData {
+  return {
+    ...terminal,
+    starred: !terminal.starred,
+  };
+}
+
 export function getTerminalDisplayTitle(terminal: TerminalData): string {
   return terminal.customTitle
     ? `${terminal.customTitle} · ${terminal.title}`

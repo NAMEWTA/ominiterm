@@ -81,6 +81,7 @@ export interface TerminalData {
   id: string;
   title: string;
   customTitle?: string;
+  starred?: boolean;
   type: TerminalType;
   minimized: boolean;
   focused: boolean;

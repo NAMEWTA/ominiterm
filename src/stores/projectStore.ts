@@ -10,6 +10,7 @@ import type {
 import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
 import {
   DEFAULT_SPAN,
+  withToggledTerminalStarred,
   withUpdatedTerminalCustomTitle,
   withUpdatedTerminalType,
 } from "./terminalState";
@@ -85,6 +86,11 @@ interface ProjectStore {
     worktreeId: string,
     terminalId: string,
     customTitle: string,
+  ) => void;
+  toggleTerminalStarred: (
+    projectId: string,
+    worktreeId: string,
+    terminalId: string,
   ) => void;
   updateTerminalSpan: (
     projectId: string,
@@ -579,6 +585,19 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         (t) => withUpdatedTerminalCustomTitle(t, customTitle),
       ),
     })),
+
+  toggleTerminalStarred: (projectId, worktreeId, terminalId) => {
+    set((state) => ({
+      projects: mapTerminals(
+        state.projects,
+        projectId,
+        worktreeId,
+        terminalId,
+        withToggledTerminalStarred,
+      ),
+    }));
+    markDirty();
+  },
 
   updateTerminalSpan: (projectId, worktreeId, terminalId, span) => {
     set((state) => ({

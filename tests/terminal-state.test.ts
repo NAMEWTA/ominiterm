@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   getTerminalDisplayTitle,
   normalizeTerminalCustomTitle,
+  withToggledTerminalStarred,
   withUpdatedTerminalCustomTitle,
   withUpdatedTerminalType,
 } from "../src/stores/terminalState.ts";
@@ -65,4 +66,24 @@ test("getTerminalDisplayTitle includes the custom marker when present", () => {
   };
 
   assert.equal(getTerminalDisplayTitle(terminal), "fix-auth · Terminal");
+});
+
+test("withToggledTerminalStarred flips the terminal star state", () => {
+  const terminal: TerminalData = {
+    id: "terminal-1",
+    title: "Codex",
+    type: "codex",
+    minimized: false,
+    focused: false,
+    ptyId: null,
+    status: "idle",
+    span: { cols: 1, rows: 1 },
+    starred: false,
+  };
+
+  const starred = withToggledTerminalStarred(terminal);
+  assert.equal(starred.starred, true);
+
+  const unstarred = withToggledTerminalStarred(starred);
+  assert.equal(unstarred.starred, false);
 });

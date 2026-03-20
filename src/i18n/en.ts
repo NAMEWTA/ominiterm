@@ -75,6 +75,8 @@ export const en = {
     `Terminal "${title}" exited with code ${code}.`,
   terminal_copied: "Copied",
   terminal_custom_title_placeholder: "Add marker",
+  terminal_star: "Star terminal",
+  terminal_unstar: "Unstar terminal",
 
   // DrawingPanel
   tool_select: "Select",

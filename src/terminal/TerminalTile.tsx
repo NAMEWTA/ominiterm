@@ -200,6 +200,7 @@ export function TerminalTile({
   const {
     removeTerminal,
     toggleTerminalMinimize,
+    toggleTerminalStarred,
     updateTerminalPtyId,
     updateTerminalStatus,
     updateTerminalSessionId,
@@ -853,7 +854,7 @@ export function TerminalTile({
           {terminal.title}
         </span>
         <div
-          className={`h-6 min-w-0 flex-1 rounded-md border px-2 text-[11px] leading-[22px] ${
+          className={`h-6 min-w-0 flex-1 rounded-md border px-1.5 text-[11px] ${
             terminal.customTitle
               ? "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)]"
               : "border-dashed border-[var(--border)] bg-[var(--bg)] text-[var(--text-faint)]"
@@ -861,7 +862,34 @@ export function TerminalTile({
           style={{ fontFamily: '"Geist Mono", monospace' }}
           title={terminal.customTitle || t.terminal_custom_title_placeholder}
         >
-          {terminal.customTitle || t.terminal_custom_title_placeholder}
+          <div className="flex h-full items-center gap-1.5 min-w-0">
+            <button
+              className={`shrink-0 rounded p-0.5 transition-colors duration-150 ${
+                terminal.starred
+                  ? "text-amber-400 hover:text-amber-300"
+                  : "text-[var(--text-faint)] hover:text-amber-400"
+              }`}
+              title={terminal.starred ? t.terminal_unstar : t.terminal_star}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleTerminalStarred(projectId, worktreeId, terminal.id);
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path
+                  d="M5 1.2l1.05 2.13 2.35.34-1.7 1.66.4 2.35L5 6.58 2.9 7.68l.4-2.35L1.6 3.67l2.35-.34L5 1.2z"
+                  fill={terminal.starred ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <span className="min-w-0 flex-1 truncate leading-[22px]">
+              {terminal.customTitle || t.terminal_custom_title_placeholder}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-0.5">
           <button
