@@ -10,6 +10,8 @@ import { TokenHeatmap } from "./usage/TokenHeatmap";
 import { InsightsButton } from "./usage/InsightsButton";
 import { LoginButton } from "./LoginButton";
 import { DeviceBreakdown } from "./usage/DeviceBreakdown";
+import { QuotaSection } from "./usage/QuotaSection";
+import { useQuotaStore } from "../stores/quotaStore";
 import type { UsageSummary, ProjectUsage, ModelUsage } from "../types";
 import type { HeatmapEntry } from "../stores/usageStore";
 
@@ -517,6 +519,8 @@ export function UsagePanel() {
   } = useCanvasStore();
   const { user, deviceId } = useAuthStore();
   const t = useT();
+  const quotaFetch = useQuotaStore((s) => s.fetch);
+  const quotaOnCostChanged = useQuotaStore((s) => s.onCostChanged);
 
   const isLoggedIn = user !== null;
 
@@ -542,6 +546,7 @@ export function UsagePanel() {
     if (collapsed) return;
     fetchUsage();
     fetchHeatmap();
+    quotaFetch();
     if (isLoggedIn) {
       fetchCloud();
       fetchCloudHeatmap();
@@ -552,6 +557,13 @@ export function UsagePanel() {
     }, 60_000);
     return () => clearInterval(interval);
   }, [collapsed, isLoggedIn]);
+
+  // Bridge cost changes to quota store for adaptive polling
+  useEffect(() => {
+    if (summary) {
+      quotaOnCostChanged(summary.totalCost);
+    }
+  }, [summary?.totalCost]);
 
   const handleDateChange = useCallback(
     (dateStr: string) => {
@@ -604,6 +616,10 @@ export function UsagePanel() {
           onDateChange={handleDateChange}
           onCollapse={() => setCollapsed(true)}
         />
+
+        {/* Quota — fixed, not affected by date or scroll */}
+        <QuotaSection />
+        <div className="mx-3 h-px bg-[var(--border)]" />
 
         {/* Auth login/user button */}
         <div className="px-3 py-1.5 shrink-0 border-b border-[var(--border)] flex items-center justify-end">
