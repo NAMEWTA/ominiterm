@@ -354,6 +354,7 @@ export function useKeyboardShortcuts() {
           addTerminal(focusedProjectId, focusedWorktreeId, terminal);
           setFocusedTerminal(terminal.id);
           zoomToTerminal(focusedProjectId, focusedWorktreeId, terminal.id);
+          window.dispatchEvent(new CustomEvent("termcanvas:focus-composer"));
         }
         return;
       }
