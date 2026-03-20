@@ -265,7 +265,8 @@ export function WelcomePopup({ onClose }: Props) {
       e.preventDefault();
       e.stopPropagation();
 
-      if (step === 1) {
+      // Steps 1 & 2 share the same navigation shortcuts (matching real app)
+      if (step === 1 || step === 2) {
         if (matchesShortcut(e, shortcuts.clearFocus)) {
           setFocusedIndex((prev) => {
             if (prev === -1) return 0;    // unfocused → focus
@@ -274,32 +275,37 @@ export function WelcomePopup({ onClose }: Props) {
           setFocusToggleCount((c) => c + 1);
           return;
         }
-        if (e.key === "Enter" && focusToggleCount >= 2) {
-          // Re-focus and advance to step 2
-          setFocusedIndex(0);
-          setStep(2);
-          return;
-        }
-        return;
-      }
 
-      if (step === 2) {
         if (matchesShortcut(e, shortcuts.nextTerminal)) {
-          setFocusedIndex((index) => (index + 1) % TERMINALS.length);
-          setSwitchCount((count) => count + 1);
+          setFocusedIndex((prev) =>
+            prev === -1 ? 0 : (prev + 1) % TERMINALS.length,
+          );
+          if (step === 1) setFocusToggleCount((c) => Math.max(c, 1));
+          if (step === 2) setSwitchCount((c) => c + 1);
           return;
         }
 
         if (matchesShortcut(e, shortcuts.prevTerminal)) {
-          setFocusedIndex((index) => (index - 1 + TERMINALS.length) % TERMINALS.length);
-          setSwitchCount((count) => count + 1);
+          setFocusedIndex((prev) =>
+            prev === -1 ? TERMINALS.length - 1 : (prev - 1 + TERMINALS.length) % TERMINALS.length,
+          );
+          if (step === 1) setFocusToggleCount((c) => Math.max(c, 1));
+          if (step === 2) setSwitchCount((c) => c + 1);
           return;
         }
 
-        if (e.key === "Enter" && switchCount >= 2) {
-          setStep(3);
-          return;
+        if (e.key === "Enter") {
+          if (step === 1 && focusToggleCount >= 2) {
+            setFocusedIndex(0);
+            setStep(2);
+            return;
+          }
+          if (step === 2 && switchCount >= 2) {
+            setStep(3);
+            return;
+          }
         }
+        return;
       }
 
       if (step === 3 && e.key === "Enter" && hasInteractedZoom) {
