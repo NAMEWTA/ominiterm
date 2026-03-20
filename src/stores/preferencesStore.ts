@@ -9,13 +9,16 @@ interface PreferencesStore {
   animationBlur: number;
   /** Terminal (xterm) font size in px (6–24) */
   terminalFontSize: number;
+  /** Terminal font ID from fontRegistry */
+  terminalFontFamily: string;
   setAnimationBlur: (value: number) => void;
   setTerminalFontSize: (value: number) => void;
+  setTerminalFontFamily: (fontId: string) => void;
 }
 
 const STORAGE_KEY = "termcanvas-preferences";
 
-function loadPreferences(): { animationBlur: number; terminalFontSize: number } {
+function loadPreferences(): { animationBlur: number; terminalFontSize: number; terminalFontFamily: string } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -30,15 +33,19 @@ function loadPreferences(): { animationBlur: number; terminalFontSize: number } 
       const f = parsed.terminalFontSize;
       if (typeof f === "number" && f >= 6 && f <= 24) fontSize = f;
 
-      return { animationBlur: blur, terminalFontSize: fontSize };
+      let fontFamily = "geist-mono";
+      const ff = parsed.terminalFontFamily;
+      if (typeof ff === "string" && ff.length > 0) fontFamily = ff;
+
+      return { animationBlur: blur, terminalFontSize: fontSize, terminalFontFamily: fontFamily };
     }
   } catch {
     // ignore
   }
-  return { animationBlur: DEFAULT_BLUR, terminalFontSize: DEFAULT_FONT_SIZE };
+  return { animationBlur: DEFAULT_BLUR, terminalFontSize: DEFAULT_FONT_SIZE, terminalFontFamily: "geist-mono" };
 }
 
-function savePreferences(state: { animationBlur: number; terminalFontSize: number }) {
+function savePreferences(state: { animationBlur: number; terminalFontSize: number; terminalFontFamily: string }) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -47,6 +54,7 @@ const initialPrefs = loadPreferences();
 export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
   animationBlur: initialPrefs.animationBlur,
   terminalFontSize: initialPrefs.terminalFontSize,
+  terminalFontFamily: initialPrefs.terminalFontFamily,
   setAnimationBlur: (value) => {
     const clamped = Math.round(Math.max(0, Math.min(3, value)) * 10) / 10;
     set({ animationBlur: clamped });
@@ -56,5 +64,9 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
     const clamped = Math.max(6, Math.min(24, Math.round(value)));
     set({ terminalFontSize: clamped });
     savePreferences({ ...get(), terminalFontSize: clamped });
+  },
+  setTerminalFontFamily: (fontId) => {
+    set({ terminalFontFamily: fontId });
+    savePreferences({ ...get(), terminalFontFamily: fontId });
   },
 }));
