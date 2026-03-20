@@ -123,6 +123,11 @@ contextBridge.exposeInMainWorld("termcanvas", {
       ipcRenderer.invoke("cli:register") as Promise<boolean>,
     unregister: () =>
       ipcRenderer.invoke("cli:unregister") as Promise<boolean>,
+    validateCommand: (command: string, args?: string[]) =>
+      ipcRenderer.invoke("cli:validate-command", command, args) as Promise<
+        | { ok: true; resolvedPath: string; version: string | null }
+        | { ok: false; error: string }
+      >,
   },
   fonts: {
     getPath: () =>

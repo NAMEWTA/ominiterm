@@ -19,6 +19,7 @@ import {
   installHydraSkillLinks,
   uninstallHydraSkillLinks,
 } from "./hydra-skill";
+import { buildLaunchSpec } from "./pty-launch.js";
 import {
   createDefaultComposerSubmitDeps,
   submitComposerRequest,
@@ -540,6 +541,38 @@ function setupIpc() {
   ipcMain.handle("cli:is-registered", () => isCliRegistered());
   ipcMain.handle("cli:register", () => registerCli());
   ipcMain.handle("cli:unregister", () => unregisterCli());
+
+  ipcMain.handle(
+    "cli:validate-command",
+    async (_event, command: string, _args?: string[]) => {
+      try {
+        const spec = await buildLaunchSpec({
+          cwd: process.cwd(),
+          shell: command,
+          extraPathEntries: [getCliDir()],
+        });
+        const { execFile } = await import("child_process");
+        const version = await new Promise<string | null>((resolve) => {
+          execFile(
+            spec.file,
+            ["--version"],
+            { timeout: 5000, env: spec.env },
+            (err, stdout) => {
+              if (err) { resolve(null); return; }
+              const line = stdout.toString().trim().split("\n")[0];
+              resolve(line || null);
+            },
+          );
+        });
+        return { ok: true as const, resolvedPath: spec.file, version };
+      } catch (err) {
+        return {
+          ok: false as const,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    },
+  );
 
   // Composer submission
   ipcMain.handle("composer:submit", async (_event, request: ComposerSubmitRequest) => {
