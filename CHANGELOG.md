@@ -2,6 +2,15 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.23] - 2026-03-21
+
+### Changed
+- Hydra: skill docs now explicitly document `kimi` support and clarify that `--auto-approve` is ignored for Kimi agents
+
+### Fixed
+- Hydra/Kimi: launch initial sub-agent tasks with Kimi's required `--prompt` flag so spawned Kimi terminals actually receive the task
+- Terminal: when composer is off, `Cmd+;` / `Ctrl+;` now focuses the terminal and opens the inline custom title editor instead of falling back to a detached prompt flow
+
 ## [0.8.22] - 2026-03-21
 
 ### Changed
