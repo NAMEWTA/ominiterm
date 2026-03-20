@@ -153,6 +153,9 @@ contextBridge.exposeInMainWorld("termcanvas", {
     heatmap: () =>
       ipcRenderer.invoke("usage:heatmap"),
   },
+  quota: {
+    fetch: () => ipcRenderer.invoke("quota:fetch"),
+  },
   insights: {
     generate: (cliTool: "claude" | "codex") =>
       ipcRenderer.invoke("insights:generate", cliTool) as Promise<
