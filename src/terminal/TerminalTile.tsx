@@ -16,6 +16,7 @@ import { usePreferencesStore } from "../stores/preferencesStore";
 import { useCanvasStore } from "../stores/canvasStore";
 import { useT } from "../i18n/useT";
 import { getTerminalLaunchOptions, getComposerAdapter } from "./cliConfig";
+import { buildFontFamily } from "./fontRegistry";
 import { panToTerminal } from "../utils/panToTerminal";
 
 interface Props {
@@ -223,7 +224,7 @@ export function TerminalTile({
     const currentTheme = useThemeStore.getState().theme;
     const xterm = new Terminal({
       theme: XTERM_THEMES[currentTheme],
-      fontFamily: '"Geist Mono", "SF Mono", "JetBrains Mono", Menlo, monospace',
+      fontFamily: buildFontFamily(usePreferencesStore.getState().terminalFontFamily),
       fontSize: usePreferencesStore.getState().terminalFontSize,
       lineHeight: 1.4,
       cursorBlink: true,
@@ -651,6 +652,21 @@ export function TerminalTile({
       if (xterm && xterm.options.fontSize !== state.terminalFontSize) {
         xterm.options.fontSize = state.terminalFontSize;
         fitAddonRef.current?.fit();
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // Update xterm font family when preference changes
+  useEffect(() => {
+    const unsubscribe = usePreferencesStore.subscribe((state) => {
+      const xterm = xtermRef.current;
+      if (xterm) {
+        const family = buildFontFamily(state.terminalFontFamily);
+        if (xterm.options.fontFamily !== family) {
+          xterm.options.fontFamily = family;
+          fitAddonRef.current?.fit();
+        }
       }
     });
     return unsubscribe;
