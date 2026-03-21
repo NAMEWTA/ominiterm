@@ -29,6 +29,7 @@ asarUnpack:
   - node_modules/node-pty/**/*
 
 mac:
+  identity: null
   category: public.app-category.developer-tools
   icon: build/icon.icns
   target:
