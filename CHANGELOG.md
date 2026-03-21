@@ -2,6 +2,12 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.32] - 2026-03-22
+
+### Fixed
+- GitHub login callback now correctly updates user state and displays account name
+- Expanded GitHub username extraction to cover more OAuth metadata fields
+
 ## [0.8.31] - 2026-03-22
 
 ### Added
