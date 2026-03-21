@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { execFile } from "child_process";
+import { spawn } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -988,26 +988,49 @@ async function invokeCli(
   prompt: string,
   timeoutMs = 120_000,
 ): Promise<string> {
-  const args = buildCliInvocationArgs(spec.args, cliTool, prompt);
+  const invocation = buildCliInvocationArgs(spec.args, cliTool, prompt);
 
   return new Promise<string>((resolve, reject) => {
-    execFile(
-      spec.file,
-      args,
-      {
-        cwd: spec.cwd,
-        env: spec.env,
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: timeoutMs,
-      },
-      (error, stdout) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(stdout);
-      },
-    );
+    const child = spawn(spec.file, invocation.args, {
+      cwd: spec.cwd,
+      env: spec.env,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    const chunks: Buffer[] = [];
+    let killed = false;
+
+    const timer = setTimeout(() => {
+      killed = true;
+      child.kill("SIGTERM");
+    }, timeoutMs);
+
+    child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (killed) {
+        reject(new Error(`CLI timed out after ${timeoutMs}ms`));
+        return;
+      }
+      if (code !== 0 && code !== null) {
+        reject(new Error(`CLI exited with code ${code}`));
+        return;
+      }
+      resolve(Buffer.concat(chunks).toString("utf-8"));
+    });
+
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+
+    if (invocation.stdin !== null) {
+      child.stdin.write(invocation.stdin);
+      child.stdin.end();
+    } else {
+      child.stdin.end();
+    }
   });
 }
 
