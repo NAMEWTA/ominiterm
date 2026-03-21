@@ -33,30 +33,46 @@ TermCanvas 把你所有的终端铺在一张无限空间画布上——不再有
 - 实时 worktree 检测——新建 worktree 自动出现
 - 双击终端标题栏缩放至适合视口
 - 拖拽排序 worktree 内的终端
-- 绘图工具——画笔、文字、矩形、箭头标注
-- 工作区存档——将完整布局保存为文件
+- 框选——拖拽一次选中多个终端
+- 绘图工具——画笔、文字、矩形、箭头标注（可开关）
+- 工作区存档——将完整布局保存为 `.termcanvas` 文件，支持另存为，带脏状态追踪
 
 **AI 编程 Agent**
 - 原生支持 Claude Code、Codex、Kimi、Gemini、OpenCode
 - Composer——统一输入栏，向聚焦的 agent 发送提示，支持粘贴图片
 - 实时会话状态——一眼看到 agent 正在工作、等待还是已完成
+- 完成闪光——agent 完成一轮时的视觉脉冲提示
 - 会话恢复——关闭并重新打开 agent 终端，不丢失上下文
+- CLI 自动检测——TermCanvas 自动发现已安装的 agent CLI；可在设置中逐个覆盖
 - 内联 diff 卡片——不离开画布就能审查 agent 的代码变更
+- 文件与目录树卡片——在画布上与终端并排浏览文件
 
 **通用终端**
 - Shell、lazygit、tmux 与 AI agent 共存于同一画布
+- 星标终端——标记重要终端，用 `⌘ J` / `⌘ K` 快速切换
+- `⌘ ;` 重命名终端标题
+- 终端尺寸预设：默认、宽、高、大
 
 **用量追踪**
 - Token 用量与成本看板——总花费、按项目分布、按模型分布
-- 24 小时成本趋势图与缓存命中率统计
+- 每小时 token 热力图与 24 小时成本趋势图
+- 缓存命中率统计
+- 配额监控——5 小时与 7 天速率限制利用率，自适应轮询
+- 云同步——登录后通过 Supabase 跨设备汇总用量
 
-**设置与国际化**
-- 支持中文和英文（自动检测系统语言）
-- 可调终端字号（6–24 px）
-- 应用内自动更新并显示更新日志
+**设置**
+- **显示** —— 6 款等宽字体可选（Geist Mono、Geist Pixel Square、JetBrains Mono、Fira Code、IBM Plex Mono、Hack），一键下载；字号 6–24 px
+- **主题** —— 深色与浅色模式，暖石色调配色，ANSI 颜色符合无障碍标准
+- **Agent** —— 自动检测或手动覆盖每个 agent 类型的 CLI 路径
+- **快捷键** —— 所有键盘快捷键均可自定义并持久保存
+- **Composer** —— 开关实验性的 Composer 输入栏
+- **绘图** —— 开关绘图工具栏
+- **高级** —— 最小对比度滑块（1–7），提升终端文本可读性
+- **国际化** —— 支持中文和英文（自动检测系统语言）
+- **自动更新** —— 应用内更新通知并显示更新日志
 
 **命令行工具**
-- `termcanvas` —— 从终端控制画布：添加项目、创建终端、读取输出、查看 diff
+- `termcanvas` —— 从终端控制画布：管理项目、创建/销毁终端、发送输入、读取输出、查看 diff
 - `hydra` —— 在隔离的 git worktree 中派生 AI 子 agent，然后审查并合并它们的工作
 
 ## 快速开始
@@ -80,12 +96,30 @@ npm run dev
 
 ### termcanvas
 
-```bash
-termcanvas project add ~/my-repo     # 添加项目到画布
-termcanvas project list              # 列出项目
-termcanvas terminal create --worktree ~/my-repo --type claude
-termcanvas terminal status <id>      # 检查终端状态
-termcanvas diff ~/my-repo --summary  # 查看 worktree diff
+```
+用法: termcanvas <project|terminal|diff|state> <command> [args]
+
+项目命令:
+  project add <path>                          添加项目到画布
+  project list                                列出所有项目
+  project remove <id>                         移除项目
+  project rescan <id>                         重新扫描项目的 worktree
+
+终端命令:
+  terminal create --worktree <path> --type <type>   创建终端
+          [--prompt <text>] [--parent-terminal <id>] [--auto-approve]
+  terminal list [--worktree <path>]            列出终端
+  terminal status <id>                         获取终端状态
+  terminal input <id> <text>                   向终端发送文本输入
+  terminal output <id> [--lines N]             读取终端输出（默认 50 行）
+  terminal destroy <id>                        销毁终端
+
+其他命令:
+  diff <worktree-path> [--summary]             查看 worktree 的 git diff
+  state                                        导出完整画布状态为 JSON
+
+标志:
+  --json    以 JSON 格式输出
 ```
 
 <div align="center">
@@ -136,14 +170,24 @@ hydra init    # 将 Hydra 使用说明添加到项目的 CLAUDE.md 和 AGENTS.md
 
 ## 快捷键
 
+所有快捷键均可在 设置 → 快捷键 中自定义。
+
 | 快捷键 | 功能 |
 |--------|------|
 | `⌘ O` | 添加项目 |
 | `⌘ B` | 切换侧边栏 |
+| `⌘ /` | 切换右侧面板（用量） |
 | `⌘ T` | 新建终端 |
+| `⌘ D` | 关闭聚焦的终端 |
+| `⌘ ;` | 重命名终端标题 |
 | `⌘ ]` | 下一个终端 |
 | `⌘ [` | 上一个终端 |
 | `⌘ E` | 取消聚焦 / 恢复上次聚焦 |
+| `⌘ F` | 星标 / 取消星标聚焦的终端 |
+| `⌘ J` | 下一个星标终端 |
+| `⌘ K` | 上一个星标终端 |
+| `⌘ S` | 保存工作区 |
+| `⌘ ⇧ S` | 工作区另存为 |
 | `⌘ 1` | 终端尺寸：默认 |
 | `⌘ 2` | 终端尺寸：宽 |
 | `⌘ 3` | 终端尺寸：高 |
@@ -157,11 +201,12 @@ hydra init    # 将 Hydra 使用说明添加到项目的 CLAUDE.md 和 AGENTS.md
 |------|-----|
 | 桌面框架 | Electron |
 | 前端 | React, TypeScript |
-| 终端 | xterm.js, node-pty |
+| 终端 | xterm.js (WebGL), node-pty |
 | 状态管理 | Zustand |
 | 样式 | Tailwind CSS, Geist 字体 |
 | 绘图 | perfect-freehand |
-| 构建 | Vite |
+| 认证与同步 | Supabase |
+| 构建 | Vite, esbuild |
 
 ## 致谢
 
