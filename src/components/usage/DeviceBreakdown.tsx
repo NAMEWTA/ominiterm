@@ -5,12 +5,6 @@ function fmtCost(c: number): string {
   return c >= 1 ? `$${c.toFixed(2)}` : `$${c.toFixed(3)}`;
 }
 
-function fmtTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
-
 interface DeviceBreakdownProps {
   devices: DeviceUsage[];
   localDeviceId: string | null;
@@ -18,17 +12,12 @@ interface DeviceBreakdownProps {
 
 export function DeviceBreakdown({ devices, localDeviceId }: DeviceBreakdownProps) {
   const t = useT();
-
   if (devices.length === 0) return null;
 
   const maxCost = Math.max(...devices.map((d) => d.cost), 0.001);
 
   return (
-    <div className="px-3 py-2.5">
-      <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
-        {t.auth_devices}
-      </span>
-      <div className="mt-2 flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5">
         {devices.map((device, i) => {
           const shortId = device.deviceId.slice(0, 8);
           const isLocal = device.deviceId === localDeviceId;
@@ -65,7 +54,6 @@ export function DeviceBreakdown({ devices, localDeviceId }: DeviceBreakdownProps
             </div>
           );
         })}
-      </div>
     </div>
   );
 }

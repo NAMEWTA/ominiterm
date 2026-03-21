@@ -18,7 +18,7 @@ const api = () => (window as any).termcanvas.insights as {
   openReport: (filePath: string) => Promise<void>;
 };
 
-export function InsightsButton() {
+export function InsightsButton({ compact = false }: { compact?: boolean } = {}) {
   const t = useT();
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -64,6 +64,59 @@ export function InsightsButton() {
   const openReport = () => {
     if (reportPath) api().openReport(reportPath);
   };
+
+  if (compact) {
+    return (
+      <div className="relative inline-flex">
+        <button
+          disabled={running}
+          onClick={() => {
+            if (reportPath && !running && !error) {
+              openReport();
+            } else if (error) {
+              setError(null);
+            } else {
+              setShowPicker((v) => !v);
+            }
+          }}
+          className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--surface-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50 cursor-pointer"
+          title={t.insights_generate}
+        >
+          {running ? (
+            <div className="w-3 h-3 border-[1.5px] border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              className={reportPath && !error ? "text-green-400" : error ? "text-red-400" : ""}
+            >
+              <path
+                d="M8 2v2.5M8 11.5V14M2 8h2.5M11.5 8H14M4 4l1.8 1.8M10.2 10.2L12 12M4 12l1.8-1.8M10.2 5.8L12 4"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+              />
+            </svg>
+          )}
+        </button>
+        {showPicker && (
+          <div className="absolute top-full left-0 mt-1 rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-lg overflow-hidden z-50 min-w-[120px]">
+            {(["claude", "codex"] as const).map((tool) => (
+              <button
+                key={tool}
+                className="w-full px-3 py-1.5 text-[11px] text-left text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]/20 transition-colors duration-100 cursor-pointer"
+                onClick={() => handleSelect(tool)}
+              >
+                {t.insights_select_cli} {tool.charAt(0).toUpperCase() + tool.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="px-3 py-2.5">

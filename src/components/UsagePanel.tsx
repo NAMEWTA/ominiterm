@@ -13,7 +13,6 @@ import { DeviceBreakdown } from "./usage/DeviceBreakdown";
 import { QuotaSection } from "./usage/QuotaSection";
 import { useQuotaStore } from "../stores/quotaStore";
 import type { UsageSummary, ProjectUsage, ModelUsage } from "../types";
-import type { HeatmapEntry } from "../stores/usageStore";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -158,9 +157,46 @@ function HoverDetail({ children, tooltip }: { children: React.ReactNode; tooltip
   );
 }
 
+// ── Collapsible section wrapper ────────────────────────────────────────
+
+function CollapsibleSection({
+  title,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="px-3 py-2.5">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 w-full cursor-pointer"
+      >
+        <svg
+          width="8"
+          height="8"
+          viewBox="0 0 8 8"
+          fill="none"
+          className="text-[var(--text-faint)] shrink-0 transition-transform duration-150"
+          style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
+        >
+          <path d="M2 1L6 4L2 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
+          {title}
+        </span>
+      </button>
+      {open && <div className="mt-2">{children}</div>}
+    </div>
+  );
+}
+
 // ── Section components ─────────────────────────────────────────────────
 
-function SummarySection({ t, summary }: { t: ReturnType<typeof useT>; summary: UsageSummary }) {
+function SummarySection({ t, summary, monthlyData }: { t: ReturnType<typeof useT>; summary: UsageSummary; monthlyData?: { cost: number } }) {
   const animatedCost = useAnimatedNumber(summary.totalCost);
 
   return (
@@ -184,45 +220,18 @@ function SummarySection({ t, summary }: { t: ReturnType<typeof useT>; summary: U
         <span className="text-[var(--text-faint)]">·</span>
         <span>{t.usage_output}: {fmtTokens(summary.totalOutput)}</span>
       </div>
-    </div>
-  );
-}
-
-function MonthlySummary({
-  t,
-  date,
-  heatmapData,
-}: {
-  t: ReturnType<typeof useT>;
-  date: string;
-  heatmapData: Record<string, HeatmapEntry>;
-}) {
-  const monthPrefix = date.slice(0, 7); // "YYYY-MM"
-  let monthlyCost = 0;
-  let monthlyTokens = 0;
-  for (const [d, entry] of Object.entries(heatmapData)) {
-    if (d.startsWith(monthPrefix)) {
-      monthlyCost += entry.cost;
-      monthlyTokens += entry.tokens;
-    }
-  }
-
-  if (monthlyCost === 0 && monthlyTokens === 0) return null;
-
-  return (
-    <div className="px-3 py-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
-          {t.usage_monthly}
-        </span>
-        <div
-          className="flex items-baseline gap-2 text-[11px] tabular-nums"
-          style={{ fontFamily: '"Geist Mono", monospace' }}
-        >
-          <span className="text-[var(--text-primary)] font-medium">{fmtCost(monthlyCost)}</span>
-          <span className="text-[var(--text-faint)]">≈ ¥{Math.round(monthlyCost * 7.28)}</span>
+      {monthlyData && monthlyData.cost > 0 && (
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--border)]">
+          <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">{t.usage_monthly}</span>
+          <div
+            className="flex items-baseline gap-2 text-[11px] tabular-nums"
+            style={{ fontFamily: '"Geist Mono", monospace' }}
+          >
+            <span className="text-[var(--text-secondary)] font-medium">{fmtCost(monthlyData.cost)}</span>
+            <span className="text-[var(--text-faint)]">≈ ¥{Math.round(monthlyData.cost * 7.28)}</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -243,56 +252,6 @@ function TimelineSection({
       </span>
       <div className="mt-2">
         <SparklineChart buckets={summary.buckets} animate={animate} />
-      </div>
-    </div>
-  );
-}
-
-function TokenBreakdown({
-  t,
-  summary,
-  animate,
-}: {
-  t: ReturnType<typeof useT>;
-  summary: UsageSummary;
-  animate: boolean;
-}) {
-  const items = [
-    { label: t.usage_input, value: summary.totalInput, color: "#06b6d4", cost: 0 },
-    { label: t.usage_output, value: summary.totalOutput, color: "#22c55e", cost: 0 },
-    { label: t.usage_cache_read, value: summary.totalCacheRead, color: "#eab308", cost: 0 },
-    { label: `${t.usage_cache_create} 5m`, value: summary.totalCacheCreate5m, color: "#d946ef", cost: 0 },
-    { label: `${t.usage_cache_create} 1h`, value: summary.totalCacheCreate1h, color: "#ef4444", cost: 0 },
-  ];
-  const max = Math.max(...items.map((i) => i.value), 1);
-
-  return (
-    <div className="px-3 py-2.5">
-      <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
-        {t.usage_tokens}
-      </span>
-      <div className="mt-2 flex flex-col gap-1.5">
-        {items.map((item, i) => (
-          <HoverDetail
-            key={item.label}
-            tooltip={
-              <div className="text-[10px] text-[var(--text-secondary)] tabular-nums" style={{ fontFamily: '"Geist Mono", monospace' }}>
-                {item.value.toLocaleString()} {t.usage_tokens_label}
-              </div>
-            }
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[var(--text-muted)] w-12 shrink-0 truncate">{item.label}</span>
-              <Bar value={item.value} max={max} color={item.color} animate={animate} delay={i * 60} />
-              <span
-                className="text-[10px] text-[var(--text-muted)] shrink-0 w-10 text-right tabular-nums"
-                style={{ fontFamily: '"Geist Mono", monospace' }}
-              >
-                {fmtTokens(item.value)}
-              </span>
-            </div>
-          </HoverDetail>
-        ))}
       </div>
     </div>
   );
@@ -389,7 +348,7 @@ function CacheRateSection({
   );
 }
 
-function ProjectsSection({
+function ProjectsContent({
   t,
   projects,
   totalCost,
@@ -404,47 +363,42 @@ function ProjectsSection({
   const maxCost = Math.max(...projects.map((p) => p.cost), 0.001);
 
   return (
-    <div className="px-3 py-2.5">
-      <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
-        {t.usage_projects}
-      </span>
-      <div className="mt-2 flex flex-col gap-1.5">
-        {projects.slice(0, 6).map((p, i) => (
-          <HoverDetail
-            key={p.path}
-            tooltip={
-              <div className="text-[10px] tabular-nums" style={{ fontFamily: '"Geist Mono", monospace' }}>
-                <span className="text-[var(--text-secondary)]">{fmtCost(p.cost)}</span>
-                <span className="text-[var(--text-faint)] mx-1">·</span>
-                <span className="text-[var(--text-muted)]">{p.calls} {t.usage_calls}</span>
-                <span className="text-[var(--text-faint)] mx-1">·</span>
-                <span className="text-[var(--text-muted)]">{pct(p.cost, totalCost)}</span>
-              </div>
-            }
-          >
-            <div className="flex items-center gap-2 group">
-              <span
-                className="text-[11px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate min-w-0 flex-shrink transition-colors duration-150"
-                style={{ maxWidth: "45%" }}
-              >
-                {p.name}
-              </span>
-              <Bar value={p.cost} max={maxCost} color="var(--accent)" animate={animate} delay={i * 60} />
-              <span
-                className="text-[10px] text-[var(--text-muted)] shrink-0 w-8 text-right tabular-nums"
-                style={{ fontFamily: '"Geist Mono", monospace' }}
-              >
-                {pct(p.cost, totalCost)}
-              </span>
+    <div className="flex flex-col gap-1.5">
+      {projects.slice(0, 6).map((p, i) => (
+        <HoverDetail
+          key={p.path}
+          tooltip={
+            <div className="text-[10px] tabular-nums" style={{ fontFamily: '"Geist Mono", monospace' }}>
+              <span className="text-[var(--text-secondary)]">{fmtCost(p.cost)}</span>
+              <span className="text-[var(--text-faint)] mx-1">·</span>
+              <span className="text-[var(--text-muted)]">{p.calls} {t.usage_calls}</span>
+              <span className="text-[var(--text-faint)] mx-1">·</span>
+              <span className="text-[var(--text-muted)]">{pct(p.cost, totalCost)}</span>
             </div>
-          </HoverDetail>
-        ))}
-      </div>
+          }
+        >
+          <div className="flex items-center gap-2 group">
+            <span
+              className="text-[11px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate min-w-0 flex-shrink transition-colors duration-150"
+              style={{ maxWidth: "45%" }}
+            >
+              {p.name}
+            </span>
+            <Bar value={p.cost} max={maxCost} color="var(--accent)" animate={animate} delay={i * 60} />
+            <span
+              className="text-[10px] text-[var(--text-muted)] shrink-0 w-8 text-right tabular-nums"
+              style={{ fontFamily: '"Geist Mono", monospace' }}
+            >
+              {pct(p.cost, totalCost)}
+            </span>
+          </div>
+        </HoverDetail>
+      ))}
     </div>
   );
 }
 
-function ModelsSection({
+function ModelsContent({
   t,
   models,
   animate,
@@ -464,47 +418,42 @@ function ModelsSection({
   };
 
   return (
-    <div className="px-3 py-2.5">
-      <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
-        {t.usage_models}
-      </span>
-      <div className="mt-2 flex flex-col gap-1.5">
-        {models.map((m, i) => {
-          const shortName = m.model.replace("claude-", "").replace(/-/g, " ");
-          const color = MODEL_COLORS[m.model] ?? "#6b7280";
-          return (
-            <HoverDetail
-              key={m.model}
-              tooltip={
-                <div className="text-[10px] tabular-nums" style={{ fontFamily: '"Geist Mono", monospace' }}>
-                  <div className="text-[var(--text-secondary)]">{m.model}</div>
-                  <div className="text-[var(--text-muted)] mt-0.5">
-                    {fmtCost(m.cost)}
-                    <span className="text-[var(--text-faint)] mx-1">·</span>
-                    {m.calls} {t.usage_calls}
-                  </div>
-                </div>
-              }
-            >
-              <div className="flex items-center gap-2 group">
-                <span
-                  className="text-[11px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate min-w-0 flex-shrink transition-colors duration-150"
-                  style={{ maxWidth: "45%" }}
-                >
-                  {shortName}
-                </span>
-                <Bar value={m.cost} max={maxCost} color={color} animate={animate} delay={i * 60} />
-                <span
-                  className="text-[10px] text-[var(--text-muted)] shrink-0 tabular-nums"
-                  style={{ fontFamily: '"Geist Mono", monospace' }}
-                >
+    <div className="flex flex-col gap-1.5">
+      {models.map((m, i) => {
+        const shortName = m.model.replace("claude-", "").replace(/-/g, " ");
+        const color = MODEL_COLORS[m.model] ?? "#6b7280";
+        return (
+          <HoverDetail
+            key={m.model}
+            tooltip={
+              <div className="text-[10px] tabular-nums" style={{ fontFamily: '"Geist Mono", monospace' }}>
+                <div className="text-[var(--text-secondary)]">{m.model}</div>
+                <div className="text-[var(--text-muted)] mt-0.5">
                   {fmtCost(m.cost)}
-                </span>
+                  <span className="text-[var(--text-faint)] mx-1">·</span>
+                  {m.calls} {t.usage_calls}
+                </div>
               </div>
-            </HoverDetail>
-          );
-        })}
-      </div>
+            }
+          >
+            <div className="flex items-center gap-2 group">
+              <span
+                className="text-[11px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate min-w-0 flex-shrink transition-colors duration-150"
+                style={{ maxWidth: "45%" }}
+              >
+                {shortName}
+              </span>
+              <Bar value={m.cost} max={maxCost} color={color} animate={animate} delay={i * 60} />
+              <span
+                className="text-[10px] text-[var(--text-muted)] shrink-0 tabular-nums"
+                style={{ fontFamily: '"Geist Mono", monospace' }}
+              >
+                {fmtCost(m.cost)}
+              </span>
+            </div>
+          </HoverDetail>
+        );
+      })}
     </div>
   );
 }
@@ -601,6 +550,16 @@ export function UsagePanel() {
   const activeSummary = isLoggedIn && cloudSummary ? cloudSummary : summary;
   const activeHeatmap = isLoggedIn && cloudHeatmapData ? cloudHeatmapData : heatmapData;
 
+  // Compute monthly total for SummarySection
+  let monthlyCost = 0;
+  if (activeHeatmap) {
+    const monthPrefix = date.slice(0, 7);
+    for (const [d, entry] of Object.entries(activeHeatmap)) {
+      if (d.startsWith(monthPrefix)) monthlyCost += entry.cost;
+    }
+  }
+  const monthlyData = monthlyCost > 0 ? { cost: monthlyCost } : undefined;
+
   return (
     <div className="fixed right-0 z-40 flex" style={{ top: 44, height: "calc(100vh - 44px)" }}>
       {/* Collapsed tab */}
@@ -645,9 +604,12 @@ export function UsagePanel() {
         <QuotaSection />
         <div className="mx-3 h-px bg-[var(--border)]" />
 
-        {/* Auth login/user button */}
-        <div className="px-3 py-1.5 shrink-0 border-b border-[var(--border)] flex items-center justify-end">
-          <LoginButton />
+        {/* Auth login/user button + insights */}
+        <div className="px-3 py-1.5 shrink-0 border-b border-[var(--border)] flex items-center gap-2">
+          <InsightsButton compact />
+          <div className="ml-auto">
+            <LoginButton />
+          </div>
         </div>
 
         {/* Content */}
@@ -659,41 +621,43 @@ export function UsagePanel() {
           ) : activeSummary ? (
             <div key={animKey} className="flex flex-col pb-3">
               <div className="usage-section-enter" style={{ animationDelay: "0ms" }}>
-                <SummarySection t={t} summary={activeSummary} />
+                <SummarySection t={t} summary={activeSummary} monthlyData={monthlyData} />
               </div>
-              {Object.keys(activeHeatmap).length > 0 && (
-                <>
-                  <div className="mx-3 h-px bg-[var(--border)]" />
-                  <div className="usage-section-enter" style={{ animationDelay: "30ms" }}>
-                    <MonthlySummary t={t} date={date} heatmapData={activeHeatmap} />
-                  </div>
-                </>
-              )}
               <div className="mx-3 h-px bg-[var(--border)]" />
-              <div className="usage-section-enter" style={{ animationDelay: "60ms" }}>
+              <div className="usage-section-enter" style={{ animationDelay: "40ms" }}>
                 <TimelineSection t={t} summary={activeSummary} animate={true} />
               </div>
               <div className="mx-3 h-px bg-[var(--border)]" />
-              <div className="usage-section-enter" style={{ animationDelay: "110ms" }}>
-                <TokenBreakdown t={t} summary={activeSummary} animate={true} />
-              </div>
-              <div className="mx-3 h-px bg-[var(--border)]" />
-              <div className="usage-section-enter" style={{ animationDelay: "140ms" }}>
+              <div className="usage-section-enter" style={{ animationDelay: "80ms" }}>
                 <CacheRateSection t={t} summary={activeSummary} animate={true} />
               </div>
-              {activeSummary.projects.length > 0 && <div className="mx-3 h-px bg-[var(--border)]" />}
-              <div className="usage-section-enter" style={{ animationDelay: "170ms" }}>
-                <ProjectsSection t={t} projects={activeSummary.projects} totalCost={activeSummary.totalCost} animate={true} />
-              </div>
-              {activeSummary.models.length > 0 && <div className="mx-3 h-px bg-[var(--border)]" />}
-              <div className="usage-section-enter" style={{ animationDelay: "210ms" }}>
-                <ModelsSection t={t} models={activeSummary.models} animate={true} />
-              </div>
+              {activeSummary.projects.length > 0 && (
+                <>
+                  <div className="mx-3 h-px bg-[var(--border)]" />
+                  <div className="usage-section-enter" style={{ animationDelay: "120ms" }}>
+                    <CollapsibleSection title={t.usage_projects}>
+                      <ProjectsContent t={t} projects={activeSummary.projects} totalCost={activeSummary.totalCost} animate={true} />
+                    </CollapsibleSection>
+                  </div>
+                </>
+              )}
+              {activeSummary.models.length > 0 && (
+                <>
+                  <div className="mx-3 h-px bg-[var(--border)]" />
+                  <div className="usage-section-enter" style={{ animationDelay: "160ms" }}>
+                    <CollapsibleSection title={t.usage_models}>
+                      <ModelsContent t={t} models={activeSummary.models} animate={true} />
+                    </CollapsibleSection>
+                  </div>
+                </>
+              )}
               {isLoggedIn && cloudSummary && cloudSummary.devices.length > 0 && (
                 <>
                   <div className="mx-3 h-px bg-[var(--border)]" />
-                  <div className="usage-section-enter" style={{ animationDelay: "240ms" }}>
-                    <DeviceBreakdown devices={cloudSummary.devices} localDeviceId={deviceId} />
+                  <div className="usage-section-enter" style={{ animationDelay: "200ms" }}>
+                    <CollapsibleSection title={t.auth_devices}>
+                      <DeviceBreakdown devices={cloudSummary.devices} localDeviceId={deviceId} />
+                    </CollapsibleSection>
                   </div>
                 </>
               )}
@@ -704,12 +668,8 @@ export function UsagePanel() {
                 </>
               )}
               <div className="mx-3 h-px bg-[var(--border)]" />
-              <div className="usage-section-enter" style={{ animationDelay: "260ms" }}>
+              <div className="usage-section-enter" style={{ animationDelay: "240ms" }}>
                 <TokenHeatmap animate={true} />
-              </div>
-              <div className="mx-3 h-px bg-[var(--border)]" />
-              <div className="usage-section-enter" style={{ animationDelay: "300ms" }}>
-                <InsightsButton />
               </div>
             </div>
           ) : (
