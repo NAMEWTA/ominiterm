@@ -34,20 +34,20 @@
 /* ── Design tokens: Dark (default) ── */
 :root,
 [data-theme="dark"] {
-  --bg: #101010;
-  --surface: #181818;
-  --surface-hover: #202020;
-  --border: #2a2a2a;
-  --border-hover: #3a3a3a;
-  --text-primary: #e8e8e8;
-  --text-secondary: #8a8a8a;
-  --text-muted: #505050;
-  --text-faint: #383838;
-  --accent: #0070f3;
-  --red: #ef4444;
-  --amber: #f5a623;
-  --cyan: #50e3c2;
-  --purple: #7928ca;
+  --bg: #1a1918;
+  --surface: #222120;
+  --surface-hover: #2a2928;
+  --border: #333231;
+  --border-hover: #43423f;
+  --text-primary: #e4e2df;
+  --text-secondary: #918e89;
+  --text-muted: #5c5955;
+  --text-faint: #3e3c39;
+  --accent: #5b9ef5;
+  --red: #e87272;
+  --amber: #d4a24e;
+  --cyan: #6cc4b0;
+  --purple: #9b7ad8;
   --radius: 8px;
   color-scheme: dark;
 }
@@ -89,7 +89,7 @@ body {
 /* ── Canvas ── */
 .canvas-bg {
   background-color: var(--bg);
-  --dot-color: rgba(255, 255, 255, 0.08);
+  --dot-color: rgba(255, 255, 255, 0.06);
   --dot-size: 1px;
   --dot-gap: 20px;
   background-image: radial-gradient(
