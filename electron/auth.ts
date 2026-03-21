@@ -3,6 +3,7 @@ import { shell } from "electron";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import os from "os";
 import { TERMCANVAS_DIR } from "./state-persistence";
 
 // ── Types ──
@@ -23,7 +24,11 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "YOUR_SUPABASE_URL";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY ?? "YOUR_SUPABASE_ANON_KEY";
 
 const AUTH_FILE = path.join(TERMCANVAS_DIR, "auth.json");
-const DEVICE_ID_FILE = path.join(TERMCANVAS_DIR, "device-id");
+// Device ID is always in ~/.termcanvas/ (not ~/.termcanvas-dev/) so that
+// dev and production instances on the same machine share the same identity
+// and don't double-count usage records uploaded to Supabase.
+const DEVICE_ID_DIR = path.join(os.homedir(), ".termcanvas");
+const DEVICE_ID_FILE = path.join(DEVICE_ID_DIR, "device-id");
 
 // ── State ──
 
@@ -80,7 +85,9 @@ function clearSession(): void {
 
 function loadOrCreateDeviceId(): string {
   try {
-    ensureDir();
+    if (!fs.existsSync(DEVICE_ID_DIR)) {
+      fs.mkdirSync(DEVICE_ID_DIR, { recursive: true });
+    }
     if (fs.existsSync(DEVICE_ID_FILE)) {
       return fs.readFileSync(DEVICE_ID_FILE, "utf-8").trim();
     }
