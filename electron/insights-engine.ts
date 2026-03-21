@@ -52,7 +52,13 @@ interface ScanResult {
   totalScannedSessions: number;
 }
 
-const CACHE_VERSION = 2;
+interface FacetSelectionResult {
+  eligibleSessions: SessionInfo[];
+  facetEligibleSessions: SessionInfo[];
+  metricsOnlySessions: number;
+}
+
+const CACHE_VERSION = 3;
 const SESSION_META_CACHE_DIR = path.join(
   TERMCANVAS_DIR,
   "insights-cache",
@@ -60,11 +66,13 @@ const SESSION_META_CACHE_DIR = path.join(
 );
 const FACET_CACHE_DIR = path.join(TERMCANVAS_DIR, "insights-cache", "facets");
 const SESSION_META_CACHE_BATCH = 50;
-const SESSION_LOAD_BATCH = 10;
-const MAX_UNCACHED_SESSION_LOADS = 200;
-const MAX_FACET_EXTRACTIONS = 50;
-const FACET_EXTRACTION_BATCH = 10;
 const ANALYSIS_SAMPLE_LIMIT = 36;
+const LANGUAGE_SAMPLE_MIN = 5;
+const LANGUAGE_SAMPLE_MAX = 10;
+const RECENT_SAMPLE_SESSION_LIMIT = 24;
+const MS_PER_DAY = 86_400_000;
+const LANGUAGE_DETECTION_INSTRUCTION =
+  "Detect the primary language of the sampled user messages below. Generate ALL text output in that same language. If the user writes in Chinese, your entire output MUST be in Chinese. If English, output English.";
 
 const PATH_LANGUAGE_MAP: Record<string, string> = {
   ".c": "c",
@@ -280,24 +288,41 @@ function addTranscriptLine(parts: string[], prefix: string, text: string): void 
   parts.push(`${prefix}: ${line}`);
 }
 
-function discoverSessionFiles(cliTool: InsightsCliTool): SessionFileInfo[] {
-  const files =
-    cliTool === "claude" ? findClaudeJsonlFiles() : findCodexJsonlFiles();
+function getAdaptiveBatchSize(total: number): number {
+  if (total <= 100) return 10;
+  if (total <= 500) return 15;
+  return 20;
+}
+
+function buildSessionFileInfo(
+  cliTool: InsightsCliTool,
+  filePath: string,
+): SessionFileInfo | null {
+  try {
+    const stat = fs.statSync(filePath);
+    const rawId = path.basename(filePath, ".jsonl");
+    return {
+      id: `${cliTool}:${rawId}`,
+      filePath,
+      cliTool,
+      mtimeMs: stat.mtimeMs,
+      fileSize: stat.size,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function discoverSessionFiles(): SessionFileInfo[] {
+  const files = [
+    ...findClaudeJsonlFiles().map((filePath) => ({ cliTool: "claude" as const, filePath })),
+    ...findCodexJsonlFiles().map((filePath) => ({ cliTool: "codex" as const, filePath })),
+  ];
   const indexed: SessionFileInfo[] = [];
 
-  for (const filePath of files) {
-    try {
-      const stat = fs.statSync(filePath);
-      indexed.push({
-        id: path.basename(filePath, ".jsonl"),
-        filePath,
-        cliTool,
-        mtimeMs: stat.mtimeMs,
-        fileSize: stat.size,
-      });
-    } catch {
-      // Ignore files that disappear mid-scan.
-    }
+  for (const file of files) {
+    const info = buildSessionFileInfo(file.cliTool, file.filePath);
+    if (info) indexed.push(info);
   }
 
   indexed.sort((a, b) => b.mtimeMs - a.mtimeMs);
@@ -331,6 +356,7 @@ function extractClaudeSession(file: SessionFileInfo): SessionInfo | null {
   const metrics = createEmptySessionMetrics();
   const toolNamesById = new Map<string, string>();
   const transcriptParts: string[] = [];
+  const userMessageSnippets: string[] = [];
   const timestamps: number[] = [];
   let messageCount = 0;
   let lastUserTs: number | null = null;
@@ -366,6 +392,9 @@ function extractClaudeSession(file: SessionFileInfo): SessionInfo | null {
       const text = extractTextFromContent(msg.content);
       if (text) {
         addTranscriptLine(transcriptParts, "user", text);
+        if (userMessageSnippets.length < 12) {
+          userMessageSnippets.push(truncateText(text, 220));
+        }
         if (lastAssistantTs !== null && ts !== null) {
           metrics.userReplySeconds.push(Math.max(0, Math.round((ts - lastAssistantTs) / 1000)));
         }
@@ -533,6 +562,7 @@ function extractClaudeSession(file: SessionFileInfo): SessionInfo | null {
     mtimeMs: file.mtimeMs,
     fileSize: file.fileSize,
     metrics,
+    userMessageSnippets,
   };
 }
 
@@ -561,6 +591,7 @@ function extractCodexSession(file: SessionFileInfo): SessionInfo | null {
   let projectPath = "";
   const metrics = createEmptySessionMetrics();
   const transcriptParts: string[] = [];
+  const userMessageSnippets: string[] = [];
   const timestamps: number[] = [];
   let sessionStartTs: number | null = null;
   let messageCount = 0;
@@ -608,6 +639,9 @@ function extractCodexSession(file: SessionFileInfo): SessionInfo | null {
         messageCount += 1;
         if (ts !== null) recordHour(metrics, ts);
         addTranscriptLine(transcriptParts, "user", payload.message);
+        if (userMessageSnippets.length < 12) {
+          userMessageSnippets.push(truncateText(payload.message, 220));
+        }
         if (lastAssistantTs !== null && ts !== null) {
           metrics.userReplySeconds.push(Math.max(0, Math.round((ts - lastAssistantTs) / 1000)));
         }
@@ -723,6 +757,9 @@ function extractCodexSession(file: SessionFileInfo): SessionInfo | null {
         messageCount += 1;
         if (ts !== null) recordHour(metrics, ts);
         addTranscriptLine(transcriptParts, "user", text);
+        if (userMessageSnippets.length < 12) {
+          userMessageSnippets.push(truncateText(text, 220));
+        }
       }
       continue;
     }
@@ -772,6 +809,7 @@ function extractCodexSession(file: SessionFileInfo): SessionInfo | null {
     mtimeMs: file.mtimeMs,
     fileSize: file.fileSize,
     metrics,
+    userMessageSnippets,
   };
 }
 
@@ -871,12 +909,12 @@ function writeCachedFacet(
 }
 
 async function scanSessions(
-  sourceCli: InsightsCliTool,
   onProgress: (p: Omit<InsightsProgress, "jobId">) => void,
 ): Promise<ScanResult> {
-  const files = discoverSessionFiles(sourceCli);
+  const files = discoverSessionFiles();
   const cachedSessions: SessionInfo[] = [];
   const uncachedFiles: SessionFileInfo[] = [];
+  const loadBatchSize = getAdaptiveBatchSize(files.length);
 
   for (let i = 0; i < files.length; i += SESSION_META_CACHE_BATCH) {
     const batch = files.slice(i, i + SESSION_META_CACHE_BATCH);
@@ -884,7 +922,7 @@ async function scanSessions(
       const cached = readCachedSessionMeta(file);
       if (cached) {
         cachedSessions.push(cached);
-      } else if (uncachedFiles.length < MAX_UNCACHED_SESSION_LOADS) {
+      } else {
         uncachedFiles.push(file);
       }
     }
@@ -892,14 +930,14 @@ async function scanSessions(
       stage: "scanning",
       current: Math.min(i + batch.length, files.length),
       total: files.length,
-      message: `Scanning ${sourceCli} sessions...`,
+      message: "Scanning Claude and Codex sessions...",
     });
     if (i + batch.length < files.length) await yieldToEventLoop();
   }
 
   const loadedSessions: SessionInfo[] = [];
-  for (let i = 0; i < uncachedFiles.length; i += SESSION_LOAD_BATCH) {
-    const batch = uncachedFiles.slice(i, i + SESSION_LOAD_BATCH);
+  for (let i = 0; i < uncachedFiles.length; i += loadBatchSize) {
+    const batch = uncachedFiles.slice(i, i + loadBatchSize);
     for (const file of batch) {
       const session = extractSession(file);
       if (!session) continue;
@@ -910,7 +948,7 @@ async function scanSessions(
       stage: "scanning",
       current: files.length,
       total: files.length,
-      message: `Loaded ${Math.min(i + batch.length, uncachedFiles.length)} new ${sourceCli} sessions`,
+      message: `Loaded ${Math.min(i + batch.length, uncachedFiles.length)} new sessions`,
     });
     if (i + batch.length < uncachedFiles.length) await yieldToEventLoop();
   }
@@ -1057,15 +1095,75 @@ const FACET_REQUIRED_FIELDS = [
   "recommended_next_step",
 ] as const;
 
-export async function extractFacet(
+function calculateSessionAgeDays(
   session: SessionInfo,
-  cliSpec: PtyResolvedLaunchSpec,
-  analyzerCli: InsightsCliTool,
-): Promise<SessionFacet | InsightsError> {
-  const cached = readCachedFacet(session, analyzerCli);
-  if (cached) return cached;
+  nowMs = Date.now(),
+): number {
+  return Math.max(0, (nowMs - session.endTimeMs) / MS_PER_DAY);
+}
 
-  const prompt = [
+function calculateImportanceScore(session: SessionInfo): number {
+  return (
+    session.messageCount * 2 +
+    session.durationMinutes +
+    session.metrics.linesAdded / 10 +
+    session.metrics.gitCommits * 20
+  );
+}
+
+function selectTopFraction(
+  sessions: SessionInfo[],
+  fraction: number,
+): SessionInfo[] {
+  if (sessions.length === 0) return [];
+  const count = Math.max(1, Math.ceil(sessions.length * fraction));
+  return [...sessions]
+    .sort((a, b) => calculateImportanceScore(b) - calculateImportanceScore(a))
+    .slice(0, count);
+}
+
+function sampleSnippets(
+  snippets: string[],
+  seed: string,
+  maxSamples = LANGUAGE_SAMPLE_MAX,
+): string[] {
+  if (snippets.length === 0) return [];
+  const targetCount = Math.min(
+    maxSamples,
+    Math.max(LANGUAGE_SAMPLE_MIN, Math.min(snippets.length, maxSamples)),
+  );
+  return [...snippets]
+    .map((snippet, index) => ({
+      snippet,
+      order: crypto
+        .createHash("sha1")
+        .update(`${seed}:${index}:${snippet}`)
+        .digest("hex"),
+    }))
+    .sort((a, b) => a.order.localeCompare(b.order))
+    .slice(0, targetCount)
+    .map(({ snippet }) => snippet);
+}
+
+function sampleRecentUserMessages(sessions: SessionInfo[]): string[] {
+  const recentPool = sessions
+    .slice(0, RECENT_SAMPLE_SESSION_LIMIT)
+    .flatMap((session) => session.userMessageSnippets ?? []);
+  const seed = sessions.slice(0, 12).map((session) => session.id).join("|");
+  return sampleSnippets(recentPool, seed || "recent-sessions");
+}
+
+function buildLanguageContext(snippets: string[]): string {
+  if (snippets.length === 0) return LANGUAGE_DETECTION_INSTRUCTION;
+  return [
+    LANGUAGE_DETECTION_INSTRUCTION,
+    "Sampled user messages:",
+    ...snippets.map((snippet, index) => `${index + 1}. ${snippet}`),
+  ].join("\n");
+}
+
+function buildFacetPrompt(session: SessionInfo): string {
+  return [
     "Analyze this AI coding session and return a JSON object with exactly these fields:",
     `- session_id: "${session.id}"`,
     `- cli_tool: "${session.cliTool}"`,
@@ -1088,7 +1186,16 @@ export async function extractFacet(
     "- Use the metrics as primary evidence and the transcript excerpt as context.",
     "- Do not invent tools, files, or outcomes that are not present.",
     "- Keep project_area to a single snake_case label.",
+    '- Infer user_satisfaction with this rubric: "high" when the goal is fully or mostly achieved with limited friction, or the user clearly signals satisfaction; "medium" when progress is useful but notable friction or mixed results remain; "low" when the goal is not achieved, failures repeat, or the user signals frustration; "unclear" ONLY when the transcript and metrics truly provide no signal.',
     "- Return ONLY valid JSON. No markdown fences. No prose.",
+    "",
+    buildLanguageContext(
+      sampleSnippets(
+        session.userMessageSnippets ?? [],
+        session.id,
+        LANGUAGE_SAMPLE_MAX,
+      ),
+    ),
     "",
     "Session metrics:",
     JSON.stringify(
@@ -1106,6 +1213,213 @@ export async function extractFacet(
     "Transcript excerpt:",
     session.analysisText,
   ].join("\n");
+}
+
+function pickDiverseFacets(facets: SessionFacet[]): SessionFacet[] {
+  const selected: SessionFacet[] = [];
+  const usedPairs = new Set<string>();
+  for (const facet of facets) {
+    const pair = `${facet.cli_tool}:${facet.project_area}:${facet.session_type}`;
+    if (usedPairs.has(pair)) continue;
+    usedPairs.add(pair);
+    selected.push(facet);
+    if (selected.length >= ANALYSIS_SAMPLE_LIMIT) return selected;
+  }
+  return facets.slice(0, ANALYSIS_SAMPLE_LIMIT);
+}
+
+function pickTopPerformingFacets(facets: SessionFacet[]): SessionFacet[] {
+  return [...facets]
+    .filter(
+      (facet) =>
+        (facet.outcome === "fully_achieved" ||
+          facet.outcome === "mostly_achieved") &&
+        facet.user_satisfaction !== "low",
+    )
+    .sort((a, b) => {
+      const aScore = a.wins.length * 4 - a.frictions.length * 2;
+      const bScore = b.wins.length * 4 - b.frictions.length * 2;
+      return bScore - aScore;
+    })
+    .slice(0, ANALYSIS_SAMPLE_LIMIT);
+}
+
+function pickSuggestionFacets(facets: SessionFacet[]): SessionFacet[] {
+  const successFacets = facets.filter(
+    (facet) =>
+      facet.outcome === "fully_achieved" || facet.outcome === "mostly_achieved",
+  );
+  const frictionFacets = facets.filter(
+    (facet) =>
+      facet.frictions.length > 0 || Object.keys(facet.friction_counts).length > 0,
+  );
+  const mixed = [...successFacets.slice(0, 10), ...frictionFacets.slice(0, 10)];
+  const deduped = new Map<string, SessionFacet>();
+  for (const facet of mixed) {
+    deduped.set(facet.session_id, facet);
+  }
+  return [...deduped.values()].slice(0, ANALYSIS_SAMPLE_LIMIT);
+}
+
+function selectSessionsForFacetExtraction(
+  sessions: SessionInfo[],
+  nowMs = Date.now(),
+): FacetSelectionResult {
+  const eligibleSessions = sessions.filter(
+    (session) => calculateSessionAgeDays(session, nowMs) < 90,
+  );
+  const fullTier = eligibleSessions.filter(
+    (session) => calculateSessionAgeDays(session, nowMs) < 14,
+  );
+  const midTier = eligibleSessions.filter((session) => {
+    const ageDays = calculateSessionAgeDays(session, nowMs);
+    return ageDays >= 14 && ageDays < 30;
+  });
+  const olderTier = eligibleSessions.filter((session) => {
+    const ageDays = calculateSessionAgeDays(session, nowMs);
+    return ageDays >= 30 && ageDays < 60;
+  });
+
+  const facetEligibleSessions = [
+    ...fullTier,
+    ...selectTopFraction(midTier, 0.5),
+    ...selectTopFraction(olderTier, 0.25),
+  ].sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  const facetIds = new Set(facetEligibleSessions.map((session) => session.id));
+  const metricsOnlySessions = eligibleSessions.filter(
+    (session) => !facetIds.has(session.id),
+  ).length;
+
+  return {
+    eligibleSessions,
+    facetEligibleSessions,
+    metricsOnlySessions,
+  };
+}
+
+function buildAnalysisDataContext(
+  key: Exclude<InsightsSectionKey, "atAGlance">,
+  stats: InsightsResult["stats"],
+  facets: SessionFacet[],
+): string {
+  switch (key) {
+    case "projectAreas":
+      return JSON.stringify(
+        {
+          stats: {
+            totalSessions: stats.totalSessions,
+            projectBreakdown: stats.projectBreakdown,
+            projectAreaBreakdown: stats.projectAreaBreakdown,
+            goalCategories: stats.goalCategories,
+            cliBreakdown: stats.cliBreakdown,
+          },
+          sampleFacets: facets.filter((facet) => facet.project_area),
+        },
+        null,
+        2,
+      );
+    case "interactionStyle":
+      return JSON.stringify(
+        {
+          stats: {
+            totalSessions: stats.totalSessions,
+            averageAssistantResponseSeconds: stats.averageAssistantResponseSeconds,
+            averageUserReplySeconds: stats.averageUserReplySeconds,
+            responseTimeBreakdown: stats.responseTimeBreakdown,
+            userReplyBreakdown: stats.userReplyBreakdown,
+            messageHourBreakdown: stats.messageHourBreakdown,
+            cliBreakdown: stats.cliBreakdown,
+          },
+          sampleFacets: pickDiverseFacets(facets),
+        },
+        null,
+        2,
+      );
+    case "whatWorks":
+      return JSON.stringify(
+        {
+          stats: {
+            totalSessions: stats.totalSessions,
+            outcomeBreakdown: stats.outcomeBreakdown,
+            satisfactionBreakdown: stats.satisfactionBreakdown,
+            toolComparison: stats.toolComparison,
+          },
+          sampleFacets: facets.filter(
+            (facet) =>
+              facet.outcome === "fully_achieved" ||
+              facet.outcome === "mostly_achieved",
+          ),
+        },
+        null,
+        2,
+      );
+    case "frictionAnalysis":
+      return JSON.stringify(
+        {
+          stats: {
+            totalSessions: stats.totalSessions,
+            frictionCounts: stats.frictionCounts,
+            toolErrorBreakdown: stats.toolErrorBreakdown,
+            responseTimeBreakdown: stats.responseTimeBreakdown,
+            userReplyBreakdown: stats.userReplyBreakdown,
+          },
+          sampleFacets: facets.filter(
+            (facet) =>
+              facet.frictions.length > 0 ||
+              Object.keys(facet.friction_counts).length > 0,
+          ),
+        },
+        null,
+        2,
+      );
+    case "suggestions":
+      return JSON.stringify(
+        {
+          stats,
+          sampleFacets: pickSuggestionFacets(facets),
+        },
+        null,
+        2,
+      );
+    case "onTheHorizon":
+      return JSON.stringify(
+        {
+          stats,
+          sampleFacets: pickTopPerformingFacets(facets),
+        },
+        null,
+        2,
+      );
+    case "codingStory":
+      return JSON.stringify(
+        {
+          stats: {
+            totalSessions: stats.totalSessions,
+            totalMessages: stats.totalMessages,
+            totalLinesAdded: stats.totalLinesAdded,
+            totalGitCommits: stats.totalGitCommits,
+            dailyBreakdown: stats.dailyBreakdown,
+            toolComparison: stats.toolComparison,
+            achievements: stats.achievements,
+          },
+          sampleFacets: facets,
+        },
+        null,
+        2,
+      );
+  }
+}
+
+export async function extractFacet(
+  session: SessionInfo,
+  cliSpec: PtyResolvedLaunchSpec,
+  analyzerCli: InsightsCliTool,
+): Promise<SessionFacet | InsightsError> {
+  const cached = readCachedFacet(session, analyzerCli);
+  if (cached) return cached;
+
+  const prompt = buildFacetPrompt(session);
 
   let response: string;
   try {
@@ -1159,36 +1473,17 @@ export async function extractFacet(
   return facet;
 }
 
-function buildAnalysisDataContext(stats: InsightsResult["stats"], facets: SessionFacet[]): string {
-  const sampleFacets = facets.slice(0, ANALYSIS_SAMPLE_LIMIT).map((facet) => ({
-    session_id: facet.session_id,
-    underlying_goal: facet.underlying_goal,
-    brief_summary: facet.brief_summary,
-    project_area: facet.project_area,
-    outcome: facet.outcome,
-    session_type: facet.session_type,
-    notable_tools: facet.notable_tools,
-    dominant_languages: facet.dominant_languages,
-    wins: facet.wins,
-    frictions: facet.frictions,
-    recommended_next_step: facet.recommended_next_step,
-  }));
-
-  return JSON.stringify(
-    {
-      stats,
-      sampleFacets,
-    },
-    null,
-    2,
-  );
-}
-
-function buildAnalysisPrompt(key: Exclude<InsightsSectionKey, "atAGlance">, dataCtx: string): string {
+function buildAnalysisPrompt(
+  key: Exclude<InsightsSectionKey, "atAGlance">,
+  dataCtx: string,
+  sampledMessages: string[],
+): string {
   const common = [
     "You are generating an executive-quality AI coding insights report.",
     "Use ONLY the provided data. Be specific. Ground claims in the metrics and sampled session facets.",
     "Keep strings concise and useful. No markdown. Return ONLY a valid JSON object.",
+    "",
+    buildLanguageContext(sampledMessages),
     "",
     "Data:",
     dataCtx,
@@ -1264,16 +1559,20 @@ Rules:
 Rules:
 - Provide 2 to 4 forward-looking experiments.
 - Experiments should be slightly more ambitious than the current baseline.`;
-    case "funEnding":
+    case "codingStory":
       return `${common}Return JSON with this exact shape:
 {
-  "title": "string",
-  "moment": "string",
-  "whyItMatters": "string"
+  "summary": "short paragraph",
+  "moments": [
+    { "title": "string", "narrative": "string" }
+  ]
 }
 Rules:
-- Pick one vivid, funny, or memorable session moment.
-- The moment must still reveal something real about the workflow.`;
+- Provide 2 to 3 vivid moments.
+- Include one positive or impressive moment with specific dates and files when the evidence supports it.
+- Include one funny or failure moment.
+- Include one cross-tool collaboration moment if both Claude Code and Codex were used.
+- Write these as narrative moments, not statistical summaries.`;
   }
 }
 
@@ -1281,10 +1580,10 @@ async function runInsightRounds(
   cliSpec: PtyResolvedLaunchSpec,
   analyzerCli: InsightsCliTool,
   stats: InsightsResult["stats"],
+  sessions: SessionInfo[],
   facets: SessionFacet[],
   onProgress: (p: Omit<InsightsProgress, "jobId">) => void,
 ): Promise<InsightsResult> {
-  const dataCtx = buildAnalysisDataContext(stats, facets);
   const rounds: Exclude<InsightsSectionKey, "atAGlance">[] = [
     "projectAreas",
     "interactionStyle",
@@ -1292,7 +1591,7 @@ async function runInsightRounds(
     "frictionAnalysis",
     "suggestions",
     "onTheHorizon",
-    "funEnding",
+    "codingStory",
   ];
 
   let completed = 0;
@@ -1312,18 +1611,21 @@ async function runInsightRounds(
     frictionAnalysis: null,
     suggestions: null,
     onTheHorizon: null,
-    funEnding: null,
+    codingStory: null,
     atAGlance: buildDeterministicAtAGlance(stats),
     sectionErrors,
   };
 
+  const sampledMessages = sampleRecentUserMessages(sessions);
+
   const tasks = await Promise.all(
     rounds.map(async (key) => {
+      const dataCtx = buildAnalysisDataContext(key, stats, facets);
       try {
         const response = await invokeCli(
           cliSpec,
           analyzerCli,
-          buildAnalysisPrompt(key, dataCtx),
+          buildAnalysisPrompt(key, dataCtx, sampledMessages),
         );
         const parsed = parseStructuredSection(key, response);
         completed += 1;
@@ -1370,7 +1672,7 @@ async function runInsightRounds(
       frictionAnalysis: results.frictionAnalysis,
       suggestions: results.suggestions,
       onTheHorizon: results.onTheHorizon,
-      funEnding: results.funEnding,
+      codingStory: results.codingStory,
     },
     null,
     2,
@@ -1392,6 +1694,8 @@ async function runInsightRounds(
         "Return ONLY valid JSON with this exact shape:",
         '{ "headline": "string", "bullets": ["string"] }',
         "Provide 4 to 5 bullets. Ground them in the data. No markdown.",
+        "",
+        buildLanguageContext(sampledMessages),
         "",
         sectionContext,
       ].join("\n"),
@@ -1452,16 +1756,21 @@ export async function generateInsights(
     stage: "scanning",
     current: 0,
     total: 1,
-    message: `Scanning ${cliTool} sessions...`,
+    message: "Scanning Claude and Codex sessions...",
   });
-  const { sessions, totalScannedSessions } = await scanSessions(cliTool, emit);
-  if (sessions.length === 0) {
+  const { sessions: scannedSessions, totalScannedSessions } = await scanSessions(emit);
+  const {
+    eligibleSessions,
+    facetEligibleSessions,
+    metricsOnlySessions,
+  } = selectSessionsForFacetExtraction(scannedSessions);
+  if (eligibleSessions.length === 0) {
     return {
       ok: false,
       jobId,
       error: {
         code: "unknown",
-        message: `No valid ${cliTool} sessions found to analyze`,
+        message: "No eligible Claude or Codex sessions found to analyze",
       },
     };
   }
@@ -1471,19 +1780,16 @@ export async function generateInsights(
   let cachedFacetSessions = 0;
   let deferredFacetSessions = 0;
   let failedFacetSessions = 0;
+  const facetBatchSize = getAdaptiveBatchSize(facetEligibleSessions.length);
 
-  for (const session of sessions) {
+  for (const session of facetEligibleSessions) {
     const cached = readCachedFacet(session, cliTool);
     if (cached) {
       facets.push(cached);
       cachedFacetSessions += 1;
       continue;
     }
-    if (uncachedSessions.length < MAX_FACET_EXTRACTIONS) {
-      uncachedSessions.push(session);
-    } else {
-      deferredFacetSessions += 1;
-    }
+    uncachedSessions.push(session);
   }
 
   emit({
@@ -1492,12 +1798,12 @@ export async function generateInsights(
     total: uncachedSessions.length,
     message:
       uncachedSessions.length > 0
-        ? `Extracting rich facets for ${cliTool} sessions...`
+        ? `Extracting rich facets with ${cliTool}...`
         : "Using cached facets...",
   });
 
-  for (let i = 0; i < uncachedSessions.length; i += FACET_EXTRACTION_BATCH) {
-    const batch = uncachedSessions.slice(i, i + FACET_EXTRACTION_BATCH);
+  for (let i = 0; i < uncachedSessions.length; i += facetBatchSize) {
+    const batch = uncachedSessions.slice(i, i + facetBatchSize);
     const results = await Promise.all(
       batch.map((session) => extractFacet(session, cliSpec, cliTool)),
     );
@@ -1517,37 +1823,28 @@ export async function generateInsights(
     if (i + batch.length < uncachedSessions.length) await yieldToEventLoop();
   }
 
-  if (facets.length === 0) {
-    return {
-      ok: false,
-      jobId,
-      error: {
-        code: "unknown",
-        message: "Failed to load or extract any session facets",
-      },
-    };
-  }
-
   emit({
     stage: "aggregating",
     current: 0,
     total: 1,
     message: "Aggregating statistics...",
   });
-  const stats = aggregateFacets(facets, sessions, {
-    sourceCli: cliTool,
+  const stats = aggregateFacets(facets, eligibleSessions, {
+    sourceCli: "both",
     analyzerCli: cliTool,
     totalScannedSessions,
-    totalEligibleSessions: sessions.length,
+    totalEligibleSessions: eligibleSessions.length,
     cachedFacetSessions,
     failedFacetSessions,
     deferredFacetSessions,
+    metricsOnlySessions,
   });
 
   const insightsResult = await runInsightRounds(
     cliSpec,
     cliTool,
     stats,
+    eligibleSessions,
     facets,
     emit,
   );
