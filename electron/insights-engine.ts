@@ -5,6 +5,7 @@ import { execFile } from "child_process";
 import { findClaudeJsonlFiles, findCodexJsonlFiles } from "./usage-collector";
 import { TERMCANVAS_DIR } from "./state-persistence";
 import { buildLaunchSpec, PtyResolvedLaunchSpec } from "./pty-launch";
+import { buildCliInvocationArgs } from "./insights-cli";
 
 // ── Section A: Session Content Extraction ───────────────────────────────
 
@@ -280,10 +281,7 @@ async function invokeCli(
   prompt: string,
   timeoutMs = 120_000,
 ): Promise<string> {
-  const args =
-    cliTool === "claude"
-      ? ["--print", "-p", prompt]
-      : ["exec", prompt];
+  const args = buildCliInvocationArgs(spec.args, cliTool, prompt);
 
   return new Promise<string>((resolve, reject) => {
     execFile(
@@ -320,11 +318,13 @@ export async function validateCli(
   }
 
   try {
+    // codex needs more time due to MCP server startup
+    const timeout = cliTool === "codex" ? 60_000 : 15_000;
     const response = await invokeCli(
       spec,
       cliTool,
       "Reply with exactly: OK",
-      15_000,
+      timeout,
     );
     if (!response.includes("OK")) {
       return {

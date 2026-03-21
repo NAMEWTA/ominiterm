@@ -75,6 +75,19 @@ export interface UsageSummary {
   models: ModelUsage[];
 }
 
+interface CachedUsageSummary {
+  summary: UsageSummary;
+  cachedAt: number;
+}
+
+const TODAY_USAGE_CACHE_TTL_MS = 30_000;
+const HEATMAP_CACHE_TTL_MS = 5 * 60_000;
+
+const usageSummaryCache = new Map<string, CachedUsageSummary>();
+let heatmapCache:
+  | { data: Record<string, { tokens: number; cost: number }>; cachedAt: number }
+  | null = null;
+
 // ── Helpers ────────────────────────────────────────────────────────────
 
 function matchPricing(model: string) {
@@ -93,6 +106,33 @@ export function computeCost(model: string, input: number, output: number, cacheR
        + (cacheRead / 1e6) * p.cache_read
        + (cacheCreate5m / 1e6) * p.cache_create_5m
        + (cacheCreate1h / 1e6) * p.cache_create_1h;
+}
+
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function shouldReuseUsageSummary(
+  dateStr: string,
+  cachedAt: number,
+  nowMs = Date.now(),
+): boolean {
+  if (!Number.isFinite(cachedAt) || cachedAt <= 0) return false;
+  const today = toLocalDateString(new Date(nowMs));
+  if (dateStr !== today) return true;
+  return nowMs - cachedAt < TODAY_USAGE_CACHE_TTL_MS;
+}
+
+export function shouldReuseTimedCache(
+  cachedAt: number,
+  ttlMs: number,
+  nowMs = Date.now(),
+): boolean {
+  if (!Number.isFinite(cachedAt) || cachedAt <= 0) return false;
+  return nowMs - cachedAt < ttlMs;
 }
 
 /** Get the local timezone offset in hours from UTC. */
@@ -351,6 +391,13 @@ export function parseCodexSession(
  * Uses setImmediate chunking to avoid blocking the main thread.
  */
 export async function collectHeatmapData(): Promise<Record<string, { tokens: number; cost: number }>> {
+  if (
+    heatmapCache &&
+    shouldReuseTimedCache(heatmapCache.cachedAt, HEATMAP_CACHE_TTL_MS)
+  ) {
+    return heatmapCache.data;
+  }
+
   const HEATMAP_DAYS = 91;
   const BATCH_SIZE = 20;
   const tzOffsetHours = getLocalTzOffsetHours();
@@ -421,6 +468,7 @@ export async function collectHeatmapData(): Promise<Record<string, { tokens: num
     }
   }
 
+  heatmapCache = { data: result, cachedAt: Date.now() };
   return result;
 }
 
@@ -437,6 +485,11 @@ export async function collectUsage(
   dateStr: string,
   intervalHours = 2,
 ): Promise<UsageSummary> {
+  const cached = usageSummaryCache.get(dateStr);
+  if (cached && shouldReuseUsageSummary(dateStr, cached.cachedAt)) {
+    return cached.summary;
+  }
+
   const BATCH_SIZE = 20;
   const tzOffsetHours = getLocalTzOffsetHours();
   const { utcStart, utcEnd } = dateToUtcRange(dateStr);
@@ -559,7 +612,7 @@ export async function collectUsage(
   const projects = [...projectMap.values()].sort((a, b) => b.cost - a.cost);
   const models = [...modelMap.values()].sort((a, b) => b.cost - a.cost);
 
-  return {
+  const summary = {
     date: dateStr,
     sessions: sessionPaths.size,
     totalInput,
@@ -572,4 +625,6 @@ export async function collectUsage(
     projects,
     models,
   };
+  usageSummaryCache.set(dateStr, { summary, cachedAt: Date.now() });
+  return summary;
 }
