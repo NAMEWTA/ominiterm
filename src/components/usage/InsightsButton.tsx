@@ -66,15 +66,7 @@ export function InsightsButton({ compact = false }: { compact?: boolean } = {}) 
       <div className="relative inline-flex">
         <button
           disabled={running}
-          onClick={() => {
-            if (reportPath && !running && !error) {
-              openReport();
-            } else if (error) {
-              setError(null);
-            } else {
-              setShowPicker((v) => !v);
-            }
-          }}
+          onClick={() => setShowPicker((v) => !v)}
           className="w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--surface-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50 cursor-pointer"
           title={t.insights_generate}
         >
@@ -98,7 +90,15 @@ export function InsightsButton({ compact = false }: { compact?: boolean } = {}) 
           )}
         </button>
         {showPicker && (
-          <div className="absolute top-full left-0 mt-1 rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-lg overflow-hidden z-50 min-w-[120px]">
+          <div className="absolute top-full left-0 mt-1 rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-lg overflow-hidden z-50 min-w-[140px]">
+            {reportPath && !running && (
+              <button
+                className="w-full px-3 py-1.5 text-[11px] text-left text-green-400 hover:bg-[var(--border)]/20 transition-colors duration-100 cursor-pointer border-b border-[var(--border)]"
+                onClick={() => { setShowPicker(false); openReport(); }}
+              >
+                {t.insights_open}
+              </button>
+            )}
             {(["claude", "codex"] as const).map((tool) => (
               <button
                 key={tool}
@@ -140,7 +140,15 @@ export function InsightsButton({ compact = false }: { compact?: boolean } = {}) 
       {/* Success banner */}
       {reportPath && !running && (
         <div className="mb-2 p-2 rounded-md bg-green-500/10 border border-green-500/20">
-          <div className="text-[11px] text-green-400 font-medium">{t.insights_done}</div>
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] text-green-400 font-medium">{t.insights_done}</div>
+            <button
+              className="shrink-0 text-[10px] text-green-400/60 hover:text-green-400 cursor-pointer"
+              onClick={() => setReportPath(null)}
+            >
+              ✕
+            </button>
+          </div>
           <button
             className="text-[10px] text-green-400/80 hover:text-green-400 underline mt-0.5 cursor-pointer"
             onClick={openReport}
