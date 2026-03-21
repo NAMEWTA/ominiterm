@@ -2,6 +2,11 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.24] - 2026-03-21
+
+### Added
+- Usage panel: real-time Claude Code quota display showing 5-hour and 7-day rate limit utilization with adaptive polling driven by local usage activity
+
 ## [0.8.23] - 2026-03-21
 
 ### Changed
