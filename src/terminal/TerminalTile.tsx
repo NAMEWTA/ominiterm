@@ -286,6 +286,7 @@ export function TerminalTile({
       cursorStyle: "bar",
       cursorWidth: 2,
       scrollback: 5000,
+      minimumContrastRatio: currentTheme === "light" ? 4.5 : 1,
       allowTransparency: false,
     });
 
@@ -757,6 +758,7 @@ export function TerminalTile({
       const xterm = xtermRef.current;
       if (xterm) {
         xterm.options.theme = XTERM_THEMES[state.theme];
+        xterm.options.minimumContrastRatio = state.theme === "light" ? 4.5 : 1;
         // Force full canvas repaint so background color updates immediately
         xterm.refresh(0, xterm.rows - 1);
       }
