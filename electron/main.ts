@@ -657,14 +657,36 @@ function setupIpc() {
   });
 
   // Insights
-  ipcMain.handle("insights:generate", async (_event, cliTool: "claude" | "codex") => {
-    const { generateInsights } = await import("./insights-engine");
-    return generateInsights(cliTool, (progress) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("insights:progress", progress);
+  let activeInsightsJobId: string | null = null;
+  ipcMain.handle(
+    "insights:generate",
+    async (_event, cliTool: "claude" | "codex", jobId: string) => {
+      if (activeInsightsJobId && activeInsightsJobId !== jobId) {
+        return {
+          ok: false as const,
+          jobId,
+          error: {
+            code: "job_in_progress",
+            message: "Another insights job is already running",
+          },
+        };
       }
-    });
-  });
+
+      activeInsightsJobId = jobId;
+      try {
+        const { generateInsights } = await import("./insights-engine");
+        return await generateInsights(cliTool, jobId, (progress) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("insights:progress", progress);
+          }
+        });
+      } finally {
+        if (activeInsightsJobId === jobId) {
+          activeInsightsJobId = null;
+        }
+      }
+    },
+  );
 
   ipcMain.handle("insights:open-report", async (_event, filePath: string) => {
     await shell.openExternal(`file://${filePath}`);

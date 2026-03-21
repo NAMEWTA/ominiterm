@@ -1,22 +1,86 @@
 import fs from "fs";
-import path from "path";
 import os from "os";
+import path from "path";
+import crypto from "crypto";
 import { execFile } from "child_process";
 import { findClaudeJsonlFiles, findCodexJsonlFiles } from "./usage-collector";
 import { TERMCANVAS_DIR } from "./state-persistence";
 import { buildLaunchSpec, PtyResolvedLaunchSpec } from "./pty-launch";
 import { buildCliInvocationArgs } from "./insights-cli";
+import { generateReport } from "./insights-report";
+import {
+  aggregateFacets,
+  buildSessionFingerprint,
+  InsightsCliTool,
+  InsightsError,
+  InsightsGenerateResult,
+  InsightsProgress,
+  InsightsResult,
+  isSelfInsightSession,
+  SessionFacet,
+  SessionInfo,
+} from "./insights-shared";
 
-// ── Section A: Session Content Extraction ───────────────────────────────
-
-export interface SessionInfo {
+interface SessionFileInfo {
   id: string;
   filePath: string;
-  cliTool: "claude" | "codex";
-  projectPath: string;
-  messageCount: number;
-  durationMinutes: number;
-  contentSummary: string;
+  cliTool: InsightsCliTool;
+  mtimeMs: number;
+  fileSize: number;
+}
+
+interface CachedSessionMetaEntry {
+  version: number;
+  sourceFingerprint: string;
+  session: SessionInfo;
+}
+
+interface CachedFacetEntry {
+  version: number;
+  analyzerCli: InsightsCliTool;
+  sourceFingerprint: string;
+  facet: SessionFacet;
+}
+
+interface ScanResult {
+  sessions: SessionInfo[];
+  totalScannedSessions: number;
+}
+
+const CACHE_VERSION = 1;
+const SESSION_META_CACHE_DIR = path.join(
+  TERMCANVAS_DIR,
+  "insights-cache",
+  "session-meta",
+);
+const FACET_CACHE_DIR = path.join(TERMCANVAS_DIR, "insights-cache", "facets");
+const SESSION_META_CACHE_BATCH = 50;
+const SESSION_LOAD_BATCH = 10;
+const MAX_UNCACHED_SESSION_LOADS = 200;
+const MAX_FACET_EXTRACTIONS = 50;
+const FACET_EXTRACTION_BATCH = 10;
+const ANALYSIS_SAMPLE_LIMIT = 50;
+
+function cacheFileName(prefix: string, key: string): string {
+  const digest = crypto.createHash("sha1").update(key).digest("hex");
+  return `${prefix}-${digest}.json`;
+}
+
+function metaCachePath(file: SessionFileInfo): string {
+  return path.join(
+    SESSION_META_CACHE_DIR,
+    cacheFileName("meta", `${file.cliTool}:${file.id}`),
+  );
+}
+
+function facetCachePath(
+  session: SessionInfo,
+  analyzerCli: InsightsCliTool,
+): string {
+  return path.join(
+    FACET_CACHE_DIR,
+    cacheFileName("facet", `${session.cliTool}:${analyzerCli}:${session.id}`),
+  );
 }
 
 function extractTextFromContent(content: unknown): string {
@@ -24,29 +88,66 @@ function extractTextFromContent(content: unknown): string {
   if (Array.isArray(content)) {
     return content
       .filter(
-        (b) =>
-          b &&
-          typeof b === "object" &&
-          (b as Record<string, unknown>).type === "text",
+        (block) =>
+          block &&
+          typeof block === "object" &&
+          (block as Record<string, unknown>).type === "text",
       )
-      .map((b) => (b as Record<string, unknown>).text as string)
+      .map((block) => (block as Record<string, unknown>).text as string)
       .filter(Boolean)
       .join("\n");
   }
   return "";
 }
 
-function extractClaudeSession(filePath: string): SessionInfo | null {
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+function discoverSessionFiles(cliTool: InsightsCliTool): SessionFileInfo[] {
+  const files =
+    cliTool === "claude" ? findClaudeJsonlFiles() : findCodexJsonlFiles();
+  const indexed: SessionFileInfo[] = [];
+
+  for (const filePath of files) {
+    try {
+      const stat = fs.statSync(filePath);
+      indexed.push({
+        id: path.basename(filePath, ".jsonl"),
+        filePath,
+        cliTool,
+        mtimeMs: stat.mtimeMs,
+        fileSize: stat.size,
+      });
+    } catch {
+      // Ignore files that disappear mid-scan.
+    }
+  }
+
+  indexed.sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  const deduped = new Map<string, SessionFileInfo>();
+  for (const file of indexed) {
+    const existing = deduped.get(file.id);
+    if (!existing || file.mtimeMs > existing.mtimeMs) {
+      deduped.set(file.id, file);
+    }
+  }
+
+  return [...deduped.values()];
+}
+
+function extractClaudeSession(file: SessionFileInfo): SessionInfo | null {
   let raw: string;
   try {
-    raw = fs.readFileSync(filePath, "utf-8");
+    raw = fs.readFileSync(file.filePath, "utf-8");
   } catch {
     return null;
   }
 
   const projectsDir = path.join(os.homedir(), ".claude", "projects");
   let projectPath = "";
-  const rel = path.relative(projectsDir, filePath);
+  const rel = path.relative(projectsDir, file.filePath);
   const topDir = rel.split(path.sep)[0];
   if (topDir && topDir.startsWith("-")) {
     const cleaned = topDir.replace(/--worktrees-.*$/, "");
@@ -69,17 +170,17 @@ function extractClaudeSession(filePath: string): SessionInfo | null {
     const ts = obj.timestamp;
     if (typeof ts === "string") {
       const ms = new Date(ts).getTime();
-      if (!isNaN(ms)) timestamps.push(ms);
+      if (!Number.isNaN(ms)) timestamps.push(ms);
     }
 
     const msg = obj.message;
     if (!msg || typeof msg !== "object") continue;
-    const m = msg as Record<string, unknown>;
-    const role = m.role as string | undefined;
+    const record = msg as Record<string, unknown>;
+    const role = record.role as string | undefined;
     if (role !== "user" && role !== "assistant") continue;
 
     messageCount++;
-    const text = extractTextFromContent(m.content);
+    const text = extractTextFromContent(record.content);
     if (text) parts.push(`${role}: ${text}`);
   }
 
@@ -90,21 +191,28 @@ function extractClaudeSession(filePath: string): SessionInfo | null {
       : 0;
   if (durationMinutes < 1) return null;
 
+  const contentSummary = parts.join("\n").slice(0, 4000);
+  if (isSelfInsightSession(contentSummary) || isSelfInsightSession(raw.slice(0, 8000))) {
+    return null;
+  }
+
   return {
-    id: path.basename(filePath, ".jsonl"),
-    filePath,
+    id: file.id,
+    filePath: file.filePath,
     cliTool: "claude",
     projectPath,
     messageCount,
     durationMinutes: Math.round(durationMinutes),
-    contentSummary: parts.join("\n").slice(0, 4000),
+    contentSummary,
+    mtimeMs: file.mtimeMs,
+    fileSize: file.fileSize,
   };
 }
 
-function extractCodexSession(filePath: string): SessionInfo | null {
+function extractCodexSession(file: SessionFileInfo): SessionInfo | null {
   let raw: string;
   try {
-    raw = fs.readFileSync(filePath, "utf-8");
+    raw = fs.readFileSync(file.filePath, "utf-8");
   } catch {
     return null;
   }
@@ -126,7 +234,7 @@ function extractCodexSession(filePath: string): SessionInfo | null {
     const ts = obj.timestamp;
     if (typeof ts === "string") {
       const ms = new Date(ts).getTime();
-      if (!isNaN(ms)) timestamps.push(ms);
+      if (!Number.isNaN(ms)) timestamps.push(ms);
     }
 
     if (obj.type === "session_meta") {
@@ -139,11 +247,16 @@ function extractCodexSession(filePath: string): SessionInfo | null {
     const payload = obj.payload as Record<string, unknown> | undefined;
     if (!payload) continue;
 
-    const pType = payload.type as string | undefined;
+    const payloadType = payload.type as string | undefined;
     let role: "user" | "assistant" | null = null;
-    if (pType === "user_message" || pType === "input_text") role = "user";
-    else if (pType === "assistant_message" || pType === "message")
+    if (payloadType === "user_message" || payloadType === "input_text") {
+      role = "user";
+    } else if (
+      payloadType === "assistant_message" ||
+      payloadType === "message"
+    ) {
       role = "assistant";
+    }
     if (!role) continue;
 
     messageCount++;
@@ -159,125 +272,185 @@ function extractCodexSession(filePath: string): SessionInfo | null {
       : 0;
   if (durationMinutes < 1) return null;
 
+  const contentSummary = parts.join("\n").slice(0, 4000);
+  if (isSelfInsightSession(contentSummary) || isSelfInsightSession(raw.slice(0, 8000))) {
+    return null;
+  }
+
   return {
-    id: path.basename(filePath, ".jsonl"),
-    filePath,
+    id: file.id,
+    filePath: file.filePath,
     cliTool: "codex",
     projectPath,
     messageCount,
     durationMinutes: Math.round(durationMinutes),
-    contentSummary: parts.join("\n").slice(0, 4000),
+    contentSummary,
+    mtimeMs: file.mtimeMs,
+    fileSize: file.fileSize,
   };
 }
 
-// ── Section B: Session Scanning ─────────────────────────────────────────
-
-export function scanAllSessions(): SessionInfo[] {
-  const sessions: SessionInfo[] = [];
-
-  for (const f of findClaudeJsonlFiles()) {
-    const session = extractClaudeSession(f);
-    if (session) sessions.push(session);
-  }
-
-  for (const f of findCodexJsonlFiles()) {
-    const session = extractCodexSession(f);
-    if (session) sessions.push(session);
-  }
-
-  return sessions;
+function extractSession(file: SessionFileInfo): SessionInfo | null {
+  return file.cliTool === "claude"
+    ? extractClaudeSession(file)
+    : extractCodexSession(file);
 }
 
-// ── Section C: Facet Types and Cache ────────────────────────────────────
-
-export interface SessionFacet {
-  session_id: string;
-  cli_tool: "claude" | "codex";
-  underlying_goal: string;
-  brief_summary: string;
-  goal_categories: Record<string, number>;
-  outcome:
-    | "fully_achieved"
-    | "mostly_achieved"
-    | "partially_achieved"
-    | "not_achieved"
-    | "unclear";
-  session_type:
-    | "single_task"
-    | "multi_task"
-    | "iterative"
-    | "exploratory"
-    | "quick_question";
-  friction_counts: Record<string, number>;
-  user_satisfaction: "high" | "medium" | "low" | "unclear";
-  project_path: string;
-}
-
-export interface InsightsProgress {
-  stage:
-    | "validating"
-    | "scanning"
-    | "extracting_facets"
-    | "aggregating"
-    | "analyzing"
-    | "generating_report";
-  current: number;
-  total: number;
-  message: string;
-}
-
-export interface InsightsError {
-  code:
-    | "cli_not_found"
-    | "auth_failed"
-    | "cli_error"
-    | "parse_error"
-    | "unknown";
-  message: string;
-  detail?: string;
-}
-
-const FACET_CACHE_DIR = path.join(
-  TERMCANVAS_DIR,
-  "insights-cache",
-  "facets",
-);
-
-function readCachedFacet(sessionId: string): SessionFacet | null {
+function readCachedSessionMeta(file: SessionFileInfo): SessionInfo | null {
   try {
-    const raw = fs.readFileSync(
-      path.join(FACET_CACHE_DIR, `${sessionId}.json`),
-      "utf-8",
-    );
-    return JSON.parse(raw) as SessionFacet;
+    const raw = fs.readFileSync(metaCachePath(file), "utf-8");
+    const parsed = JSON.parse(raw) as CachedSessionMetaEntry;
+    if (
+      parsed.version !== CACHE_VERSION ||
+      parsed.sourceFingerprint !==
+        buildSessionFingerprint({
+          cliTool: file.cliTool,
+          filePath: file.filePath,
+          mtimeMs: file.mtimeMs,
+          fileSize: file.fileSize,
+        })
+    ) {
+      return null;
+    }
+    return parsed.session;
   } catch {
     return null;
   }
 }
 
-function writeCachedFacet(sessionId: string, facet: SessionFacet): void {
+function writeCachedSessionMeta(session: SessionInfo): void {
   try {
-    fs.mkdirSync(FACET_CACHE_DIR, { recursive: true });
+    fs.mkdirSync(SESSION_META_CACHE_DIR, { recursive: true });
+    const entry: CachedSessionMetaEntry = {
+      version: CACHE_VERSION,
+      sourceFingerprint: buildSessionFingerprint(session),
+      session,
+    };
     fs.writeFileSync(
-      path.join(FACET_CACHE_DIR, `${sessionId}.json`),
-      JSON.stringify(facet, null, 2),
+      metaCachePath(session),
+      JSON.stringify(entry, null, 2),
+      "utf-8",
     );
   } catch {
-    /* non-fatal */
+    // Cache writes are opportunistic.
   }
 }
 
-// ── Section D: CLI Invocation ───────────────────────────────────────────
+function readCachedFacet(
+  session: SessionInfo,
+  analyzerCli: InsightsCliTool,
+): SessionFacet | null {
+  try {
+    const raw = fs.readFileSync(facetCachePath(session, analyzerCli), "utf-8");
+    const parsed = JSON.parse(raw) as CachedFacetEntry;
+    if (
+      parsed.version !== CACHE_VERSION ||
+      parsed.analyzerCli !== analyzerCli ||
+      parsed.sourceFingerprint !== buildSessionFingerprint(session)
+    ) {
+      return null;
+    }
+    return parsed.facet;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedFacet(
+  session: SessionInfo,
+  analyzerCli: InsightsCliTool,
+  facet: SessionFacet,
+): void {
+  try {
+    fs.mkdirSync(FACET_CACHE_DIR, { recursive: true });
+    const entry: CachedFacetEntry = {
+      version: CACHE_VERSION,
+      analyzerCli,
+      sourceFingerprint: buildSessionFingerprint(session),
+      facet,
+    };
+    fs.writeFileSync(
+      facetCachePath(session, analyzerCli),
+      JSON.stringify(entry, null, 2),
+      "utf-8",
+    );
+  } catch {
+    // Cache writes are opportunistic.
+  }
+}
+
+async function scanSessions(
+  sourceCli: InsightsCliTool,
+  onProgress: (p: Omit<InsightsProgress, "jobId">) => void,
+): Promise<ScanResult> {
+  const files = discoverSessionFiles(sourceCli);
+  const cachedSessions: SessionInfo[] = [];
+  const uncachedFiles: SessionFileInfo[] = [];
+
+  for (let i = 0; i < files.length; i += SESSION_META_CACHE_BATCH) {
+    const batch = files.slice(i, i + SESSION_META_CACHE_BATCH);
+    for (const file of batch) {
+      const cached = readCachedSessionMeta(file);
+      if (cached) {
+        cachedSessions.push(cached);
+      } else if (uncachedFiles.length < MAX_UNCACHED_SESSION_LOADS) {
+        uncachedFiles.push(file);
+      }
+    }
+    onProgress({
+      stage: "scanning",
+      current: Math.min(i + batch.length, files.length),
+      total: files.length,
+      message: `Scanning ${sourceCli} sessions...`,
+    });
+    if (i + batch.length < files.length) await yieldToEventLoop();
+  }
+
+  const loadedSessions: SessionInfo[] = [];
+  for (let i = 0; i < uncachedFiles.length; i += SESSION_LOAD_BATCH) {
+    const batch = uncachedFiles.slice(i, i + SESSION_LOAD_BATCH);
+    for (const file of batch) {
+      const session = extractSession(file);
+      if (!session) continue;
+      loadedSessions.push(session);
+      writeCachedSessionMeta(session);
+    }
+    onProgress({
+      stage: "scanning",
+      current: files.length,
+      total: files.length,
+      message: `Loaded ${Math.min(i + batch.length, uncachedFiles.length)} new ${sourceCli} sessions`,
+    });
+    if (i + batch.length < uncachedFiles.length) await yieldToEventLoop();
+  }
+
+  const deduped = new Map<string, SessionInfo>();
+  for (const session of [...cachedSessions, ...loadedSessions]) {
+    const existing = deduped.get(session.id);
+    if (
+      !existing ||
+      session.messageCount > existing.messageCount ||
+      (session.messageCount === existing.messageCount &&
+        session.durationMinutes > existing.durationMinutes) ||
+      session.mtimeMs > existing.mtimeMs
+    ) {
+      deduped.set(session.id, session);
+    }
+  }
+
+  const sessions = [...deduped.values()].sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return { sessions, totalScannedSessions: files.length };
+}
 
 async function resolveCliSpec(
-  cliTool: "claude" | "codex",
+  cliTool: InsightsCliTool,
 ): Promise<PtyResolvedLaunchSpec> {
   return buildLaunchSpec({ cwd: process.cwd(), shell: cliTool });
 }
 
 async function invokeCli(
   spec: PtyResolvedLaunchSpec,
-  cliTool: "claude" | "codex",
+  cliTool: InsightsCliTool,
   prompt: string,
   timeoutMs = 120_000,
 ): Promise<string> {
@@ -305,7 +478,7 @@ async function invokeCli(
 }
 
 export async function validateCli(
-  cliTool: "claude" | "codex",
+  cliTool: InsightsCliTool,
 ): Promise<InsightsError | null> {
   let spec: PtyResolvedLaunchSpec;
   try {
@@ -318,7 +491,6 @@ export async function validateCli(
   }
 
   try {
-    // codex needs more time due to MCP server startup
     const timeout = cliTool === "codex" ? 60_000 : 15_000;
     const response = await invokeCli(
       spec,
@@ -329,28 +501,28 @@ export async function validateCli(
     if (!response.includes("OK")) {
       return {
         code: "auth_failed",
-        message: `${cliTool} CLI responded but did not return expected output — authentication may have failed`,
+        message: `${cliTool} CLI responded but did not return expected output`,
         detail: response.slice(0, 500),
       };
     }
     return null;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const message = err instanceof Error ? err.message : String(err);
     if (
-      msg.includes("auth") ||
-      msg.includes("401") ||
-      msg.includes("API key")
+      message.includes("auth") ||
+      message.includes("401") ||
+      message.includes("API key")
     ) {
       return {
         code: "auth_failed",
         message: `${cliTool} authentication failed`,
-        detail: msg,
+        detail: message,
       };
     }
     return {
       code: "cli_error",
       message: `${cliTool} CLI invocation failed`,
-      detail: msg,
+      detail: message,
     };
   }
 }
@@ -382,9 +554,9 @@ const FACET_REQUIRED_FIELDS = [
 export async function extractFacet(
   session: SessionInfo,
   cliSpec: PtyResolvedLaunchSpec,
-  cliTool: "claude" | "codex",
+  analyzerCli: InsightsCliTool,
 ): Promise<SessionFacet | InsightsError> {
-  const cached = readCachedFacet(session.id);
+  const cached = readCachedFacet(session, analyzerCli);
   if (cached) return cached;
 
   const prompt = [
@@ -408,7 +580,7 @@ export async function extractFacet(
 
   let response: string;
   try {
-    response = await invokeCli(cliSpec, cliTool, prompt);
+    response = await invokeCli(cliSpec, analyzerCli, prompt);
   } catch (err) {
     return {
       code: "cli_error",
@@ -442,103 +614,34 @@ export async function extractFacet(
     parsed.friction_counts = {};
   }
 
-  const facet = parsed as unknown as SessionFacet;
-  writeCachedFacet(session.id, facet);
+  const facet = parsed as SessionFacet;
+  writeCachedFacet(session, analyzerCli, facet);
   return facet;
 }
 
-// ── Section E: Aggregation ──────────────────────────────────────────────
-
-export interface AggregatedStats {
-  totalSessions: number;
-  totalMessages: number;
-  totalDurationMinutes: number;
-  cliBreakdown: Record<string, number>;
-  outcomeBreakdown: Record<string, number>;
-  sessionTypeBreakdown: Record<string, number>;
-  goalCategories: Record<string, number>;
-  frictionCounts: Record<string, number>;
-  satisfactionBreakdown: Record<string, number>;
-  projectBreakdown: Record<string, number>;
-}
-
-function incr(map: Record<string, number>, key: string, amount = 1): void {
-  map[key] = (map[key] ?? 0) + amount;
-}
-
-export function aggregateFacets(
-  facets: SessionFacet[],
-  sessions: SessionInfo[],
-): AggregatedStats {
-  const stats: AggregatedStats = {
-    totalSessions: sessions.length,
-    totalMessages: sessions.reduce((s, x) => s + x.messageCount, 0),
-    totalDurationMinutes: sessions.reduce((s, x) => s + x.durationMinutes, 0),
-    cliBreakdown: {},
-    outcomeBreakdown: {},
-    sessionTypeBreakdown: {},
-    goalCategories: {},
-    frictionCounts: {},
-    satisfactionBreakdown: {},
-    projectBreakdown: {},
-  };
-
-  for (const f of facets) {
-    incr(stats.cliBreakdown, f.cli_tool);
-    incr(stats.outcomeBreakdown, f.outcome);
-    incr(stats.sessionTypeBreakdown, f.session_type);
-    incr(stats.satisfactionBreakdown, f.user_satisfaction);
-    incr(
-      stats.projectBreakdown,
-      f.project_path ? path.basename(f.project_path) : "unknown",
-    );
-
-    for (const [cat, weight] of Object.entries(f.goal_categories)) {
-      incr(stats.goalCategories, cat, weight);
-    }
-    for (const [type, count] of Object.entries(f.friction_counts)) {
-      incr(stats.frictionCounts, type, count);
-    }
-  }
-
-  return stats;
-}
-
-// ── Section F: AI Insight Rounds ────────────────────────────────────────
-
-export interface InsightsResult {
-  stats: AggregatedStats;
-  projectAreas: string;
-  interactionStyle: string;
-  whatWorks: string;
-  frictionAnalysis: string;
-  suggestions: string;
-  atAGlance: string;
-}
-
 function isInsightsError(
-  val: InsightsResult | InsightsError,
-): val is InsightsError {
-  return "code" in val;
+  value: InsightsResult | InsightsError,
+): value is InsightsError {
+  return "code" in value;
 }
 
 async function runInsightRounds(
   cliSpec: PtyResolvedLaunchSpec,
-  cliTool: "claude" | "codex",
-  stats: AggregatedStats,
+  analyzerCli: InsightsCliTool,
+  stats: InsightsResult["stats"],
   facets: SessionFacet[],
-  onProgress: (p: InsightsProgress) => void,
+  onProgress: (p: Omit<InsightsProgress, "jobId">) => void,
 ): Promise<InsightsResult | InsightsError> {
-  const sampleFacets = facets.slice(0, 30);
+  const sampleFacets = facets.slice(0, ANALYSIS_SAMPLE_LIMIT);
   const dataCtx = [
     "Statistics:",
     JSON.stringify(stats, null, 2),
     "",
-    `Sample session facets (${sampleFacets.length} of ${facets.length}):`,
+    `Recent analyzed session facets (${sampleFacets.length} of ${facets.length}):`,
     JSON.stringify(sampleFacets, null, 2),
   ].join("\n");
 
-  const rounds: { key: string; instruction: string }[] = [
+  const rounds: { key: keyof Omit<InsightsResult, "stats" | "atAGlance">; instruction: string }[] = [
     {
       key: "projectAreas",
       instruction:
@@ -566,52 +669,84 @@ async function runInsightRounds(
     },
   ];
 
-  const texts: Record<string, string> = {};
-
-  for (let i = 0; i < rounds.length; i++) {
-    const round = rounds[i];
-    onProgress({
-      stage: "analyzing",
-      current: i + 1,
-      total: rounds.length + 1,
-      message: `Analyzing: ${round.key}`,
-    });
-
-    try {
-      const resp = await invokeCli(
-        cliSpec,
-        cliTool,
-        `${round.instruction}\n\n${dataCtx}`,
-      );
-      texts[round.key] = resp.trim();
-    } catch (err) {
-      return {
-        code: "cli_error",
-        message: `Insight round "${round.key}" failed`,
-        detail: err instanceof Error ? err.message : String(err),
-      };
-    }
-  }
-
-  // Final at-a-glance round
+  let completed = 0;
   onProgress({
     stage: "analyzing",
-    current: rounds.length + 1,
+    current: 0,
+    total: rounds.length + 1,
+    message: "Running analysis tasks...",
+  });
+
+  const taskResults = await Promise.all(
+    rounds.map(async (round) => {
+      try {
+        const response = await invokeCli(
+          cliSpec,
+          analyzerCli,
+          `${round.instruction}\n\n${dataCtx}`,
+        );
+        completed += 1;
+        onProgress({
+          stage: "analyzing",
+          current: completed,
+          total: rounds.length + 1,
+          message: `Analyzing: ${round.key}`,
+        });
+        return { key: round.key, text: response.trim() } as const;
+      } catch (err) {
+        return {
+          key: round.key,
+          error: {
+            code: "cli_error",
+            message: `Insight round "${round.key}" failed`,
+            detail: err instanceof Error ? err.message : String(err),
+          } satisfies InsightsError,
+        } as const;
+      }
+    }),
+  );
+
+  for (const result of taskResults) {
+    if ("error" in result) return result.error;
+  }
+
+  const texts: Record<string, string> = {};
+  for (const result of taskResults) {
+    texts[result.key] = result.text;
+  }
+
+  onProgress({
+    stage: "analyzing",
+    current: rounds.length,
     total: rounds.length + 1,
     message: "Generating at-a-glance summary",
   });
 
   const summaryCtx = Object.entries(texts)
-    .map(([k, v]) => `${k}:\n${v}`)
+    .map(([key, value]) => `${key}:\n${value}`)
     .join("\n\n");
 
   try {
-    const resp = await invokeCli(
+    const response = await invokeCli(
       cliSpec,
-      cliTool,
+      analyzerCli,
       `Write a concise AT-A-GLANCE summary (3-5 bullet points) of the user's AI coding usage patterns, strengths, and areas for improvement.\n\n${summaryCtx}`,
     );
-    texts.atAGlance = resp.trim();
+    onProgress({
+      stage: "analyzing",
+      current: rounds.length + 1,
+      total: rounds.length + 1,
+      message: "At-a-glance ready",
+    });
+    return {
+      stats,
+      projectAreas: texts.projectAreas ?? "",
+      interactionStyle: texts.interactionStyle ?? "",
+      whatWorks: texts.whatWorks ?? "",
+      frictionAnalysis: texts.frictionAnalysis ?? "",
+      suggestions: texts.suggestions ?? "",
+      atAGlance: response.trim(),
+    };
   } catch (err) {
     return {
       code: "cli_error",
@@ -619,33 +754,24 @@ async function runInsightRounds(
       detail: err instanceof Error ? err.message : String(err),
     };
   }
-
-  return {
-    stats,
-    projectAreas: texts.projectAreas ?? "",
-    interactionStyle: texts.interactionStyle ?? "",
-    whatWorks: texts.whatWorks ?? "",
-    frictionAnalysis: texts.frictionAnalysis ?? "",
-    suggestions: texts.suggestions ?? "",
-    atAGlance: texts.atAGlance ?? "",
-  };
 }
 
-// ── Section G: Main Pipeline ────────────────────────────────────────────
-
 export async function generateInsights(
-  cliTool: "claude" | "codex",
+  cliTool: InsightsCliTool,
+  jobId: string,
   onProgress: (p: InsightsProgress) => void,
-): Promise<{ ok: true; reportPath: string } | { ok: false; error: InsightsError }> {
-  // 1. Validate CLI
-  onProgress({
+): Promise<InsightsGenerateResult> {
+  const emit = (progress: Omit<InsightsProgress, "jobId">) =>
+    onProgress({ jobId, ...progress });
+
+  emit({
     stage: "validating",
     current: 0,
     total: 1,
     message: `Validating ${cliTool} CLI...`,
   });
   const validationErr = await validateCli(cliTool);
-  if (validationErr) return { ok: false, error: validationErr };
+  if (validationErr) return { ok: false, jobId, error: validationErr };
 
   let cliSpec: PtyResolvedLaunchSpec;
   try {
@@ -653,6 +779,7 @@ export async function generateInsights(
   } catch (err) {
     return {
       ok: false,
+      jobId,
       error: {
         code: "cli_not_found",
         message: `Failed to resolve ${cliTool} CLI`,
@@ -661,85 +788,126 @@ export async function generateInsights(
     };
   }
 
-  // 2. Scan sessions
-  onProgress({
+  emit({
     stage: "scanning",
     current: 0,
     total: 1,
-    message: "Scanning session files...",
+    message: `Scanning ${cliTool} sessions...`,
   });
-  const sessions = scanAllSessions();
+  const { sessions, totalScannedSessions } = await scanSessions(cliTool, emit);
   if (sessions.length === 0) {
     return {
       ok: false,
-      error: { code: "unknown", message: "No valid sessions found to analyze" },
+      jobId,
+      error: {
+        code: "unknown",
+        message: `No valid ${cliTool} sessions found to analyze`,
+      },
     };
   }
 
-  // 3. Extract facets in batches of 10
   const facets: SessionFacet[] = [];
-  for (let i = 0; i < sessions.length; i += 10) {
-    const batch = sessions.slice(i, i + 10);
-    onProgress({
-      stage: "extracting_facets",
-      current: i,
-      total: sessions.length,
-      message: `Extracting facets: ${i}/${sessions.length}`,
-    });
-    const results = await Promise.all(
-      batch.map((s) => extractFacet(s, cliSpec, cliTool)),
-    );
-    for (const r of results) {
-      if ("session_id" in r) facets.push(r);
+  const uncachedSessions: SessionInfo[] = [];
+  let cachedFacetSessions = 0;
+  let deferredFacetSessions = 0;
+  let failedFacetSessions = 0;
+
+  for (const session of sessions) {
+    const cached = readCachedFacet(session, cliTool);
+    if (cached) {
+      facets.push(cached);
+      cachedFacetSessions++;
+      continue;
     }
+    if (uncachedSessions.length < MAX_FACET_EXTRACTIONS) {
+      uncachedSessions.push(session);
+    } else {
+      deferredFacetSessions++;
+    }
+  }
+
+  emit({
+    stage: "extracting_facets",
+    current: 0,
+    total: uncachedSessions.length,
+    message:
+      uncachedSessions.length > 0
+        ? `Extracting new facets for ${cliTool} sessions...`
+        : "Using cached facets...",
+  });
+
+  for (let i = 0; i < uncachedSessions.length; i += FACET_EXTRACTION_BATCH) {
+    const batch = uncachedSessions.slice(i, i + FACET_EXTRACTION_BATCH);
+    const results = await Promise.all(
+      batch.map((session) => extractFacet(session, cliSpec, cliTool)),
+    );
+    for (const result of results) {
+      if ("session_id" in result) {
+        facets.push(result);
+      } else {
+        failedFacetSessions++;
+      }
+    }
+    emit({
+      stage: "extracting_facets",
+      current: Math.min(i + batch.length, uncachedSessions.length),
+      total: uncachedSessions.length,
+      message: `Extracting facets: ${Math.min(i + batch.length, uncachedSessions.length)}/${uncachedSessions.length}`,
+    });
+    if (i + batch.length < uncachedSessions.length) await yieldToEventLoop();
   }
 
   if (facets.length === 0) {
     return {
       ok: false,
+      jobId,
       error: {
         code: "unknown",
-        message: "Failed to extract any session facets",
+        message: "Failed to load or extract any session facets",
       },
     };
   }
 
-  // 4. Aggregate
-  onProgress({
+  emit({
     stage: "aggregating",
     current: 0,
     total: 1,
     message: "Aggregating statistics...",
   });
-  const stats = aggregateFacets(facets, sessions);
+  const stats = aggregateFacets(facets, sessions, {
+    sourceCli: cliTool,
+    analyzerCli: cliTool,
+    totalScannedSessions,
+    totalEligibleSessions: sessions.length,
+    cachedFacetSessions,
+    failedFacetSessions,
+    deferredFacetSessions,
+  });
 
-  // 5. Insight rounds
   const insightsResult = await runInsightRounds(
     cliSpec,
     cliTool,
     stats,
     facets,
-    onProgress,
+    emit,
   );
-  if (isInsightsError(insightsResult)) return { ok: false, error: insightsResult };
+  if (isInsightsError(insightsResult)) {
+    return { ok: false, jobId, error: insightsResult };
+  }
 
-  // 6. Generate report (dynamic import — module created separately)
-  onProgress({
+  emit({
     stage: "generating_report",
     current: 0,
     total: 1,
     message: "Generating report...",
   });
   try {
-    const mod = "./insights-report";
-    const reportModule = (await import(mod)) as {
-      generateReport: (result: InsightsResult) => string;
-    };
-    const reportPath = reportModule.generateReport(insightsResult);
-    return { ok: true, reportPath };
+    const reportPath = generateReport(insightsResult);
+    return { ok: true, jobId, reportPath };
   } catch (err) {
     return {
       ok: false,
+      jobId,
       error: {
         code: "unknown",
         message: "Failed to generate report",

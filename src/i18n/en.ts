@@ -265,7 +265,7 @@ export const en = {
 
   // Insights
   insights_generate: "Generate Insights",
-  insights_select_cli: "Analyze with",
+  insights_select_cli: "Generate for",
   insights_validating: "Validating CLI...",
   insights_scanning: "Scanning sessions...",
   insights_extracting: "Analyzing sessions",

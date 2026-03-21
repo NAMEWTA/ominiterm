@@ -1,31 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { useT } from "../../i18n/useT";
+import type { InsightsGenerateResult, InsightsProgressEvent } from "../../types";
 
 type CliTool = "claude" | "codex";
-
-interface Progress {
-  stage: string;
-  current: number;
-  total: number;
-  message: string;
-}
-
-const api = () => (window as any).termcanvas.insights as {
-  generate: (cliTool: CliTool) => Promise<
-    { ok: true; reportPath: string } | { ok: false; error: { code: string; message: string; detail?: string } }
-  >;
-  onProgress: (cb: (p: Progress) => void) => () => void;
-  openReport: (filePath: string) => Promise<void>;
-};
 
 export function InsightsButton({ compact = false }: { compact?: boolean } = {}) {
   const t = useT();
   const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState<Progress | null>(null);
+  const [progress, setProgress] = useState<InsightsProgressEvent | null>(null);
   const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [reportPath, setReportPath] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const currentJobIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -39,13 +26,21 @@ export function InsightsButton({ compact = false }: { compact?: boolean } = {}) 
     setError(null);
     setReportPath(null);
     setProgress(null);
+    const jobId =
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    currentJobIdRef.current = jobId;
 
-    const ins = api();
+    const ins = window.termcanvas.insights;
     cleanupRef.current?.();
-    cleanupRef.current = ins.onProgress((p) => setProgress(p));
+    cleanupRef.current = ins.onProgress((p) => {
+      if (p.jobId === currentJobIdRef.current) {
+        setProgress(p);
+      }
+    });
 
     try {
-      const result = await ins.generate(cliTool);
+      const result: InsightsGenerateResult = await ins.generate(cliTool, jobId);
       if (result.ok) {
         setReportPath(result.reportPath);
         ins.openReport(result.reportPath);
@@ -56,13 +51,14 @@ export function InsightsButton({ compact = false }: { compact?: boolean } = {}) 
       setError({ message: err?.message ?? String(err) });
     } finally {
       setRunning(false);
+      currentJobIdRef.current = null;
       cleanupRef.current?.();
       cleanupRef.current = null;
     }
   };
 
   const openReport = () => {
-    if (reportPath) api().openReport(reportPath);
+    if (reportPath) window.termcanvas.insights.openReport(reportPath);
   };
 
   if (compact) {

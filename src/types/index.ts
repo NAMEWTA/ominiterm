@@ -186,6 +186,28 @@ export interface CloudUsageSummary extends UsageSummary {
   devices: DeviceUsage[];
 }
 
+export interface InsightsProgressEvent {
+  jobId: string;
+  stage:
+    | "validating"
+    | "scanning"
+    | "extracting_facets"
+    | "aggregating"
+    | "analyzing"
+    | "generating_report";
+  current: number;
+  total: number;
+  message: string;
+}
+
+export type InsightsGenerateResult =
+  | { ok: true; jobId: string; reportPath: string }
+  | {
+      ok: false;
+      jobId: string;
+      error: { code: string; message: string; detail?: string };
+    };
+
 // Preload API types
 export interface TermCanvasAPI {
   terminal: {
@@ -284,6 +306,14 @@ export interface TermCanvasAPI {
   };
   quota: {
     fetch: () => Promise<QuotaFetchResult>;
+  };
+  insights: {
+    generate: (
+      cliTool: "claude" | "codex",
+      jobId: string,
+    ) => Promise<InsightsGenerateResult>;
+    onProgress: (callback: (progress: InsightsProgressEvent) => void) => () => void;
+    openReport: (filePath: string) => Promise<void>;
   };
   app: {
     platform: "darwin" | "win32" | "linux";

@@ -1,29 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { TERMCANVAS_DIR } from "./state-persistence";
-
-interface AggregatedStats {
-  totalSessions: number;
-  totalMessages: number;
-  totalDurationMinutes: number;
-  cliBreakdown: Record<string, number>;
-  outcomeBreakdown: Record<string, number>;
-  sessionTypeBreakdown: Record<string, number>;
-  goalCategories: Record<string, number>;
-  frictionCounts: Record<string, number>;
-  satisfactionBreakdown: Record<string, number>;
-  projectBreakdown: Record<string, number>;
-}
-
-interface InsightsResult {
-  stats: AggregatedStats;
-  projectAreas: string;
-  interactionStyle: string;
-  whatWorks: string;
-  frictionAnalysis: string;
-  suggestions: string;
-  atAGlance: string;
-}
+import type { InsightsResult } from "./insights-shared";
 
 function escapeHtml(str: string): string {
   return str
@@ -120,12 +98,21 @@ export function generateReport(insights: InsightsResult): string {
 
   const { stats } = insights;
   const totalHours = (stats.totalDurationMinutes / 60).toFixed(1);
-  const cliToolsCount = Object.keys(stats.cliBreakdown).length;
   const dateStr = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+  const partialNote =
+    stats.failedFacetSessions > 0 || stats.deferredFacetSessions > 0
+      ? `<div class="section notice">
+    <h2 class="section-title">Coverage</h2>
+    <div class="section-text">
+      <p>This report analyzed ${stats.totalSessions} sessions from ${stats.totalEligibleSessions} eligible ${escapeHtml(stats.sourceCli)} sessions.</p>
+      <p>${stats.cachedFacetSessions} facets came from cache, ${stats.failedFacetSessions} failed, and ${stats.deferredFacetSessions} were deferred to keep a single run bounded.</p>
+    </div>
+  </div>`
+      : "";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -188,6 +175,10 @@ export function generateReport(insights: InsightsResult): string {
     border-radius: 0.75rem;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
+  }
+  .notice {
+    border-color: #3f3f46;
+    background: #111114;
   }
   .section-title {
     font-size: 1.1rem;
@@ -274,7 +265,7 @@ export function generateReport(insights: InsightsResult): string {
 <div class="container">
   <div class="header">
     <h1>TermCanvas Insights</h1>
-    <p class="subtitle">${escapeHtml(dateStr)} &middot; ${stats.totalSessions} sessions analyzed</p>
+    <p class="subtitle">${escapeHtml(dateStr)} &middot; ${stats.totalSessions} analyzed / ${stats.totalScannedSessions} scanned</p>
   </div>
 
   <div class="stats-grid">
@@ -283,19 +274,28 @@ export function generateReport(insights: InsightsResult): string {
       <div class="stat-label">Sessions Analyzed</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">${stats.totalMessages}</div>
-      <div class="stat-label">Total Messages</div>
+      <div class="stat-value">${stats.totalScannedSessions}</div>
+      <div class="stat-label">Sessions Scanned</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">${totalHours}h</div>
       <div class="stat-label">Total Time</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">${cliToolsCount}</div>
-      <div class="stat-label">CLI Tools Used</div>
+      <div class="stat-value">${stats.cachedFacetSessions}</div>
+      <div class="stat-label">Cached Facets</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${stats.failedFacetSessions}</div>
+      <div class="stat-label">Failed Facets</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${escapeHtml(stats.sourceCli)}</div>
+      <div class="stat-label">Source CLI</div>
     </div>
   </div>
 
+  ${partialNote}
   ${textSection("At a Glance", insights.atAGlance)}
   ${breakdownSection("CLI Tools", stats.cliBreakdown, "#6366f1")}
   ${breakdownSection("Outcomes", stats.outcomeBreakdown, "#22c55e")}

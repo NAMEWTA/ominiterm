@@ -263,7 +263,7 @@ export const zh = {
 
   // Insights
   insights_generate: "生成洞察报告",
-  insights_select_cli: "使用",
+  insights_select_cli: "生成",
   insights_validating: "验证 CLI...",
   insights_scanning: "扫描会话...",
   insights_extracting: "分析会话",

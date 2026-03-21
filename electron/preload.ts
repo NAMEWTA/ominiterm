@@ -161,12 +161,13 @@ contextBridge.exposeInMainWorld("termcanvas", {
     fetch: () => ipcRenderer.invoke("quota:fetch"),
   },
   insights: {
-    generate: (cliTool: "claude" | "codex") =>
-      ipcRenderer.invoke("insights:generate", cliTool) as Promise<
-        { ok: true; reportPath: string } | { ok: false; error: { code: string; message: string; detail?: string } }
+    generate: (cliTool: "claude" | "codex", jobId: string) =>
+      ipcRenderer.invoke("insights:generate", cliTool, jobId) as Promise<
+        | { ok: true; jobId: string; reportPath: string }
+        | { ok: false; jobId: string; error: { code: string; message: string; detail?: string } }
       >,
-    onProgress: (callback: (progress: { stage: string; current: number; total: number; message: string }) => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, progress: { stage: string; current: number; total: number; message: string }) =>
+    onProgress: (callback: (progress: { jobId: string; stage: string; current: number; total: number; message: string }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, progress: { jobId: string; stage: string; current: number; total: number; message: string }) =>
         callback(progress);
       ipcRenderer.on("insights:progress", listener);
       return () => ipcRenderer.removeListener("insights:progress", listener);
