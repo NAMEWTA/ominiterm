@@ -622,6 +622,12 @@ function extractCodexSession(file: SessionFileInfo): SessionInfo | null {
     if (obj.type === "session_meta") {
       const payload = getObject(obj.payload);
       if (typeof payload?.cwd === "string") projectPath = payload.cwd;
+      if (
+        payload?.originator === "codex_exec" &&
+        payload?.source === "exec"
+      ) {
+        return null;
+      }
       const metaTs = parseTimestamp(payload?.timestamp);
       if (metaTs !== null) sessionStartTs = metaTs;
       if (typeof payload?.model_provider === "string") {
