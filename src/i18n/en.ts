@@ -259,7 +259,6 @@ export const en = {
   auth_login_github: "Login with GitHub",
   auth_logout: "Logout",
   auth_logging_in: "Logging in...",
-  auth_opening_browser: "Opening browser...",
   auth_login_failed: "Login failed",
   auth_copy_link: "Copy link",
   auth_this_device: "(this device)",

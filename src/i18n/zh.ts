@@ -257,7 +257,6 @@ export const zh = {
   auth_login_github: "使用 GitHub 登录",
   auth_logout: "退出登录",
   auth_logging_in: "登录中...",
-  auth_opening_browser: "正在打开浏览器...",
   auth_login_failed: "登录失败",
   auth_copy_link: "复制链接",
   auth_this_device: "(本机)",
