@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
-import { WebglAddon } from "@xterm/addon-webgl";
+import { acquireWebGL, releaseWebGL, touch as touchWebGL } from "./webglContextPool";
 import { ImageAddon } from "@xterm/addon-image";
 import { createPortal } from "react-dom";
 import type { TerminalData, TerminalType } from "../types";
@@ -318,14 +318,8 @@ export function TerminalTile({
       }
     });
 
-    // GPU-accelerated rendering; fall back to Canvas2D when context limit is hit
-    try {
-      const webglAddon = new WebglAddon();
-      webglAddon.onContextLoss(() => webglAddon.dispose());
-      xterm.loadAddon(webglAddon);
-    } catch {
-      // WebGL not available or context limit reached — Canvas2D fallback is fine
-    }
+    // GPU-accelerated rendering via context pool (max 8 active contexts)
+    acquireWebGL(terminal.id, xterm);
 
     // Sixel image protocol support for inline images
     try {
@@ -695,6 +689,7 @@ export function TerminalTile({
         window.termcanvas.session.unwatch(term.sessionId);
       }
       unregisterTerminal(terminal.id);
+      releaseWebGL(terminal.id);
       removeOutput();
       removeExit();
       xterm.dispose();
@@ -739,12 +734,13 @@ export function TerminalTile({
   const composerEnabled = usePreferencesStore((s) => s.composerEnabled);
   useEffect(() => {
     if (terminal.focused) {
+      touchWebGL(terminal.id);
       const adapter = getComposerAdapter(terminal.type);
       if (!adapter || !composerEnabled) {
         xtermRef.current?.focus();
       }
     }
-  }, [terminal.focused, terminal.type, composerEnabled]);
+  }, [terminal.focused, terminal.id, terminal.type, composerEnabled]);
 
   // Listen for explicit xterm focus requests (when composer is disabled)
   useEffect(() => {
