@@ -25,56 +25,6 @@ TermCanvas 把你所有的终端铺在一张无限空间画布上——不再有
 
 它以 **Project → Worktree → Terminal** 三层结构来组织一切，和你使用 git 的方式完全一致。添加一个项目，TermCanvas 自动检测它的 worktree；在终端里新建一个 worktree，画布上立刻出现。
 
-## 功能特性
-
-**画布**
-- 无限画布——自由平移、缩放、排列终端
-- 三层层级——项目包含 worktree，worktree 包含终端
-- 实时 worktree 检测——新建 worktree 自动出现
-- 双击终端标题栏缩放至适合视口
-- 拖拽排序 worktree 内的终端
-- 框选——拖拽一次选中多个终端
-- 绘图工具——画笔、文字、矩形、箭头标注（可开关）
-- 工作区存档——将完整布局保存为 `.termcanvas` 文件，支持另存为，带脏状态追踪
-
-**AI 编程 Agent**
-- 原生支持 Claude Code、Codex、Kimi、Gemini、OpenCode
-- Composer——统一输入栏，向聚焦的 agent 发送提示，支持粘贴图片
-- 实时会话状态——一眼看到 agent 正在工作、等待还是已完成
-- 完成闪光——agent 完成一轮时的视觉脉冲提示
-- 会话恢复——关闭并重新打开 agent 终端，不丢失上下文
-- CLI 自动检测——TermCanvas 自动发现已安装的 agent CLI；可在设置中逐个覆盖
-- 内联 diff 卡片——不离开画布就能审查 agent 的代码变更
-- 文件与目录树卡片——在画布上与终端并排浏览文件
-
-**通用终端**
-- Shell、lazygit、tmux 与 AI agent 共存于同一画布
-- 星标终端——标记重要终端，用 `⌘ J` / `⌘ K` 快速切换
-- `⌘ ;` 重命名终端标题
-- 终端尺寸预设：默认、宽、高、大
-
-**用量追踪**
-- Token 用量与成本看板——总花费、按项目分布、按模型分布
-- 每小时 token 热力图与 24 小时成本趋势图
-- 缓存命中率统计
-- 配额监控——5 小时与 7 天速率限制利用率，自适应轮询
-- 云同步——登录后通过 Supabase 跨设备汇总用量
-
-**设置**
-- **显示** —— 6 款等宽字体可选（Geist Mono、Geist Pixel Square、JetBrains Mono、Fira Code、IBM Plex Mono、Hack），一键下载；字号 6–24 px
-- **主题** —— 深色与浅色模式，暖石色调配色，ANSI 颜色符合无障碍标准
-- **Agent** —— 自动检测或手动覆盖每个 agent 类型的 CLI 路径
-- **快捷键** —— 所有键盘快捷键均可自定义并持久保存
-- **Composer** —— 开关实验性的 Composer 输入栏
-- **绘图** —— 开关绘图工具栏
-- **高级** —— 最小对比度滑块（1–7），提升终端文本可读性
-- **国际化** —— 支持中文和英文（自动检测系统语言）
-- **自动更新** —— 应用内更新通知并显示更新日志
-
-**命令行工具**
-- `termcanvas` —— 从终端控制画布：管理项目、创建/销毁终端、发送输入、读取输出、查看 diff
-- `hydra` —— 在隔离的 git worktree 中派生 AI 子 agent，然后审查并合并它们的工作
-
 ## 快速开始
 
 **下载** —— 从 [GitHub Releases](https://github.com/blueberrycongee/termcanvas/releases) 获取最新构建。
@@ -89,6 +39,36 @@ npm run dev
 ```
 
 **安装命令行工具** —— 启动应用后，进入 设置 → 通用 → 命令行工具，点击注册。这会将 `termcanvas` 和 `hydra` 添加到你的 PATH，并把 Hydra skill 安装到 Claude Code 与 Codex 的 skill 目录。
+
+## 功能特性
+
+**画布**
+- 无限画布——自由平移、缩放、排列终端
+- 三层层级——项目包含 worktree，worktree 包含终端
+- 实时 worktree 检测——新建 worktree 自动出现
+- 双击终端标题栏缩放适配；拖拽排序；框选多个终端
+- 绘图工具——画笔、文字、矩形、箭头标注
+- 工作区存档——将完整布局保存为 `.termcanvas` 文件，支持另存为
+
+**AI 编程 Agent**
+- 原生支持 Claude Code、Codex、Kimi、Gemini、OpenCode
+- Composer——统一输入栏，向聚焦的 agent 发送提示，支持粘贴图片
+- 实时会话状态与完成闪光——一眼看到 agent 正在工作、等待还是已完成
+- 会话恢复——关闭并重新打开 agent 终端，不丢失上下文
+- 内联 diff 卡片——不离开画布就能审查 agent 的代码变更
+
+**终端**
+- Shell、lazygit、tmux 与 AI agent 共存于同一画布
+- 星标重要终端，用 `⌘ J` / `⌘ K` 快速切换
+- 四种尺寸预设、自定义标题、逐 agent CLI 路径覆盖
+
+**用量追踪**
+- Token 用量与成本看板——总花费、按项目和按模型分布
+- 每小时 token 热力图、24 小时成本趋势图、缓存命中率
+- 配额监控——5 小时与 7 天速率限制利用率
+- 云同步——登录后跨设备汇总用量
+
+**设置** —— 6 款可下载等宽字体、深色/浅色主题、自定义键盘快捷键、最小对比度无障碍设置、中英文自动检测、应用内自动更新与更新日志。
 
 ## 命令行工具
 
@@ -130,35 +110,13 @@ npm run dev
 
 </div>
 
-Hydra 让你把大任务拆成小块，分派给不同的 AI agent——Claude、Codex、Kimi、Gemini 或 OpenCode。每个 agent 拥有独立的 git worktree 和画布上的独立终端，你可以同时观察它们并行工作，随时介入。
+Hydra 让你把大任务拆成小块，分派给不同的 AI agent，每个 agent 在独立的 git worktree 中工作。所有 agent 都有自己的画布终端，你可以同时观察它们并行推进。
 
-**派生 agent：**
+**最简单的用法是直接告诉你的 AI agent。** 在项目中运行 `hydra init` 之后，只需对 agent 说：
 
-```bash
-hydra spawn --task "fix the login bug" --type claude --repo .
-# → 返回 JSON: { agentId, terminalId, worktreePath, branch, resultFile }
-```
+> *"用 Hydra 把这次重构拆成子任务，并行执行。"*
 
-这会创建一个新的 worktree + 分支，在画布上打开终端，并将任务发送给 agent。agent 在完全隔离的环境中工作——只能修改自己 worktree 内的文件。
-
-传入 `--auto-approve` 可继承父 agent 的权限级别（Claude 映射为 `--dangerously-skip-permissions`，Codex 映射为 `--dangerously-bypass-approvals-and-sandbox`）。
-
-**只读任务**（代码审查、分析）可以指向已有的 worktree，不创建新分支：
-
-```bash
-hydra spawn --task "审查 auth 模块的安全漏洞" --type claude --repo . --worktree ./my-worktree
-```
-
-**监控、审查与合并：**
-
-```bash
-hydra list                              # 查看所有 agent 及其状态
-termcanvas terminal status <id>         # 检查 agent 是否完成
-termcanvas diff <worktree> --summary    # 审查 agent 的变更
-cat <resultFile>                        # 读取 agent 的总结报告
-git merge <branch>                      # 采纳变更
-hydra cleanup <agent-id>                # 清理 worktree 和终端
-```
+Agent 已经知道如何调用 `hydra spawn`、监控进度、合并结果——你不需要记任何 CLI 参数。
 
 **初始化：**
 
@@ -166,7 +124,17 @@ hydra cleanup <agent-id>                # 清理 worktree 和终端
 hydra init    # 将 Hydra 使用说明添加到项目的 CLAUDE.md 和 AGENTS.md
 ```
 
-这会教会你的主 AI agent 在合适的时机自动派生子 agent。
+这会安装一个 skill，教会 Claude Code 和 Codex 何时以及如何派生子 agent。初始化后，agent 会在适合并行化的任务中自主使用 Hydra。
+
+**手动使用** —— 你也可以自己驱动 Hydra：
+
+```bash
+hydra spawn --task "fix the login bug" --type claude --repo .
+hydra list
+hydra cleanup <agent-id>
+```
+
+`hydra spawn` 会创建 worktree + 分支，在画布上打开终端，并发送任务。传入 `--auto-approve` 可继承父 agent 的权限级别。只读任务（审查、分析）可传入 `--worktree <path>` 复用已有 worktree。
 
 ## 快捷键
 
@@ -188,10 +156,7 @@ hydra init    # 将 Hydra 使用说明添加到项目的 CLAUDE.md 和 AGENTS.md
 | `⌘ K` | 上一个星标终端 |
 | `⌘ S` | 保存工作区 |
 | `⌘ ⇧ S` | 工作区另存为 |
-| `⌘ 1` | 终端尺寸：默认 |
-| `⌘ 2` | 终端尺寸：宽 |
-| `⌘ 3` | 终端尺寸：高 |
-| `⌘ 4` | 终端尺寸：大 |
+| `⌘ 1–4` | 终端尺寸：默认 / 宽 / 高 / 大 |
 
 > Windows/Linux 上用 `Ctrl` 替换 `⌘`。
 
