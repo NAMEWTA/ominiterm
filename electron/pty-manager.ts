@@ -155,3 +155,41 @@ export class PtyManager {
     await Promise.all(ids.map((id) => this.destroy(id)));
   }
 }
+
+export class OutputBatcher {
+  private pending = new Map<number, string[]>();
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private flushCallback: (ptyId: number, data: string) => void;
+
+  constructor(flushCallback: (ptyId: number, data: string) => void) {
+    this.flushCallback = flushCallback;
+  }
+
+  push(ptyId: number, data: string) {
+    let buf = this.pending.get(ptyId);
+    if (!buf) {
+      buf = [];
+      this.pending.set(ptyId, buf);
+    }
+    buf.push(data);
+    if (!this.timer) {
+      this.timer = setTimeout(() => this.flush(), 8);
+    }
+  }
+
+  flush() {
+    this.timer = null;
+    for (const [ptyId, chunks] of this.pending) {
+      this.flushCallback(ptyId, chunks.join(""));
+    }
+    this.pending.clear();
+  }
+
+  dispose() {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.flush();
+  }
+}

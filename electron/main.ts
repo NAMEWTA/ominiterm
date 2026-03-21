@@ -5,7 +5,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { fileURLToPath } from "url";
-import { PtyManager } from "./pty-manager";
+import { PtyManager, OutputBatcher } from "./pty-manager";
 import { ProjectScanner } from "./project-scanner";
 import { StatePersistence, TERMCANVAS_DIR } from "./state-persistence";
 import { GitFileWatcher } from "./git-watcher";
@@ -60,6 +60,9 @@ function cleanupPortFile() {
 let mainWindow: BrowserWindow | null = null;
 let forceClose = false;
 const ptyManager = new PtyManager();
+const outputBatcher = new OutputBatcher((ptyId, data) => {
+  sendToWindow(mainWindow, "terminal:output", ptyId, data);
+});
 const projectScanner = new ProjectScanner();
 const statePersistence = new StatePersistence();
 const gitWatcher = new GitFileWatcher();
@@ -174,7 +177,7 @@ function setupIpc() {
       dbg(`terminal:create => ptyId=${ptyId} pid=${pid ?? "null"}`);
       ptyManager.onData(ptyId, (data: string) => {
         ptyManager.captureOutput(ptyId, data);
-        sendToWindow(mainWindow, "terminal:output", ptyId, data);
+        outputBatcher.push(ptyId, data);
       });
       ptyManager.onExit(ptyId, (exitCode: number) => {
         dbg(`terminal:exit ptyId=${ptyId} pid=${pid ?? "null"} exitCode=${exitCode}`);
@@ -774,6 +777,7 @@ function setupIpc() {
 
   // Close flow
   ipcMain.on("app:close-confirmed", async () => {
+    outputBatcher.dispose();
     await ptyManager.destroyAll();
     gitWatcher.unwatchAll();
     sessionWatcher.unwatchAll();
