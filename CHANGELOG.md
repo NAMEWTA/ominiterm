@@ -2,6 +2,12 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.33] - 2026-03-22
+
+### Fixed
+- Insights: pipe long prompts via stdin to avoid E2BIG crash when analyzing 1000+ sessions
+- Insights: early-reject codex_exec self-insight sessions during parsing to prevent snowball scanning
+
 ## [0.8.32] - 2026-03-22
 
 ### Fixed
