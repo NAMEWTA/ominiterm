@@ -527,7 +527,10 @@ export function UsagePanel() {
     }
     const interval = setInterval(() => {
       void fetchUsage();
-      if (isLoggedIn) void fetchCloud();
+      if (isLoggedIn) {
+        void fetchCloud();
+        void fetchCloudHeatmap();
+      }
     }, 60_000);
     return () => clearInterval(interval);
   }, [collapsed, isLoggedIn, fetchUsage, fetchHeatmap, quotaFetch, fetchCloud, fetchCloudHeatmap]);
@@ -705,7 +708,7 @@ export function UsagePanel() {
               )}
               <div className="mx-3 h-px bg-[var(--border)]" />
               <div className="usage-section-enter" style={{ animationDelay: "240ms" }}>
-                <TokenHeatmap animate={true} />
+                <TokenHeatmap animate={true} data={activeHeatmap ?? undefined} />
               </div>
             </div>
           ) : (
