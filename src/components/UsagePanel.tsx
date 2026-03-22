@@ -548,7 +548,13 @@ export function UsagePanel() {
 
   // Choose data source based on login state
   const activeSummary = isLoggedIn && cloudSummary ? cloudSummary : summary;
-  const activeHeatmap = isLoggedIn && cloudHeatmapData ? cloudHeatmapData : heatmapData;
+  // Merge cloud + local heatmap: cloud wins per-day (multi-device), local fills gaps (pre-login)
+  const activeHeatmap = (() => {
+    if (isLoggedIn && cloudHeatmapData && heatmapData) {
+      return { ...heatmapData, ...cloudHeatmapData };
+    }
+    return isLoggedIn && cloudHeatmapData ? cloudHeatmapData : heatmapData;
+  })();
 
   // Compute monthly total for SummarySection
   let monthlyCost = 0;
