@@ -2,6 +2,16 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.41] - 2026-03-22
+
+### Fixed
+- Usage panel: server-side aggregation via Supabase RPC to avoid 1000-row query truncation
+- Usage panel: content-based dedup (record_hash) replaces timestamp-based dedup to prevent same-second data loss
+- Usage panel: per-day max merge for heatmap so incomplete cloud data doesn't overwrite local
+
+### Changed
+- Sidebar uses distinct background color for light and dark themes
+
 ## [0.8.40] - 2026-03-22
 
 ### Fixed
