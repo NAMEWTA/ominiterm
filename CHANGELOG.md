@@ -2,6 +2,11 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.44] - 2026-03-23
+
+### Fixed
+- Usage panel: Codex cached tokens were double-counted in cost calculation — OpenAI's input_tokens includes cached_input_tokens, unlike Claude's API
+
 ## [0.8.43] - 2026-03-23
 
 ### Fixed
