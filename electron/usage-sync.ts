@@ -2,18 +2,16 @@ import { readFile, writeFile, appendFile, unlink, access } from "fs/promises";
 import path from "path";
 import { TERMCANVAS_DIR } from "./state-persistence";
 import { getSupabase, getAuthUser, getDeviceId, isLoggedIn } from "./auth";
+import { buildUsageRecordHash, type UsageRecordHashInput } from "./usage-record-hash";
 import {
   parseClaudeSession,
   parseCodexSession,
   findClaudeJsonlFiles,
   findCodexJsonlFiles,
   computeCost,
-  getLocalTzOffsetHours,
   type UsageRecord,
   type UsageSummary,
   type UsageBucket,
-  type ProjectUsage,
-  type ModelUsage,
 } from "./usage-collector";
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -25,16 +23,8 @@ const BATCH_SIZE = 500;
 
 // ── Types ─────────────────────────────────────────────────────────────
 
-interface SyncRecord {
-  model: string;
-  project: string;
-  input_tokens: number;
-  output_tokens: number;
-  cache_read_tokens: number;
-  cache_create_5m_tokens: number;
-  cache_create_1h_tokens: number;
-  cost_usd: number;
-  recorded_at: string; // ISO timestamp
+interface SyncRecord extends UsageRecordHashInput {
+  record_hash?: string;
 }
 
 interface DeviceUsage {
@@ -50,33 +40,54 @@ export interface CloudUsageSummary extends UsageSummary {
   devices: DeviceUsage[];
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────
-
-async function uploadRecord(record: SyncRecord): Promise<void> {
-  const supabase = getSupabase();
-  const user = getAuthUser();
-  if (!supabase || !user) throw new Error("Not authenticated");
-
-  const { error } = await supabase.from("usage_records").insert({
-    user_id: user.id,
-    device_id: getDeviceId(),
-    model: record.model,
-    project: record.project || null,
-    input_tokens: record.input_tokens,
-    output_tokens: record.output_tokens,
-    cost_usd: record.cost_usd,
-    recorded_at: record.recorded_at,
-  });
-
-  if (error) throw error;
+interface RpcBucket {
+  hourStart: number;
+  input: number;
+  output: number;
+  cost: number;
+  calls: number;
 }
 
-async function appendToQueue(record: SyncRecord): Promise<void> {
-  try {
-    await appendFile(SYNC_QUEUE_FILE, JSON.stringify(record) + "\n", "utf-8");
-  } catch (err) {
-    console.error(PREFIX, "Failed to write to sync queue:", err);
+interface RpcItem {
+  path?: string;
+  model?: string;
+  deviceId?: string;
+  input: number;
+  output: number;
+  cost: number;
+  calls: number;
+}
+
+interface RpcSummary {
+  sessions: number;
+  totalInput: number;
+  totalOutput: number;
+  totalCost: number;
+  buckets: RpcBucket[];
+  projects: RpcItem[];
+  models: RpcItem[];
+  devices: RpcItem[];
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────
+
+function getLocalTzOffsetMinutes(): number {
+  return -new Date().getTimezoneOffset();
+}
+
+function normalizeSyncRecord(record: SyncRecord): SyncRecord & { record_hash: string } {
+  return {
+    ...record,
+    record_hash: record.record_hash ?? buildUsageRecordHash(record),
+  };
+}
+
+function parseRpcPayload<T>(payload: T | string | null): T | null {
+  if (!payload) return null;
+  if (typeof payload === "string") {
+    try { return JSON.parse(payload) as T; } catch { return null; }
   }
+  return payload;
 }
 
 function createEmptyBuckets(intervalHours: number): UsageBucket[] {
@@ -91,6 +102,81 @@ function createEmptyBuckets(intervalHours: number): UsageBucket[] {
   });
 }
 
+function mergeBucketsWithDefaults(rpcBuckets: RpcBucket[] | undefined, intervalHours: number): UsageBucket[] {
+  const buckets = createEmptyBuckets(intervalHours);
+  if (!rpcBuckets) return buckets;
+  const map = new Map(rpcBuckets.map((b) => [b.hourStart, b]));
+  return buckets.map((b) => {
+    const rb = map.get(b.hourStart);
+    if (!rb) return b;
+    return { ...b, input: Number(rb.input) || 0, output: Number(rb.output) || 0, cost: Number(rb.cost) || 0, calls: Number(rb.calls) || 0 };
+  });
+}
+
+function createEmptyCloudSummary(dateStr: string): CloudUsageSummary {
+  return {
+    date: dateStr, sessions: 0, totalInput: 0, totalOutput: 0,
+    totalCacheRead: 0, totalCacheCreate5m: 0, totalCacheCreate1h: 0, totalCost: 0,
+    buckets: createEmptyBuckets(2), projects: [], models: [], devices: [],
+  };
+}
+
+function mapUsageRecordToRow(userId: string, deviceId: string, record: UsageRecord) {
+  const costUsd = computeCost(record.model, record.input, record.output, record.cacheRead, record.cacheCreate5m, record.cacheCreate1h);
+  const syncRecord: SyncRecord = {
+    model: record.model,
+    project: record.projectPath || "",
+    input_tokens: record.input,
+    output_tokens: record.output,
+    cache_read_tokens: record.cacheRead,
+    cache_create_5m_tokens: record.cacheCreate5m,
+    cache_create_1h_tokens: record.cacheCreate1h,
+    cost_usd: costUsd,
+    recorded_at: record.ts + "Z",
+    source_id: record.msgId,
+  };
+  return {
+    user_id: userId,
+    device_id: deviceId,
+    model: syncRecord.model,
+    project: syncRecord.project || null,
+    input_tokens: syncRecord.input_tokens,
+    output_tokens: syncRecord.output_tokens,
+    cost_usd: syncRecord.cost_usd,
+    recorded_at: syncRecord.recorded_at,
+    record_hash: buildUsageRecordHash(syncRecord),
+  };
+}
+
+async function uploadRecord(record: SyncRecord): Promise<void> {
+  const normalized = normalizeSyncRecord(record);
+  const supabase = getSupabase();
+  const user = getAuthUser();
+  if (!supabase || !user) throw new Error("Not authenticated");
+
+  const { error } = await supabase.from("usage_records").insert({
+    user_id: user.id,
+    device_id: getDeviceId(),
+    model: normalized.model,
+    project: normalized.project || null,
+    input_tokens: normalized.input_tokens,
+    output_tokens: normalized.output_tokens,
+    cost_usd: normalized.cost_usd,
+    recorded_at: normalized.recorded_at,
+    record_hash: normalized.record_hash,
+  });
+
+  if (error) throw error;
+}
+
+async function appendToQueue(record: SyncRecord): Promise<void> {
+  try {
+    await appendFile(SYNC_QUEUE_FILE, JSON.stringify(normalizeSyncRecord(record)) + "\n", "utf-8");
+  } catch (err) {
+    console.error(PREFIX, "Failed to write to sync queue:", err);
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────
 
 /**
@@ -98,16 +184,17 @@ function createEmptyBuckets(intervalHours: number): UsageBucket[] {
  * If not logged in or upload fails, queue to offline sync file.
  */
 export async function syncUsageRecord(record: SyncRecord): Promise<void> {
+  const normalized = normalizeSyncRecord(record);
   if (!isLoggedIn()) {
-    await appendToQueue(record);
+    await appendToQueue(normalized);
     return;
   }
 
   try {
-    await uploadRecord(record);
+    await uploadRecord(normalized);
   } catch (err) {
     console.error(PREFIX, "Upload failed, queuing:", err);
-    await appendToQueue(record);
+    await appendToQueue(normalized);
   }
 }
 
@@ -132,7 +219,7 @@ export async function flushSyncQueue(): Promise<void> {
 
   for (const line of lines) {
     try {
-      const record: SyncRecord = JSON.parse(line);
+      const record = normalizeSyncRecord(JSON.parse(line) as SyncRecord);
       await uploadRecord(record);
     } catch {
       failed.push(line);
@@ -204,17 +291,8 @@ export async function backfillHistory(): Promise<void> {
     return;
   }
 
-  // Map to DB rows
-  const rows = allRecords.map((r) => ({
-    user_id: user.id,
-    device_id: deviceId,
-    model: r.model,
-    project: r.projectPath || null,
-    input_tokens: r.input,
-    output_tokens: r.output,
-    cost_usd: computeCost(r.model, r.input, r.output, r.cacheRead, r.cacheCreate5m, r.cacheCreate1h),
-    recorded_at: r.ts + "Z",
-  }));
+  // Map to DB rows with record_hash
+  const rows = allRecords.map((record) => mapUsageRecordToRow(user.id, deviceId, record));
 
   // Batch insert, yielding between batches
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
@@ -223,7 +301,7 @@ export async function backfillHistory(): Promise<void> {
     const batch = rows.slice(i, i + BATCH_SIZE);
     try {
       const { error } = await supabase.from("usage_records").upsert(batch, {
-            onConflict: "user_id,device_id,recorded_at",
+            onConflict: "user_id,device_id,record_hash",
             ignoreDuplicates: true,
           });
       if (error) {
@@ -245,7 +323,7 @@ export async function backfillHistory(): Promise<void> {
 
 /**
  * Incremental sync: upload recent usage records (last 2 days) to Supabase.
- * The unique constraint (user_id, device_id, recorded_at) handles deduplication.
+ * The unique constraint (user_id, device_id, record_hash) handles deduplication.
  */
 export async function syncRecentRecords(): Promise<void> {
   if (!isLoggedIn()) return;
@@ -282,16 +360,7 @@ export async function syncRecentRecords(): Promise<void> {
 
   if (allRecords.length === 0) return;
 
-  const rows = allRecords.map((r) => ({
-    user_id: user.id,
-    device_id: deviceId,
-    model: r.model,
-    project: r.projectPath || null,
-    input_tokens: r.input,
-    output_tokens: r.output,
-    cost_usd: computeCost(r.model, r.input, r.output, r.cacheRead, r.cacheCreate5m, r.cacheCreate1h),
-    recorded_at: r.ts + "Z",
-  }));
+  const rows = allRecords.map((record) => mapUsageRecordToRow(user.id, deviceId, record));
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     if (i > 0) await new Promise<void>((r) => setImmediate(r));
@@ -299,7 +368,7 @@ export async function syncRecentRecords(): Promise<void> {
     const batch = rows.slice(i, i + BATCH_SIZE);
     try {
       const { error } = await supabase.from("usage_records").upsert(batch, {
-        onConflict: "user_id,device_id,recorded_at",
+        onConflict: "user_id,device_id,record_hash",
         ignoreDuplicates: true,
       });
       if (error) {
@@ -313,15 +382,13 @@ export async function syncRecentRecords(): Promise<void> {
 
 /**
  * Query usage data from Supabase for the logged-in user (all devices).
- * Returns data in CloudUsageSummary format (UsageSummary + devices breakdown).
- * Returns null if not logged in or query fails.
+ * Uses server-side RPC aggregation to avoid PostgREST row limits.
  */
 export async function queryCloudUsage(dateStr: string): Promise<CloudUsageSummary | null> {
   if (!isLoggedIn()) return null;
 
   const supabase = getSupabase();
-  const user = getAuthUser();
-  if (!supabase || !user) return null;
+  if (!supabase || !getAuthUser()) return null;
 
   // Convert local date to UTC range
   const startMs = new Date(`${dateStr}T00:00:00`).getTime();
@@ -330,129 +397,52 @@ export async function queryCloudUsage(dateStr: string): Promise<CloudUsageSummar
   const utcEnd = new Date(endMs).toISOString();
 
   try {
-    const { data, error } = await supabase
-      .from("usage_records")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("recorded_at", utcStart)
-      .lt("recorded_at", utcEnd);
+    const { data, error } = await supabase.rpc("get_cloud_usage_summary", {
+      p_utc_start: utcStart,
+      p_utc_end: utcEnd,
+      p_tz_offset_minutes: getLocalTzOffsetMinutes(),
+      p_bucket_hours: 2,
+    });
 
     if (error) {
       console.error(PREFIX, "Cloud usage query failed:", error.message);
       return null;
     }
 
-    if (!data || data.length === 0) {
-      return {
-        date: dateStr,
-        sessions: 0,
-        totalInput: 0,
-        totalOutput: 0,
-        totalCacheRead: 0,
-        totalCacheCreate5m: 0,
-        totalCacheCreate1h: 0,
-        totalCost: 0,
-        buckets: createEmptyBuckets(2),
-        projects: [],
-        models: [],
-        devices: [],
-      };
-    }
+    const payload = parseRpcPayload<RpcSummary>(data);
+    if (!payload) return createEmptyCloudSummary(dateStr);
 
-    // Aggregate
-    const tzOffsetHours = getLocalTzOffsetHours();
-    const intervalHours = 2;
-    const buckets = createEmptyBuckets(intervalHours);
-    const bucketCount = buckets.length;
-
-    let totalInput = 0;
-    let totalOutput = 0;
-    let totalCost = 0;
-    const projectMap = new Map<string, ProjectUsage>();
-    const modelMap = new Map<string, ModelUsage>();
-    const deviceMap = new Map<string, DeviceUsage>();
     const currentDeviceId = getDeviceId();
-
-    for (const row of data) {
-      const input = (row.input_tokens as number) ?? 0;
-      const output = (row.output_tokens as number) ?? 0;
-      const cost = Number(row.cost_usd) || 0;
-
-      totalInput += input;
-      totalOutput += output;
-      totalCost += cost;
-
-      // Bucket by local hour
-      const utcMs = new Date(row.recorded_at as string).getTime();
-      const localMs = utcMs + tzOffsetHours * 3_600_000;
-      const localHour = new Date(localMs).getUTCHours();
-      const bucketIdx = Math.floor(localHour / intervalHours);
-      if (bucketIdx >= 0 && bucketIdx < bucketCount) {
-        const b = buckets[bucketIdx];
-        b.input += input;
-        b.output += output;
-        b.cost += cost;
-        b.calls++;
-      }
-
-      // Project
-      const pKey = (row.project as string) || "unknown";
-      if (!projectMap.has(pKey)) {
-        const name = pKey === "unknown" ? "Other" : path.basename(pKey);
-        projectMap.set(pKey, {
-          path: pKey, name, input: 0, output: 0,
-          cacheRead: 0, cacheCreate5m: 0, cacheCreate1h: 0, cost: 0, calls: 0,
-        });
-      }
-      const proj = projectMap.get(pKey)!;
-      proj.input += input;
-      proj.output += output;
-      proj.cost += cost;
-      proj.calls++;
-
-      // Model
-      const model = row.model as string;
-      if (!modelMap.has(model)) {
-        modelMap.set(model, {
-          model, input: 0, output: 0,
-          cacheRead: 0, cacheCreate5m: 0, cacheCreate1h: 0, cost: 0, calls: 0,
-        });
-      }
-      const mod = modelMap.get(model)!;
-      mod.input += input;
-      mod.output += output;
-      mod.cost += cost;
-      mod.calls++;
-
-      // Device
-      const did = row.device_id as string;
-      if (!deviceMap.has(did)) {
-        deviceMap.set(did, {
-          deviceId: did,
-          isCurrentDevice: did === currentDeviceId,
-          input: 0, output: 0, cost: 0, calls: 0,
-        });
-      }
-      const dev = deviceMap.get(did)!;
-      dev.input += input;
-      dev.output += output;
-      dev.cost += cost;
-      dev.calls++;
-    }
 
     return {
       date: dateStr,
-      sessions: data.length,
-      totalInput,
-      totalOutput,
+      sessions: Number(payload.sessions) || 0,
+      totalInput: Number(payload.totalInput) || 0,
+      totalOutput: Number(payload.totalOutput) || 0,
       totalCacheRead: 0,
       totalCacheCreate5m: 0,
       totalCacheCreate1h: 0,
-      totalCost,
-      buckets,
-      projects: [...projectMap.values()].sort((a, b) => b.cost - a.cost),
-      models: [...modelMap.values()].sort((a, b) => b.cost - a.cost),
-      devices: [...deviceMap.values()].sort((a, b) => b.cost - a.cost),
+      totalCost: Number(payload.totalCost) || 0,
+      buckets: mergeBucketsWithDefaults(payload.buckets, 2),
+      projects: (payload.projects ?? []).map((p) => ({
+        path: p.path || "unknown",
+        name: (p.path && p.path !== "unknown") ? path.basename(p.path) : "Other",
+        input: Number(p.input) || 0, output: Number(p.output) || 0,
+        cacheRead: 0, cacheCreate5m: 0, cacheCreate1h: 0,
+        cost: Number(p.cost) || 0, calls: Number(p.calls) || 0,
+      })),
+      models: (payload.models ?? []).map((m) => ({
+        model: m.model || "unknown",
+        input: Number(m.input) || 0, output: Number(m.output) || 0,
+        cacheRead: 0, cacheCreate5m: 0, cacheCreate1h: 0,
+        cost: Number(m.cost) || 0, calls: Number(m.calls) || 0,
+      })),
+      devices: (payload.devices ?? []).map((d) => ({
+        deviceId: d.deviceId || "unknown",
+        isCurrentDevice: d.deviceId === currentDeviceId,
+        input: Number(d.input) || 0, output: Number(d.output) || 0,
+        cost: Number(d.cost) || 0, calls: Number(d.calls) || 0,
+      })),
     };
   } catch (err) {
     console.error(PREFIX, "Cloud usage query error:", err);
@@ -462,14 +452,13 @@ export async function queryCloudUsage(dateStr: string): Promise<CloudUsageSummar
 
 /**
  * Query cloud heatmap data (all devices, last 91 days).
- * Returns null if not logged in or query fails.
+ * Uses server-side RPC aggregation to avoid PostgREST row limits.
  */
 export async function queryCloudHeatmap(): Promise<Record<string, { tokens: number; cost: number }> | null> {
   if (!isLoggedIn()) return null;
 
   const supabase = getSupabase();
-  const user = getAuthUser();
-  if (!supabase || !user) return null;
+  if (!supabase || !getAuthUser()) return null;
 
   const HEATMAP_DAYS = 91;
   const today = new Date();
@@ -477,39 +466,25 @@ export async function queryCloudHeatmap(): Promise<Record<string, { tokens: numb
   const utcStart = new Date(startLocal.getTime()).toISOString();
 
   try {
-    const { data, error } = await supabase
-      .from("usage_records")
-      .select("input_tokens, output_tokens, cost_usd, recorded_at")
-      .eq("user_id", user.id)
-      .gte("recorded_at", utcStart);
+    const { data, error } = await supabase.rpc("get_cloud_usage_heatmap", {
+      p_utc_start: utcStart,
+      p_tz_offset_minutes: getLocalTzOffsetMinutes(),
+    });
 
     if (error) {
       console.error(PREFIX, "Cloud heatmap query failed:", error.message);
       return null;
     }
 
-    if (!data || data.length === 0) return {};
+    const payload = parseRpcPayload<Record<string, { tokens: number; cost: number }>>(data);
+    if (!payload) return {};
 
-    const tzOffsetHours = getLocalTzOffsetHours();
-    const result: Record<string, { tokens: number; cost: number }> = {};
-
-    for (const row of data) {
-      const utcMs = new Date(row.recorded_at as string).getTime();
-      const localMs = utcMs + tzOffsetHours * 3_600_000;
-      const localDate = new Date(localMs);
-      const dateStr = `${localDate.getUTCFullYear()}-${String(localDate.getUTCMonth() + 1).padStart(2, "0")}-${String(localDate.getUTCDate()).padStart(2, "0")}`;
-
-      const tokens = ((row.input_tokens as number) ?? 0) + ((row.output_tokens as number) ?? 0);
-      const cost = Number(row.cost_usd) || 0;
-
-      if (!result[dateStr]) {
-        result[dateStr] = { tokens: 0, cost: 0 };
-      }
-      result[dateStr].tokens += tokens;
-      result[dateStr].cost += cost;
-    }
-
-    return result;
+    return Object.fromEntries(
+      Object.entries(payload).map(([date, entry]) => [
+        date,
+        { tokens: Number(entry.tokens) || 0, cost: Number(entry.cost) || 0 },
+      ]),
+    );
   } catch (err) {
     console.error(PREFIX, "Cloud heatmap query error:", err);
     return null;
