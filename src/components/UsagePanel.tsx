@@ -547,7 +547,36 @@ export function UsagePanel() {
   );
 
   // Choose data source based on login state
-  const activeSummary = isLoggedIn && cloudSummary ? cloudSummary : summary;
+  // When logged in, prefer cloud (multi-device) but fall back to local maximums
+  // in case backfill hasn't completed yet
+  const activeSummary = (() => {
+    if (isLoggedIn && cloudSummary && summary) {
+      // Merge buckets: per hour, take the larger cost (cloud has multi-device, local has pre-sync)
+      const localBucketMap = new Map(summary.buckets.map((b) => [b.hourStart, b]));
+      const mergedBuckets = cloudSummary.buckets.map((cb) => {
+        const lb = localBucketMap.get(cb.hourStart);
+        if (!lb || cb.cost >= lb.cost) return cb;
+        return lb;
+      });
+      // Add local-only buckets missing from cloud
+      for (const lb of summary.buckets) {
+        if (!mergedBuckets.some((b) => b.hourStart === lb.hourStart)) {
+          mergedBuckets.push(lb);
+        }
+      }
+      mergedBuckets.sort((a, b) => a.hourStart - b.hourStart);
+
+      return {
+        ...cloudSummary,
+        sessions: Math.max(cloudSummary.sessions, summary.sessions),
+        totalInput: Math.max(cloudSummary.totalInput, summary.totalInput),
+        totalOutput: Math.max(cloudSummary.totalOutput, summary.totalOutput),
+        totalCost: Math.max(cloudSummary.totalCost, summary.totalCost),
+        buckets: mergedBuckets,
+      };
+    }
+    return isLoggedIn && cloudSummary ? cloudSummary : summary;
+  })();
   // Merge cloud + local heatmap: cloud wins per-day (multi-device), local fills gaps (pre-login)
   const activeHeatmap = (() => {
     if (isLoggedIn && cloudHeatmapData && heatmapData) {
