@@ -2,6 +2,12 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.43] - 2026-03-23
+
+### Fixed
+- Hydra connection lines hidden behind ProjectContainer
+- Insights "Open Report" option lost after app restart — now scans for latest report on mount
+
 ## [0.8.42] - 2026-03-23
 
 ### Fixed
