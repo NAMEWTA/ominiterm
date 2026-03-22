@@ -3,7 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import { ensureCliLauncher } from "./cli-launchers";
+import { ensureCliLauncher } from "./cli-launchers.ts";
 
 const CLI_NAMES = ["termcanvas", "hydra"] as const;
 const WINDOWS_PATH_KEY = "HKCU\\Environment";
