@@ -2,6 +2,14 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.40] - 2026-03-22
+
+### Fixed
+- Usage panel: merge local + cloud heatmap data so pre-login days appear in the heat map
+- Usage panel: monthly total now includes local usage from before cloud sync
+- Usage panel: daily summary (cost, sessions, tokens) uses the larger of cloud vs local to avoid data loss during backfill
+- Usage panel: hourly activity chart merges cloud + local buckets for complete daily view
+
 ## [0.8.39] - 2026-03-22
 
 ### Fixed
