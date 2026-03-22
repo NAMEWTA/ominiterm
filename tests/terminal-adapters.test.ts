@@ -73,6 +73,32 @@ test("getTerminalLaunchOptions prepends cliOverride args", () => {
   assert.deepEqual(result.args, ["--extra", "--resume", "session-1"]);
 });
 
+test("getTerminalLaunchOptions includes autoApprove args for new claude session", () => {
+  const result = getTerminalLaunchOptions("claude", undefined, true);
+  assert.ok(result);
+  assert.deepEqual(result.args, ["--dangerously-skip-permissions"]);
+});
+
+test("getTerminalLaunchOptions includes autoApprove args when resuming claude session", () => {
+  const result = getTerminalLaunchOptions("claude", "session-1", true);
+  assert.ok(result);
+  assert.deepEqual(result.args, [
+    "--dangerously-skip-permissions",
+    "--resume",
+    "session-1",
+  ]);
+});
+
+test("getTerminalLaunchOptions includes autoApprove args when resuming codex session", () => {
+  const result = getTerminalLaunchOptions("codex", "session-1", true);
+  assert.ok(result);
+  assert.deepEqual(result.args, [
+    "--dangerously-bypass-approvals-and-sandbox",
+    "resume",
+    "session-1",
+  ]);
+});
+
 test("getTerminalPromptArgs defaults to a positional prompt", () => {
   assert.deepEqual(getTerminalPromptArgs("claude", "Explore the repo"), [
     "Explore the repo",
