@@ -190,18 +190,37 @@ interface TokenHeatmapProps {
   animate: boolean;
   /** When provided, overrides the store's local-only heatmapData (e.g. merged local+cloud). */
   data?: Record<string, HeatmapEntry>;
+  onVisible?: () => void;
 }
 
-export function TokenHeatmap({ animate, data }: TokenHeatmapProps): React.ReactElement {
+export function TokenHeatmap({ animate, data, onVisible }: TokenHeatmapProps): React.ReactElement {
   const t = useT();
-  const { heatmapData, heatmapLoading, heatmapError, fetchHeatmap, fetch: fetchDay } = useUsageStore();
+  const { heatmapData, heatmapLoading, heatmapError, fetch: fetchDay } = useUsageStore();
   const [hoveredCell, setHoveredCell] = useState<CellData | null>(null);
   const [hoveredRect, setHoveredRect] = useState<DOMRect | null>(null);
   const cellRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
+  const requestedRef = useRef(false);
 
   useEffect(() => {
-    fetchHeatmap();
-  }, [fetchHeatmap]);
+    if (!containerRef.current || requestedRef.current) return;
+
+    const triggerLoad = () => {
+      if (requestedRef.current) return;
+      requestedRef.current = true;
+      onVisible?.();
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        triggerLoad();
+        observer.disconnect();
+      }
+    }, { rootMargin: "120px 0px" });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [onVisible]);
 
   const effectiveData = data ?? heatmapData;
   const { cells, weeks, monthLabels } = useMemo(() => buildGrid(effectiveData), [effectiveData]);
@@ -246,7 +265,7 @@ export function TokenHeatmap({ animate, data }: TokenHeatmapProps): React.ReactE
   }
 
   return (
-    <div className="px-3 py-2.5">
+    <div ref={containerRef} className="px-3 py-2.5">
       <span className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider">
         {t.usage_heatmap}
       </span>

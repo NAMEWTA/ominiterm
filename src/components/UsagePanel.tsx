@@ -495,11 +495,9 @@ export function UsagePanel() {
   useEffect(() => {
     if (collapsed) return;
     void fetchUsage();
-    void fetchHeatmap();
     void quotaFetch();
     if (isLoggedIn) {
       void fetchCloud();
-      void fetchCloudHeatmap();
     }
     const interval = setInterval(() => {
       void fetchUsage();
@@ -509,7 +507,7 @@ export function UsagePanel() {
       }
     }, 60_000);
     return () => clearInterval(interval);
-  }, [collapsed, isLoggedIn, fetchUsage, fetchHeatmap, quotaFetch, fetchCloud, fetchCloudHeatmap]);
+  }, [collapsed, isLoggedIn, fetchUsage, quotaFetch, fetchCloud]);
 
   // Bridge cost changes to quota store for adaptive polling
   useEffect(() => {
@@ -684,7 +682,16 @@ export function UsagePanel() {
               )}
               <div className="mx-3 h-px bg-[var(--border)]" />
               <div className="usage-section-enter" style={{ animationDelay: "240ms" }}>
-                <TokenHeatmap animate={true} data={activeHeatmap ?? undefined} />
+                <TokenHeatmap
+                  animate={true}
+                  data={activeHeatmap ?? undefined}
+                  onVisible={() => {
+                    void fetchHeatmap();
+                    if (isLoggedIn) {
+                      void fetchCloudHeatmap();
+                    }
+                  }}
+                />
               </div>
             </div>
           ) : (
