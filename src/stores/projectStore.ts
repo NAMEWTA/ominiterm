@@ -399,7 +399,7 @@ export const useProjectStore = create<ProjectStore>((set) => ({
               name: wt.branch,
               path: wt.path,
               position: { x: 0, y: 0 },
-              collapsed: false,
+              collapsed: true,
               terminals: [],
             };
           });
@@ -482,6 +482,11 @@ export const useProjectStore = create<ProjectStore>((set) => ({
                         terminals: w.terminals.filter(
                           (t) => t.id !== terminalId,
                         ),
+                        collapsed:
+                          w.terminals.filter((t) => t.id !== terminalId)
+                            .length === 0
+                            ? true
+                            : w.collapsed,
                       },
                 ),
               },
