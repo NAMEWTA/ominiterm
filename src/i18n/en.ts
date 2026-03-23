@@ -130,6 +130,7 @@ export const en = {
   // Settings page
   settings_general: "General",
   settings_shortcuts: "Shortcuts",
+  settings_version: "Version",
   theme_dark: "Dark",
   theme_light: "Light",
   terminal_font_size: "Terminal font size",

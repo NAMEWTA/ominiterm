@@ -128,6 +128,7 @@ export const zh = {
   // Settings page
   settings_general: "通用",
   settings_shortcuts: "快捷键",
+  settings_version: "版本",
   theme_dark: "深色",
   theme_light: "浅色",
   terminal_font_size: "终端字体大小",

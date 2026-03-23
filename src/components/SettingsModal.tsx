@@ -207,9 +207,16 @@ export function SettingsModal({ onClose }: Props) {
   const backdropRef = useRef<HTMLDivElement>(null);
   const [cliRegistered, setCliRegistered] = useState<boolean | null>(null);
   const [cliLoading, setCliLoading] = useState(false);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
 
   useEffect(() => {
     window.termcanvas?.cli.isRegistered().then(setCliRegistered);
+  }, []);
+
+  useEffect(() => {
+    window.termcanvas?.updater.getVersion().then(setAppVersion).catch(() => {
+      setAppVersion(null);
+    });
   }, []);
 
   useEffect(() => {
@@ -599,6 +606,18 @@ export function SettingsModal({ onClose }: Props) {
                   )}
                 </div>
               )}
+
+              <div className="mt-1 flex items-center justify-between border-t border-[var(--border)] pt-4">
+                <span className="text-[12px] text-[var(--text-muted)]">
+                  {t.settings_version}
+                </span>
+                <span
+                  className="rounded-md bg-[var(--surface)] px-2 py-1 text-[11px] text-[var(--text-secondary)]"
+                  style={{ fontFamily: '"Geist Mono", monospace' }}
+                >
+                  v{appVersion ?? "unknown"}
+                </span>
+              </div>
             </div>
           )}
 
