@@ -2,6 +2,19 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.45] - 2026-03-23
+
+### Fixed
+- Usage panel: cache rate now uses local device data only, avoiding inaccurate mixed cloud/local percentages (#62)
+- Usage panel: show all 24h time buckets for past dates (#61)
+- Light sweep effect: improved visibility and fixed right-side trigger (#19)
+- Preserve permission level (auto-approve) when restoring Claude sessions (#14)
+- Hydra usage now attributed to spawning project instead of separate entry (#21)
+- Windows: replace Unix `unzip` with cross-platform `adm-zip` for font downloads (#32)
+- Windows: normalize Claude project keys for correct session matching (#63)
+- Windows: use `pathToFileURL()` for valid file URLs when opening reports (#64)
+- Windows: use junctions instead of symlinks for Hydra skill links (#66)
+
 ## [0.8.44] - 2026-03-23
 
 ### Fixed
