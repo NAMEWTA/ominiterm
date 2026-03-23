@@ -2,6 +2,15 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.50] - 2026-03-24
+
+### Changed
+- macOS title bar now uses a more native three-part layout with centered workspace title and grouped controls
+- Toolbar actions and zoom controls now share a more consistent visual grouping and spacing rhythm
+
+### Fixed
+- Electron production builds now externalize `adm-zip` correctly so release packaging does not fail during the main-process bundle step
+
 ## [0.8.49] - 2026-03-23
 
 ### Fixed
