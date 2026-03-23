@@ -23,6 +23,7 @@ interface Props {
   onClose: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  onDragStateChange?: (dragging: boolean) => void;
   onOpenFile: (filePath: string, fileName: string) => void;
 }
 
@@ -57,6 +58,7 @@ export function FileTreeCard({
   onClose,
   onMouseEnter,
   onMouseLeave,
+  onDragStateChange,
   onOpenFile,
 }: Props) {
   const t = useT();
@@ -81,7 +83,12 @@ export function FileTreeCard({
   } | null>(null);
   const hasDragged = useRef(false);
 
-  const { register, unregister } = useCardLayoutStore();
+  const register = useCardLayoutStore((s) => s.register);
+  const unregister = useCardLayoutStore((s) => s.unregister);
+  const activeCardId = useCardLayoutStore((s) => s.activeCardId);
+  const recentCardId = useCardLayoutStore((s) => s.recentCardId);
+  const setActiveCardId = useCardLayoutStore((s) => s.setActiveCardId);
+  const setRecentCardId = useCardLayoutStore((s) => s.setRecentCardId);
   const cards = useCardLayoutStore((s) => s.cards);
 
   useEffect(() => {
@@ -95,7 +102,10 @@ export function FileTreeCard({
     [projects],
   );
 
-  const allResolved = resolveAllCardPositions(cards, obstacles);
+  const priorityIds = [activeCardId, recentCardId].filter(
+    (id): id is string => Boolean(id),
+  );
+  const allResolved = resolveAllCardPositions(cards, obstacles, { priorityIds });
   const resolved = allResolved[cardId] ?? { x: pos.x, y: pos.y };
   const resolvedX = resolved.x;
   const resolvedY = resolved.y;
@@ -142,11 +152,14 @@ export function FileTreeCard({
       e.stopPropagation();
       const scale = useCanvasStore.getState().viewport.scale;
       hasDragged.current = false;
+      onDragStateChange?.(true);
+      setActiveCardId(cardId);
+      setRecentCardId(cardId);
       dragRef.current = {
         startX: e.clientX,
         startY: e.clientY,
-        origX: pos.x,
-        origY: pos.y,
+        origX: resolvedX,
+        origY: resolvedY,
       };
       const handleMove = (ev: MouseEvent) => {
         if (!dragRef.current) return;
@@ -161,6 +174,9 @@ export function FileTreeCard({
         });
       };
       const handleUp = () => {
+        onDragStateChange?.(false);
+        setActiveCardId(null);
+        setRecentCardId(cardId);
         if (hasDragged.current && !pinned) {
           onPin();
           setJustPinned(true);
@@ -173,7 +189,16 @@ export function FileTreeCard({
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [pos, pinned, onPin],
+    [
+      cardId,
+      onPin,
+      pinned,
+      resolvedX,
+      resolvedY,
+      onDragStateChange,
+      setActiveCardId,
+      setRecentCardId,
+    ],
   );
 
   const handleResizeStart = useCallback(
@@ -181,6 +206,8 @@ export function FileTreeCard({
       e.preventDefault();
       e.stopPropagation();
       const scale = useCanvasStore.getState().viewport.scale;
+      setActiveCardId(cardId);
+      setRecentCardId(cardId);
       resizeRef.current = {
         startX: e.clientX,
         startY: e.clientY,
@@ -203,6 +230,8 @@ export function FileTreeCard({
         });
       };
       const handleUp = () => {
+        setActiveCardId(null);
+        setRecentCardId(cardId);
         resizeRef.current = null;
         window.removeEventListener("mousemove", handleMove);
         window.removeEventListener("mouseup", handleUp);
@@ -210,7 +239,7 @@ export function FileTreeCard({
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [size],
+    [cardId, setActiveCardId, setRecentCardId, size],
   );
 
   // Render directory tree recursively

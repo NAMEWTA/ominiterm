@@ -13,6 +13,10 @@ import { useDrag } from "../hooks/useDrag";
 import { DiffCard } from "../components/DiffCard";
 import { FileTreeCard } from "../components/FileTreeCard";
 import { FileCard } from "../components/FileCard";
+import {
+  clearHoverCardHideTimeout,
+  scheduleHoverCardHide,
+} from "../components/hoverCardVisibility";
 import { useT } from "../i18n/useT";
 import { useCanvasStore, RIGHT_PANEL_WIDTH, COLLAPSED_TAB_WIDTH } from "../stores/canvasStore";
 import {
@@ -41,11 +45,15 @@ export function WorktreeContainer({
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const diffLeaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const diffCardHovered = useRef(false);
+  const diffPinnedRef = useRef(diffPinned);
+  const diffCardDragging = useRef(false);
 
   const [showFileTree, setShowFileTree] = useState(false);
   const [fileTreePinned, setFileTreePinned] = useState(false);
   const fileTreeLeaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileTreeCardHovered = useRef(false);
+  const fileTreePinnedRef = useRef(fileTreePinned);
+  const fileTreeCardDragging = useRef(false);
 
   const [openFiles, setOpenFiles] = useState<
     { id: string; filePath: string; fileName: string }[]
@@ -234,6 +242,33 @@ export function WorktreeContainer({
     [projectId, worktree.id, worktree.terminals, reorderTerminal],
   );
 
+  diffPinnedRef.current = diffPinned;
+  fileTreePinnedRef.current = fileTreePinned;
+
+  const scheduleDiffHide = useCallback(() => {
+    scheduleHoverCardHide(
+      diffLeaveTimeout,
+      () => ({
+        pinned: diffPinnedRef.current,
+        hovered: diffCardHovered.current,
+        dragging: diffCardDragging.current,
+      }),
+      () => setShowDiff(false),
+    );
+  }, []);
+
+  const scheduleFileTreeHide = useCallback(() => {
+    scheduleHoverCardHide(
+      fileTreeLeaveTimeout,
+      () => ({
+        pinned: fileTreePinnedRef.current,
+        hovered: fileTreeCardHovered.current,
+        dragging: fileTreeCardDragging.current,
+      }),
+      () => setShowFileTree(false),
+    );
+  }, []);
+
   return (
     <div
       className="absolute"
@@ -249,14 +284,8 @@ export function WorktreeContainer({
       }}
       onClick={() => setFocusedWorktree(projectId, worktree.id)}
       onMouseEnter={() => {
-        if (diffLeaveTimeout.current) {
-          clearTimeout(diffLeaveTimeout.current);
-          diffLeaveTimeout.current = null;
-        }
-        if (fileTreeLeaveTimeout.current) {
-          clearTimeout(fileTreeLeaveTimeout.current);
-          fileTreeLeaveTimeout.current = null;
-        }
+        clearHoverCardHideTimeout(diffLeaveTimeout);
+        clearHoverCardHideTimeout(fileTreeLeaveTimeout);
         if (!diffPinned || !fileTreePinned) {
           hoverTimeout.current = setTimeout(() => {
             if (!diffPinned) setShowDiff(true);
@@ -270,14 +299,10 @@ export function WorktreeContainer({
           hoverTimeout.current = null;
         }
         if (!diffPinned) {
-          diffLeaveTimeout.current = setTimeout(() => {
-            if (!diffCardHovered.current) setShowDiff(false);
-          }, 300);
+          scheduleDiffHide();
         }
         if (!fileTreePinned) {
-          fileTreeLeaveTimeout.current = setTimeout(() => {
-            if (!fileTreeCardHovered.current) setShowFileTree(false);
-          }, 300);
+          scheduleFileTreeHide();
         }
       }}
     >
@@ -424,19 +449,16 @@ export function WorktreeContainer({
                 }}
                 onMouseEnter={() => {
                   diffCardHovered.current = true;
-                  if (diffLeaveTimeout.current) {
-                    clearTimeout(diffLeaveTimeout.current);
-                    diffLeaveTimeout.current = null;
-                  }
+                  clearHoverCardHideTimeout(diffLeaveTimeout);
                 }}
                 onMouseLeave={() => {
                   diffCardHovered.current = false;
                   if (!diffPinned) {
-                    diffLeaveTimeout.current = setTimeout(
-                      () => setShowDiff(false),
-                      300,
-                    );
+                    scheduleDiffHide();
                   }
+                }}
+                onDragStateChange={(dragging) => {
+                  diffCardDragging.current = dragging;
                 }}
               />
             )}
@@ -455,19 +477,16 @@ export function WorktreeContainer({
                 }}
                 onMouseEnter={() => {
                   fileTreeCardHovered.current = true;
-                  if (fileTreeLeaveTimeout.current) {
-                    clearTimeout(fileTreeLeaveTimeout.current);
-                    fileTreeLeaveTimeout.current = null;
-                  }
+                  clearHoverCardHideTimeout(fileTreeLeaveTimeout);
                 }}
                 onMouseLeave={() => {
                   fileTreeCardHovered.current = false;
                   if (!fileTreePinned) {
-                    fileTreeLeaveTimeout.current = setTimeout(
-                      () => setShowFileTree(false),
-                      300,
-                    );
+                    scheduleFileTreeHide();
                   }
+                }}
+                onDragStateChange={(dragging) => {
+                  fileTreeCardDragging.current = dragging;
                 }}
                 onOpenFile={(filePath, fileName) => {
                   setOpenFiles((prev) => {

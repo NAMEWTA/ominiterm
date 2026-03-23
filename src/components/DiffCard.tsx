@@ -34,6 +34,7 @@ interface Props {
   onClose: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  onDragStateChange?: (dragging: boolean) => void;
 }
 
 function parseDiff(raw: string, files: FileInfo[]): FileDiff[] {
@@ -115,8 +116,10 @@ export function DiffCard({
   onClose,
   onMouseEnter,
   onMouseLeave,
+  onDragStateChange,
 }: Props) {
   const t = useT();
+  const cardId = `diff:${worktreeId}`;
   const [fileDiffs, setFileDiffs] = useState<FileDiff[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(() => new Set());
@@ -137,14 +140,19 @@ export function DiffCard({
   } | null>(null);
   const hasDragged = useRef(false);
 
-  const { register, unregister } = useCardLayoutStore();
+  const register = useCardLayoutStore((s) => s.register);
+  const unregister = useCardLayoutStore((s) => s.unregister);
+  const activeCardId = useCardLayoutStore((s) => s.activeCardId);
+  const recentCardId = useCardLayoutStore((s) => s.recentCardId);
+  const setActiveCardId = useCardLayoutStore((s) => s.setActiveCardId);
+  const setRecentCardId = useCardLayoutStore((s) => s.setRecentCardId);
   const cards = useCardLayoutStore((s) => s.cards);
 
   // Register this card's anchor position and size
   useEffect(() => {
-    register(worktreeId, { x: pos.x, y: pos.y, w: size.w, h: size.h });
-    return () => unregister(worktreeId);
-  }, [worktreeId, pos.x, pos.y, size.w, size.h, register, unregister]);
+    register(cardId, { x: pos.x, y: pos.y, w: size.w, h: size.h });
+    return () => unregister(cardId);
+  }, [cardId, pos.x, pos.y, size.w, size.h, register, unregister]);
 
   // Collect all project bounds as obstacles for DiffCard deconfliction
   const projects = useProjectStore((s) => s.projects);
@@ -154,8 +162,11 @@ export function DiffCard({
   );
 
   // Compute non-overlapping positions: push right past projects, push down past other DiffCards
-  const allResolved = resolveAllCardPositions(cards, obstacles);
-  const resolved = allResolved[worktreeId] ?? { x: pos.x, y: pos.y };
+  const priorityIds = [activeCardId, recentCardId].filter(
+    (id): id is string => Boolean(id),
+  );
+  const allResolved = resolveAllCardPositions(cards, obstacles, { priorityIds });
+  const resolved = allResolved[cardId] ?? { x: pos.x, y: pos.y };
   const resolvedX = resolved.x;
   const resolvedY = resolved.y;
 
@@ -207,11 +218,14 @@ export function DiffCard({
       e.stopPropagation();
       const scale = useCanvasStore.getState().viewport.scale;
       hasDragged.current = false;
+      onDragStateChange?.(true);
+      setActiveCardId(cardId);
+      setRecentCardId(cardId);
       dragRef.current = {
         startX: e.clientX,
         startY: e.clientY,
-        origX: pos.x,
-        origY: pos.y,
+        origX: resolvedX,
+        origY: resolvedY,
       };
       const handleMove = (ev: MouseEvent) => {
         if (!dragRef.current) return;
@@ -226,6 +240,9 @@ export function DiffCard({
         });
       };
       const handleUp = () => {
+        onDragStateChange?.(false);
+        setActiveCardId(null);
+        setRecentCardId(cardId);
         if (hasDragged.current && !pinned) {
           onPin();
           setJustPinned(true);
@@ -238,7 +255,16 @@ export function DiffCard({
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [pos, pinned, onPin],
+    [
+      cardId,
+      onPin,
+      pinned,
+      resolvedX,
+      resolvedY,
+      onDragStateChange,
+      setActiveCardId,
+      setRecentCardId,
+    ],
   );
 
   const handleResizeStart = useCallback(
@@ -246,6 +272,8 @@ export function DiffCard({
       e.preventDefault();
       e.stopPropagation();
       const scale = useCanvasStore.getState().viewport.scale;
+      setActiveCardId(cardId);
+      setRecentCardId(cardId);
       resizeRef.current = {
         startX: e.clientX,
         startY: e.clientY,
@@ -268,6 +296,8 @@ export function DiffCard({
         });
       };
       const handleUp = () => {
+        setActiveCardId(null);
+        setRecentCardId(cardId);
         resizeRef.current = null;
         window.removeEventListener("mousemove", handleMove);
         window.removeEventListener("mouseup", handleUp);
@@ -275,7 +305,7 @@ export function DiffCard({
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [size],
+    [cardId, setActiveCardId, setRecentCardId, size],
   );
 
   const totalAdd = fileDiffs.reduce((s, f) => s + f.file.additions, 0);
