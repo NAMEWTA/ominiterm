@@ -221,7 +221,7 @@ export function getTerminalLaunchOptions(
   const extraArgs = cliOverride?.args ?? [];
   const base = sessionId ? config.resumeArgs(sessionId) : config.newArgs();
   const extra =
-    autoApprove && !sessionId && config.autoApproveArgs
+    autoApprove && config.autoApproveArgs
       ? config.autoApproveArgs()
       : [];
 
