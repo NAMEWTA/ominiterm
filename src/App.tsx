@@ -20,7 +20,7 @@ import type { ProjectData } from "./types";
 import { normalizeProjectsFocus } from "./stores/projectFocus";
 import { useDrawingStore } from "./stores/drawingStore";
 import { useBrowserCardStore } from "./stores/browserCardStore";
-import { useWorkspaceStore } from "./stores/workspaceStore";
+import { shouldRunAutoSaveBackstop, useWorkspaceStore } from "./stores/workspaceStore";
 import { snapshotState } from "./snapshotState";
 import { updateWindowTitle } from "./titleHelper";
 import { useNotificationStore } from "./stores/notificationStore";
@@ -194,7 +194,7 @@ function useAutoSave() {
     };
 
     const unsubscribe = useWorkspaceStore.subscribe((state, prev) => {
-      if (state.dirty && !prev.dirty) {
+      if (state.dirty && state.lastDirtyAt !== prev.lastDirtyAt) {
         if (debounceTimer) {
           clearTimeout(debounceTimer);
         }
@@ -210,8 +210,8 @@ function useAutoSave() {
     });
 
     const backstopTimer = setInterval(() => {
-      const { dirty, lastSavedAt } = useWorkspaceStore.getState();
-      if (dirty && (!lastSavedAt || Date.now() - lastSavedAt > 60_000)) {
+      const { dirty, lastDirtyAt, lastSavedAt } = useWorkspaceStore.getState();
+      if (shouldRunAutoSaveBackstop({ dirty, lastDirtyAt, lastSavedAt })) {
         void saveSnapshot();
       }
     }, 60_000);

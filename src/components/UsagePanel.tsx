@@ -477,8 +477,6 @@ export function UsagePanel() {
   // Track data version to trigger entry animations
   const [animKey, setAnimKey] = useState(0);
   const prevDateRef = useRef(date);
-  const didPrefetchLocalRef = useRef(false);
-  const didPrefetchCloudRef = useRef(false);
 
   useEffect(() => {
     if (prevDateRef.current !== date) {
@@ -491,28 +489,6 @@ export function UsagePanel() {
   useEffect(() => {
     useAuthStore.getState().init();
   }, []);
-
-  // Warm the caches in the background so opening the panel doesn't kick off the heavy scan.
-  useEffect(() => {
-    if (didPrefetchLocalRef.current) return;
-    didPrefetchLocalRef.current = true;
-    const timer = window.setTimeout(() => {
-      void fetchUsage();
-      void fetchHeatmap();
-      void quotaFetch();
-    }, 1200);
-    return () => window.clearTimeout(timer);
-  }, [fetchUsage, fetchHeatmap, quotaFetch]);
-
-  useEffect(() => {
-    if (!isLoggedIn || didPrefetchCloudRef.current) return;
-    didPrefetchCloudRef.current = true;
-    const timer = window.setTimeout(() => {
-      void fetchCloud();
-      void fetchCloudHeatmap();
-    }, 1200);
-    return () => window.clearTimeout(timer);
-  }, [isLoggedIn, fetchCloud, fetchCloudHeatmap]);
 
   // Fetch on mount / un-collapse, and poll every 60s.
   // Date changes are handled by handleDateChange / cell click directly — no need to re-fetch here.
