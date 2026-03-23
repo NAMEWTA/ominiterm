@@ -2,6 +2,18 @@
 
 All notable changes to TermCanvas will be documented in this file.
 
+## [0.8.49] - 2026-03-23
+
+### Fixed
+- Theme switches now notify running CLI terminals to redraw, reducing stale light/dark input box styling after a theme toggle
+- New terminals inherit explicit theme hints in their PTY environment so CLI tools start with the correct light/dark context
+
+## [0.8.48] - 2026-03-23
+
+### Performance
+- Convert worktree rescans from blocking sync git commands to async execution
+- Skip no-op worktree sync updates to avoid unnecessary canvas rerenders
+
 ## [0.8.47] - 2026-03-23
 
 ### Changed
