@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useMemo, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUsageStore, type HeatmapEntry } from "../../stores/usageStore";
 import { useT } from "../../i18n/useT";
+import { HEATMAP_LAYOUT } from "./heatmap-layout";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -254,14 +255,14 @@ export function TokenHeatmap({ animate, data }: TokenHeatmapProps): React.ReactE
         {/* Weekday labels column */}
         <div className="flex flex-col gap-[3px] shrink-0 mr-0.5">
           {/* Spacer for month labels row */}
-          <div style={{ height: 12 }} />
+          <div style={{ height: HEATMAP_LAYOUT.monthLabelRowHeight }} />
           {Array.from({ length: 7 }, (_, row) => (
             <div
               key={row}
               className="flex items-center justify-end text-[8px] text-[var(--text-faint)]"
               style={{
-                width: 14,
-                height: 10,
+                width: HEATMAP_LAYOUT.weekdayLabelWidth,
+                height: HEATMAP_LAYOUT.cellSize,
                 fontFamily: '"Geist Mono", monospace',
               }}
             >
@@ -277,17 +278,18 @@ export function TokenHeatmap({ animate, data }: TokenHeatmapProps): React.ReactE
             className="grid"
             style={{
               gridTemplateColumns: `repeat(${weeks}, 1fr)`,
-              height: 12,
-              gap: 3,
+              height: HEATMAP_LAYOUT.monthLabelRowHeight,
+              gap: HEATMAP_LAYOUT.gridGap,
             }}
           >
             {monthLabels.map((m) => (
               <span
                 key={`month-${m.column}`}
-                className="text-[8px] text-[var(--text-faint)] leading-[12px]"
+                className="text-[8px] text-[var(--text-faint)]"
                 style={{
                   gridColumn: m.column + 1,
                   gridRow: 1,
+                  lineHeight: `${HEATMAP_LAYOUT.monthLabelLineHeight}px`,
                   fontFamily: '"Geist Mono", monospace',
                 }}
               >
@@ -298,10 +300,11 @@ export function TokenHeatmap({ animate, data }: TokenHeatmapProps): React.ReactE
 
           {/* Cell grid */}
           <div
-            className="grid gap-[3px]"
+            className="grid"
             style={{
               gridTemplateColumns: `repeat(${weeks}, 1fr)`,
-              gridTemplateRows: "repeat(7, 10px)",
+              gridTemplateRows: `repeat(7, ${HEATMAP_LAYOUT.cellSize}px)`,
+              gap: HEATMAP_LAYOUT.gridGap,
             }}
           >
             {Array.from({ length: weeks }, (_, week) =>
