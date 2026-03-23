@@ -50,7 +50,7 @@ export class ApiServer {
 
     try {
       const body =
-        method === "POST" || method === "DELETE"
+        method === "POST" || method === "PUT" || method === "DELETE"
           ? await this.readBody(req)
           : null;
       const result = await this.route(method, pathname, url, body);
@@ -109,6 +109,10 @@ export class ApiServer {
     if (method === "DELETE" && pathname.match(/^\/terminal\/[^/]+$/)) {
       const id = pathname.split("/")[2];
       return this.terminalDestroy(id);
+    }
+    if (method === "PUT" && pathname.match(/^\/terminal\/[^/]+\/custom-title$/)) {
+      const id = pathname.split("/")[2];
+      return this.terminalSetCustomTitle(id, body);
     }
 
     // Diff
@@ -327,6 +331,17 @@ export class ApiServer {
     }
     await this.execRenderer(
       `window.__tcApi.removeTerminal(${JSON.stringify(terminal.projectId)}, ${JSON.stringify(terminal.worktreeId)}, ${JSON.stringify(terminalId)})`,
+    );
+    return { ok: true };
+  }
+
+  private async terminalSetCustomTitle(terminalId: string, body: any) {
+    const customTitle = body?.customTitle;
+    if (typeof customTitle !== "string")
+      throw Object.assign(new Error("customTitle is required"), { status: 400 });
+
+    await this.execRenderer(
+      `window.__tcApi.setCustomTitle(${JSON.stringify(terminalId)}, ${JSON.stringify(customTitle)})`,
     );
     return { ok: true };
   }
