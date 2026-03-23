@@ -10,7 +10,7 @@ import { useViewportCulling } from "../hooks/useViewportCulling";
 import { ProjectContainer } from "../containers/ProjectContainer";
 import { BrowserCard } from "../components/BrowserCard";
 import { DrawingLayer } from "./DrawingLayer";
-import { ConnectionOverlay } from "./ConnectionOverlay";
+
 import { FamilyTreeOverlay } from "../components/FamilyTreeOverlay";
 import { BoxSelectOverlay } from "./BoxSelectOverlay";
 import { useT } from "../i18n/useT";
@@ -68,7 +68,6 @@ export function Canvas() {
             <ProjectContainer project={project} />
           </div>
         ))}
-        <ConnectionOverlay />
         {Object.values(browserCards).map((card) => (
           <BrowserCard key={card.id} card={card} />
         ))}
