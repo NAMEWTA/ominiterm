@@ -88,6 +88,10 @@ let heatmapCache:
   | { data: Record<string, { tokens: number; cost: number }>; cachedAt: number }
   | null = null;
 
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────
 
 function matchPricing(model: string) {
@@ -405,7 +409,6 @@ export async function collectHeatmapData(): Promise<Record<string, { tokens: num
   }
 
   const HEATMAP_DAYS = 91;
-  const BATCH_SIZE = 20;
   const tzOffsetHours = getLocalTzOffsetHours();
 
   // Compute UTC range covering the full 91-day window in local time
@@ -440,38 +443,34 @@ export async function collectHeatmapData(): Promise<Record<string, { tokens: num
     result[dateStr].cost += cost;
   };
 
-  // Process Claude files in batches, yielding between batches
-  for (let i = 0; i < claudeFiles.length; i += BATCH_SIZE) {
-    if (i > 0) await new Promise<void>((r) => setImmediate(r));
-    const batch = claudeFiles.slice(i, i + BATCH_SIZE);
-    for (const f of batch) {
-      try {
-        const mtime = fs.statSync(f).mtimeMs;
-        const mtimeLocal = new Date(mtime + tzOffsetHours * 3600_000);
-        const mtimeDate = mtimeLocal.toISOString().split("T")[0];
-        if (mtimeDate < startDateStr) continue;
-      } catch { continue; }
+  // Yield between files so large session scans don't monopolize the main
+  // process long enough to trigger macOS beachballing while the panel refreshes.
+  for (let i = 0; i < claudeFiles.length; i++) {
+    if (i > 0) await yieldToEventLoop();
+    const f = claudeFiles[i];
+    try {
+      const mtime = fs.statSync(f).mtimeMs;
+      const mtimeLocal = new Date(mtime + tzOffsetHours * 3600_000);
+      const mtimeDate = mtimeLocal.toISOString().split("T")[0];
+      if (mtimeDate < startDateStr) continue;
+    } catch { continue; }
 
-      const { records } = parseClaudeSession(f, utcStart, utcEnd);
-      for (const r of records) bucketRecord(r);
-    }
+    const { records } = parseClaudeSession(f, utcStart, utcEnd);
+    for (const r of records) bucketRecord(r);
   }
 
-  // Process Codex files in batches
-  for (let i = 0; i < codexFiles.length; i += BATCH_SIZE) {
-    if (i > 0) await new Promise<void>((r) => setImmediate(r));
-    const batch = codexFiles.slice(i, i + BATCH_SIZE);
-    for (const f of batch) {
-      try {
-        const mtime = fs.statSync(f).mtimeMs;
-        const mtimeLocal = new Date(mtime + tzOffsetHours * 3600_000);
-        const mtimeDate = mtimeLocal.toISOString().split("T")[0];
-        if (mtimeDate < startDateStr) continue;
-      } catch { continue; }
+  for (let i = 0; i < codexFiles.length; i++) {
+    if (i > 0) await yieldToEventLoop();
+    const f = codexFiles[i];
+    try {
+      const mtime = fs.statSync(f).mtimeMs;
+      const mtimeLocal = new Date(mtime + tzOffsetHours * 3600_000);
+      const mtimeDate = mtimeLocal.toISOString().split("T")[0];
+      if (mtimeDate < startDateStr) continue;
+    } catch { continue; }
 
-      const { records } = parseCodexSession(f, utcStart, utcEnd);
-      for (const r of records) bucketRecord(r);
-    }
+    const { records } = parseCodexSession(f, utcStart, utcEnd);
+    for (const r of records) bucketRecord(r);
   }
 
   heatmapCache = { data: result, cachedAt: Date.now() };
@@ -496,52 +495,45 @@ export async function collectUsage(
     return cached.summary;
   }
 
-  const BATCH_SIZE = 20;
   const tzOffsetHours = getLocalTzOffsetHours();
   const { utcStart, utcEnd } = dateToUtcRange(dateStr);
 
   const allRecords: UsageRecord[] = [];
   const sessionPaths = new Set<string>();
 
-  // Claude sessions — batched to yield between batches
   const claudeFiles = findClaudeJsonlFiles();
-  for (let i = 0; i < claudeFiles.length; i += BATCH_SIZE) {
-    if (i > 0) await new Promise<void>((r) => setImmediate(r));
-    const batch = claudeFiles.slice(i, i + BATCH_SIZE);
-    for (const f of batch) {
-      try {
-        const mtime = fs.statSync(f).mtimeMs;
-        const mtimeLocal = new Date(mtime + tzOffsetHours * 3600_000);
-        const mtimeDate = mtimeLocal.toISOString().split("T")[0];
-        if (mtimeDate < dateStr) continue;
-      } catch { continue; }
+  for (let i = 0; i < claudeFiles.length; i++) {
+    if (i > 0) await yieldToEventLoop();
+    const f = claudeFiles[i];
+    try {
+      const mtime = fs.statSync(f).mtimeMs;
+      const mtimeLocal = new Date(mtime + tzOffsetHours * 3600_000);
+      const mtimeDate = mtimeLocal.toISOString().split("T")[0];
+      if (mtimeDate < dateStr) continue;
+    } catch { continue; }
 
-      const { records } = parseClaudeSession(f, utcStart, utcEnd);
-      if (records.length > 0) {
-        allRecords.push(...records);
-        sessionPaths.add(f);
-      }
+    const { records } = parseClaudeSession(f, utcStart, utcEnd);
+    if (records.length > 0) {
+      allRecords.push(...records);
+      sessionPaths.add(f);
     }
   }
 
-  // Codex sessions — batched
   const codexFiles = findCodexJsonlFiles();
-  for (let i = 0; i < codexFiles.length; i += BATCH_SIZE) {
-    if (i > 0) await new Promise<void>((r) => setImmediate(r));
-    const batch = codexFiles.slice(i, i + BATCH_SIZE);
-    for (const f of batch) {
-      try {
-        const mtime = fs.statSync(f).mtimeMs;
-        const mtimeLocal = new Date(mtime + tzOffsetHours * 3600_000);
-        const mtimeDate = mtimeLocal.toISOString().split("T")[0];
-        if (mtimeDate < dateStr) continue;
-      } catch { continue; }
+  for (let i = 0; i < codexFiles.length; i++) {
+    if (i > 0) await yieldToEventLoop();
+    const f = codexFiles[i];
+    try {
+      const mtime = fs.statSync(f).mtimeMs;
+      const mtimeLocal = new Date(mtime + tzOffsetHours * 3600_000);
+      const mtimeDate = mtimeLocal.toISOString().split("T")[0];
+      if (mtimeDate < dateStr) continue;
+    } catch { continue; }
 
-      const { records } = parseCodexSession(f, utcStart, utcEnd);
-      if (records.length > 0) {
-        allRecords.push(...records);
-        sessionPaths.add(f);
-      }
+    const { records } = parseCodexSession(f, utcStart, utcEnd);
+    if (records.length > 0) {
+      allRecords.push(...records);
+      sessionPaths.add(f);
     }
   }
 

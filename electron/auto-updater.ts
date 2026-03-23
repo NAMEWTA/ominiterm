@@ -7,17 +7,24 @@ import { MacCustomUpdater } from "./mac-updater";
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const IS_MAC = process.platform === "darwin";
+const IS_DEV = !!process.env.VITE_DEV_SERVER_URL;
 
 let checkTimer: ReturnType<typeof setInterval> | null = null;
 let macUpdater: MacCustomUpdater | null = null;
 
 export function setupAutoUpdater(window: BrowserWindow): void {
+  // Keep updater IPC available in dev, but never let the dev instance
+  // touch shared updater state or trigger downloads/install flows.
+  ipcMain.handle("updater:get-version", () => app.getVersion());
+
+  if (IS_DEV) {
+    ipcMain.handle("updater:check", () => null);
+    return;
+  }
+
   const checkFn = IS_MAC
     ? setupMacUpdater(window)
     : setupElectronUpdater(window);
-
-  // Shared IPC: version query
-  ipcMain.handle("updater:get-version", () => app.getVersion());
 
   // Initial check after short delay, then periodic
   setTimeout(() => checkFn(), 5000);

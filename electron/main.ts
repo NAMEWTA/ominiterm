@@ -42,6 +42,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
+if (isDev) {
+  app.setPath("userData", path.join(app.getPath("appData"), "termcanvas-dev"));
+}
 const skipLock = isDev || !!process.env.TERMCANVAS_SKIP_LOCK;
 const gotLock = skipLock || app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -53,6 +56,11 @@ if (!gotLock) {
 }
 
 const PORT_FILE = path.join(TERMCANVAS_DIR, "port");
+
+function perfLog(label: string, details: Record<string, unknown>) {
+  if (!isDev) return;
+  console.log(`[Perf] ${label}`, details);
+}
 
 function writePortFile(port: number) {
   fs.writeFileSync(PORT_FILE, String(port), "utf-8");
@@ -307,9 +315,21 @@ function setupIpc() {
   });
 
   ipcMain.handle("project:diff", async (_event, worktreePath: string) => {
+    const startedAt = Date.now();
     try {
-      return await getProjectDiff(worktreePath);
+      const result = await getProjectDiff(worktreePath);
+      perfLog("project:diff", {
+        worktreePath,
+        ms: Date.now() - startedAt,
+        files: result.files.length,
+        diffLength: result.diff.length,
+      });
+      return result;
     } catch {
+      perfLog("project:diff:error", {
+        worktreePath,
+        ms: Date.now() - startedAt,
+      });
       return { diff: "", files: [] };
     }
   });
@@ -545,11 +565,25 @@ function setupIpc() {
 
   // Usage statistics
   ipcMain.handle("usage:query", async (_event, dateStr: string) => {
-    return await collectUsage(dateStr);
+    const startedAt = Date.now();
+    const result = await collectUsage(dateStr);
+    perfLog("usage:query", {
+      dateStr,
+      ms: Date.now() - startedAt,
+      sessions: result.sessions,
+      totalCost: result.totalCost,
+    });
+    return result;
   });
 
   ipcMain.handle("usage:heatmap", async () => {
-    return await collectHeatmapData();
+    const startedAt = Date.now();
+    const result = await collectHeatmapData();
+    perfLog("usage:heatmap", {
+      ms: Date.now() - startedAt,
+      days: Object.keys(result).length,
+    });
+    return result;
   });
 
   ipcMain.handle("usage:query-cloud", async (_event, dateStr: string) => {
@@ -562,7 +596,14 @@ function setupIpc() {
 
   ipcMain.handle("quota:fetch", async () => {
     const { fetchQuota } = await import("./quota-fetcher");
-    return fetchQuota();
+    const startedAt = Date.now();
+    const result = await fetchQuota();
+    perfLog("quota:fetch", {
+      ms: Date.now() - startedAt,
+      ok: result.ok,
+      rateLimited: result.ok ? false : result.rateLimited,
+    });
+    return result;
   });
 
   // Insights
