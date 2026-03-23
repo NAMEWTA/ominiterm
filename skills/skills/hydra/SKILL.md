@@ -1,7 +1,7 @@
 ---
 name: hydra
 description: Spawn AI sub-agents in isolated git worktrees via Hydra. Use when tasks can be parallelized or decomposed.
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Hydra Sub-Agent Tool
