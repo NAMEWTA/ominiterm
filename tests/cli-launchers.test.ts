@@ -32,6 +32,9 @@ test("getWindowsCliLauncherContent targets the bundled js file", () => {
 });
 
 test("ensureCliLauncher creates a symlink on unix", () => {
+  if (process.platform === "win32") {
+    return;
+  }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-launcher-unix-"));
   const jsPath = path.join(dir, "hydra.js");
   fs.writeFileSync(jsPath, "#!/usr/bin/env node\n");

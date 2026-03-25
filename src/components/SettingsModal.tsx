@@ -26,7 +26,6 @@ type Tab = SettingsTab;
 
 const SHORTCUT_KEYS: { key: keyof ShortcutMap; labelKey: string }[] = [
   { key: "addProject", labelKey: "shortcut_add_project" },
-  { key: "cycleFocusLevel", labelKey: "shortcut_cycle_focus_level" },
   { key: "toggleRightPanel", labelKey: "shortcut_toggle_right_panel" },
   { key: "newTerminal", labelKey: "shortcut_new_terminal" },
   { key: "saveWorkspace", labelKey: "shortcut_save_workspace" },
@@ -36,11 +35,6 @@ const SHORTCUT_KEYS: { key: keyof ShortcutMap; labelKey: string }[] = [
   { key: "toggleStarFocused", labelKey: "shortcut_toggle_star_focused" },
   { key: "nextTerminal", labelKey: "shortcut_next_terminal" },
   { key: "prevTerminal", labelKey: "shortcut_prev_terminal" },
-  { key: "clearFocus", labelKey: "shortcut_clear_focus" },
-  { key: "spanDefault", labelKey: "shortcut_span_default" },
-  { key: "spanWide", labelKey: "shortcut_span_wide" },
-  { key: "spanTall", labelKey: "shortcut_span_tall" },
-  { key: "spanLarge", labelKey: "shortcut_span_large" },
 ];
 
 function ShortcutRow({
@@ -192,7 +186,16 @@ function AgentsTabContent() {
 
 export function SettingsModal({ onClose }: Props) {
   const { locale, setLocale } = useLocaleStore();
-  const { animationBlur, setAnimationBlur, terminalFontSize, setTerminalFontSize, terminalFontFamily, setTerminalFontFamily, composerEnabled, setComposerEnabled, drawingEnabled, setDrawingEnabled, browserEnabled, setBrowserEnabled, minimumContrastRatio, setMinimumContrastRatio } = usePreferencesStore();
+  const {
+    terminalFontSize,
+    setTerminalFontSize,
+    terminalFontFamily,
+    setTerminalFontFamily,
+    composerEnabled,
+    setComposerEnabled,
+    minimumContrastRatio,
+    setMinimumContrastRatio,
+  } = usePreferencesStore();
   const [fontSizeDraft, setFontSizeDraft] = useState(terminalFontSize);
   const { shortcuts, setShortcut, resetAll } = useShortcutStore();
   const [downloadedFonts, setDownloadedFonts] = useState<Set<string>>(new Set());
@@ -475,30 +478,6 @@ export function SettingsModal({ onClose }: Props) {
                 </div>
               </div>
 
-              {/* Animation blur */}
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] text-[var(--text-secondary)]">
-                  {t.animation_blur}
-                </span>
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="range"
-                    min="0"
-                    max="3"
-                    step="0.1"
-                    value={animationBlur}
-                    onChange={(e) => setAnimationBlur(Number(e.target.value))}
-                    className="w-24 accent-[var(--accent)]"
-                  />
-                  <span
-                    className="text-[12px] text-[var(--text-muted)] w-10 text-right tabular-nums"
-                    style={{ fontFamily: '"Geist Mono", monospace' }}
-                  >
-                    {animationBlur === 0 ? "Off" : `${animationBlur.toFixed(1)}`}
-                  </span>
-                </div>
-              </div>
-
               {/* Minimum contrast ratio */}
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-[var(--text-secondary)]">
@@ -543,58 +522,6 @@ export function SettingsModal({ onClose }: Props) {
                   <button
                     className={!composerEnabled ? activeBtn : inactiveBtn}
                     onClick={() => setComposerEnabled(false)}
-                  >
-                    Off
-                  </button>
-                </div>
-              </div>
-
-              {/* Drawing toggle */}
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[13px] text-[var(--text-secondary)]">
-                    {t.drawing_toggle}
-                  </span>
-                  <span className="text-[11px] text-[var(--text-muted)]">
-                    {t.drawing_toggle_desc}
-                  </span>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    className={drawingEnabled ? activeBtn : inactiveBtn}
-                    onClick={() => setDrawingEnabled(true)}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={!drawingEnabled ? activeBtn : inactiveBtn}
-                    onClick={() => setDrawingEnabled(false)}
-                  >
-                    Off
-                  </button>
-                </div>
-              </div>
-
-              {/* Browser toggle */}
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[13px] text-[var(--text-secondary)]">
-                    {t.browser_toggle}
-                  </span>
-                  <span className="text-[11px] text-[var(--text-muted)]">
-                    {t.browser_toggle_desc}
-                  </span>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    className={browserEnabled ? activeBtn : inactiveBtn}
-                    onClick={() => setBrowserEnabled(true)}
-                  >
-                    On
-                  </button>
-                  <button
-                    className={!browserEnabled ? activeBtn : inactiveBtn}
-                    onClick={() => setBrowserEnabled(false)}
                   >
                     Off
                   </button>

@@ -3,6 +3,7 @@ export const zh = {
   cancel: "取消",
   save: "保存",
   dont_save: "不保存",
+  collapse: "收起",
 
   // App – CloseDialog
   save_workspace_title: "保存工作区？",
@@ -22,6 +23,8 @@ export const zh = {
   add: "+ 添加",
   open: "打开",
   no_projects: "暂无项目",
+  sidebar_worktrees: "工作树",
+  sidebar_terminals: "终端",
   "hub.none": "无焦点",
   "hub.empty": "无目标",
   "hub.level.terminal": "终端",
@@ -44,6 +47,7 @@ export const zh = {
   new_terminal: "新建终端",
   lazygit: "Git (lazygit)",
   new_terminal_btn: "+ 新建终端",
+  board_empty_state: "这个项目里还没有终端。选择一个工作树并新建终端即可开始。",
 
   // ProjectContainer
   project_label: "项目",
@@ -237,6 +241,8 @@ export const zh = {
 
   // Usage panel
   usage_title: "用量",
+  right_rail_label: "面板",
+  right_rail_no_terminal: "请先聚焦一个终端，再查看对应工作树的文件和变更。",
   usage_monthly: "本月累计",
   usage_sessions: "会话",
   usage_output: "输出",
@@ -298,14 +304,15 @@ export const zh = {
   // Welcome popup
   welcome_title: "termcanvas",
   welcome_heading: "欢迎使用 TermCanvas！",
-  welcome_desc: "在无限画布上管理终端。",
+  welcome_desc: "按项目组织你的终端，在看板里同时浏览它们，需要时再进入单终端详情页深度操作。",
+  welcome_board_preview: "项目看板预览",
   welcome_quick_start: "快速开始：",
   welcome_step_1: "点击「Add Project」添加项目",
-  welcome_step_2: "在工作树中打开终端",
-  welcome_step_3: "自由平移和缩放画布",
+  welcome_step_2: "在看板顶部选择工作树并新建终端",
+  welcome_step_3: "单击聚焦终端，双击进入全页详情",
   welcome_shortcuts: "快捷键：",
   welcome_github: "GitHub:",
-  welcome_dismiss: "按 Enter 进入交互教程，按 Escape 跳过。",
+  welcome_dismiss: "关闭此面板后，即可开始使用新的终端看板布局。",
 
   // Canvas empty state
   canvas_empty_title: "还没有项目",

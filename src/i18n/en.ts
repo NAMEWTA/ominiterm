@@ -3,6 +3,7 @@ export const en = {
   cancel: "Cancel",
   save: "Save",
   dont_save: "Don't Save",
+  collapse: "Collapse",
 
   // App – CloseDialog
   save_workspace_title: "Save workspace?",
@@ -23,6 +24,8 @@ export const en = {
   add: "+ Add",
   open: "Open",
   no_projects: "No projects",
+  sidebar_worktrees: "worktrees",
+  sidebar_terminals: "terminals",
   "hub.none": "No focus",
   "hub.empty": "No targets",
   "hub.level.terminal": "Terminal",
@@ -45,6 +48,7 @@ export const en = {
   new_terminal: "New terminal",
   lazygit: "Git (lazygit)",
   new_terminal_btn: "+ New Terminal",
+  board_empty_state: "No terminals in this project yet. Choose a worktree and create one to get started.",
 
   // ProjectContainer
   project_label: "Project",
@@ -239,6 +243,8 @@ export const en = {
 
   // Usage panel
   usage_title: "Usage",
+  right_rail_label: "Inspector",
+  right_rail_no_terminal: "Focus a terminal to view worktree files and diff.",
   usage_monthly: "This month",
   usage_sessions: "Sessions",
   usage_output: "Output",
@@ -300,14 +306,15 @@ export const en = {
   // Welcome popup
   welcome_title: "termcanvas",
   welcome_heading: "Welcome to TermCanvas!",
-  welcome_desc: "Manage terminals on an infinite canvas.",
+  welcome_desc: "Work by project, keep every terminal visible in a board, and jump into a focused terminal detail view when you need depth.",
+  welcome_board_preview: "Project Board Preview",
   welcome_quick_start: "Quick Start:",
   welcome_step_1: "Click \"Add Project\" to add a project",
-  welcome_step_2: "Open terminals in your worktrees",
-  welcome_step_3: "Pan & zoom the canvas freely",
+  welcome_step_2: "Choose a worktree and create terminals from the board header",
+  welcome_step_3: "Single-click to focus a terminal, double-click to open it full page",
   welcome_shortcuts: "Key Shortcuts:",
   welcome_github: "GitHub:",
-  welcome_dismiss: "Press Enter to start the interactive tutorial, or Escape to skip.",
+  welcome_dismiss: "Close this panel to start working in the new board layout.",
 
   // Canvas empty state
   canvas_empty_title: "No projects yet",

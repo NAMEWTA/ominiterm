@@ -3,40 +3,28 @@ import { hasPrimaryModifier } from "../hooks/shortcutTarget.ts";
 
 export interface ShortcutMap {
   addProject: string;
-  cycleFocusLevel: string;
   newTerminal: string;
   saveWorkspace: string;
   saveWorkspaceAs: string;
   renameTerminalTitle: string;
   nextTerminal: string;
   prevTerminal: string;
-  clearFocus: string;
   closeFocused: string;
   toggleRightPanel: string;
   toggleStarFocused: string;
-  spanDefault: string;
-  spanWide: string;
-  spanTall: string;
-  spanLarge: string;
 }
 
 export const DEFAULT_SHORTCUTS: ShortcutMap = {
   addProject: "mod+o",
-  cycleFocusLevel: "mod+g",
   newTerminal: "mod+t",
   saveWorkspace: "mod+s",
   saveWorkspaceAs: "mod+shift+s",
   renameTerminalTitle: "mod+;",
   nextTerminal: "mod+]",
   prevTerminal: "mod+[",
-  clearFocus: "mod+e",
   closeFocused: "mod+d",
   toggleRightPanel: "mod+/",
   toggleStarFocused: "mod+f",
-  spanDefault: "mod+1",
-  spanWide: "mod+2",
-  spanTall: "mod+3",
-  spanLarge: "mod+4",
 };
 
 const STORAGE_KEY = "termcanvas-shortcuts";

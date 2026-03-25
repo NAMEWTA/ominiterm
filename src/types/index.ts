@@ -83,11 +83,11 @@ export interface TerminalData {
   customTitle?: string;
   starred?: boolean;
   type: TerminalType;
-  minimized: boolean;
   focused: boolean;
   ptyId: number | null;
   status: TerminalStatus;
-  span: { cols: number; rows: number };
+  minimized?: boolean;
+  span?: { cols: number; rows: number };
   origin?: TerminalOrigin;
   parentTerminalId?: string;
   scrollback?: string;
@@ -100,24 +100,26 @@ export interface WorktreeData {
   id: string;
   name: string;
   path: string;
-  position: Position;
-  collapsed: boolean;
   terminals: TerminalData[];
+  position?: Position;
+  collapsed?: boolean;
 }
 
 export interface ProjectData {
   id: string;
   name: string;
   path: string;
-  position: Position;
-  collapsed: boolean;
-  zIndex: number;
   worktrees: WorktreeData[];
+  position?: Position;
+  collapsed?: boolean;
+  zIndex?: number;
 }
 
 export interface CanvasState {
-  viewport: Viewport;
+  viewport?: Viewport;
   projects: ProjectData[];
+  drawings?: unknown;
+  browserCards?: unknown;
 }
 
 // Usage statistics types
@@ -264,7 +266,7 @@ export interface TermCanvasAPI {
     onChanged: (callback: (worktreePath: string) => void) => () => void;
   };
   state: {
-    load: () => Promise<CanvasState | null>;
+    load: () => Promise<unknown | null>;
     save: (state: unknown) => Promise<void>;
   };
   workspace: {

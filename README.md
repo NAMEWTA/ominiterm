@@ -4,7 +4,7 @@
 
 # TermCanvas
 
-**Your terminals, on an infinite canvas.**
+**Your terminals, organized as a project board.**
 
 [![GitHub release](https://img.shields.io/github/v/release/blueberrycongee/termcanvas)](https://github.com/blueberrycongee/termcanvas/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -15,15 +15,15 @@
 
 <br>
 
-<img src="docs/image.png" alt="TermCanvas demo — multiple AI agents on an infinite canvas" />
+<img src="docs/image.png" alt="TermCanvas demo — multiple AI agents in a project terminal board" />
 
 </div>
 
 <br>
 
-TermCanvas spreads all your terminals across an infinite spatial canvas — no more tabs, no more split panes. Drag them around, zoom in to focus, zoom out to see the big picture, and annotate with freehand drawings.
+TermCanvas organizes your terminals into a project-first workspace shell: a left project navigator, a two-column terminal board for the current project, and a full-page terminal detail view when you need depth.
 
-It organizes everything in a **Project → Worktree → Terminal** hierarchy that mirrors how you actually use git. Add a project, and TermCanvas auto-detects its worktrees. Create a new worktree from the terminal, and it appears on the canvas instantly.
+It still mirrors your git workflow with a **Project → Worktree → Terminal** hierarchy. Add a project, TermCanvas auto-detects its worktrees, and create terminals directly from the project board.
 
 <p align="right"><a href="./README.zh-CN.md">中文文档 →</a></p>
 
@@ -48,24 +48,24 @@ npm run dev
 
 ## Features
 
-### Canvas
+### Project Board
 
-Infinite canvas — pan, zoom, and arrange terminals freely. Three-layer hierarchy: projects contain worktrees, worktrees contain terminals. New worktrees appear automatically as you create them.
+Project-first shell — switch projects from the left rail, inspect all terminals for the current project in a unified two-column board, and keep worktree context visible through terminal badges instead of nested floating containers.
 
-Double-click a terminal title bar to zoom-to-fit. Drag to reorder. Box-select multiple terminals. Annotate with pen, text, rectangles, and arrows. Save your entire layout to a `.termcanvas` file.
+Single-click focuses a terminal for Composer and keyboard actions. Double-click opens a dedicated terminal detail page that fills the main content area.
 
 ### AI Coding Agents
 
 First-class support for **Claude Code**, **Codex**, **Kimi**, **Gemini**, and **OpenCode**.
 
 - **Composer** — a unified input bar that sends prompts to the focused agent, with image paste support
-- **Live status & completion glow** — see at a glance whether an agent is working, waiting, or done
+- **Live status** — see at a glance whether an agent is working, waiting, or done
 - **Session resume** — close and reopen an agent terminal without losing context
-- **Inline diff cards** — review an agent's changes without leaving the canvas
+- **Right-rail diff + files** — inspect a terminal's worktree without leaving the board
 
 ### Terminals
 
-Shell, lazygit, and tmux terminals live alongside AI agents on the same canvas. Star important terminals and cycle through them with <kbd>⌘</kbd> <kbd>J</kbd> / <kbd>K</kbd>. Four size presets, customizable titles, per-agent CLI override.
+Shell, lazygit, and tmux terminals live alongside AI agents in the same project board. Focus terminals from the board, open one full-page when needed, customize titles, star important terminals, and override CLI paths per agent.
 
 ### Usage Tracking
 
@@ -90,7 +90,7 @@ Both CLIs are bundled with the app. Register them from Settings to use in any te
 Usage: termcanvas <project|terminal|diff|state> <command> [args]
 
 Project commands:
-  project add <path>                          Add a project to the canvas
+  project add <path>                          Add a project to the workspace
   project list                                List all projects
   project remove <id>                         Remove a project
   project rescan <id>                         Rescan worktrees for a project
@@ -131,7 +131,7 @@ termcanvas diff ~/my-repo --summary
 
 <br>
 
-Hydra lets you break a big task into smaller pieces and hand each piece to an AI agent running in its own git worktree. Every agent gets its own terminal on the canvas, so you can watch them all work in parallel.
+Hydra lets you break a big task into smaller pieces and hand each piece to an AI agent running in its own git worktree. Every agent gets its own terminal in the board, so you can watch them all work in parallel.
 
 **The easiest way to use Hydra is to ask your AI agent directly.** After running `hydra init` in your project, just tell your agent:
 
@@ -152,7 +152,7 @@ hydra list
 hydra cleanup <agent-id>
 ```
 
-`hydra spawn` creates a worktree + branch, opens a terminal on the canvas, and sends the task. Pass `--auto-approve` to inherit the parent agent's permission level. For read-only tasks (review, analysis), pass `--worktree <path>` to reuse an existing worktree.
+`hydra spawn` creates a worktree + branch, opens a terminal in the board, and sends the task. Pass `--auto-approve` to inherit the parent agent's permission level. For read-only tasks (review, analysis), pass `--worktree <path>` to reuse an existing worktree.
 
 </details>
 
@@ -165,20 +165,16 @@ All shortcuts are customizable in Settings → Shortcuts. On Windows/Linux, repl
 | Shortcut | Action |
 |----------|--------|
 | <kbd>⌘</kbd> <kbd>O</kbd> | Add project |
-| <kbd>⌘</kbd> <kbd>B</kbd> | Toggle sidebar |
 | <kbd>⌘</kbd> <kbd>/</kbd> | Toggle right panel (usage) |
 | <kbd>⌘</kbd> <kbd>T</kbd> | New terminal |
 | <kbd>⌘</kbd> <kbd>D</kbd> | Close focused terminal |
 | <kbd>⌘</kbd> <kbd>;</kbd> | Rename terminal title |
 | <kbd>⌘</kbd> <kbd>]</kbd> | Next terminal |
 | <kbd>⌘</kbd> <kbd>[</kbd> | Previous terminal |
-| <kbd>⌘</kbd> <kbd>E</kbd> | Unfocus / refocus last terminal |
 | <kbd>⌘</kbd> <kbd>F</kbd> | Star / unstar focused terminal |
-| <kbd>⌘</kbd> <kbd>J</kbd> | Next starred terminal |
-| <kbd>⌘</kbd> <kbd>K</kbd> | Previous starred terminal |
 | <kbd>⌘</kbd> <kbd>S</kbd> | Save workspace |
 | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>S</kbd> | Save workspace as |
-| <kbd>⌘</kbd> <kbd>1</kbd>–<kbd>4</kbd> | Terminal size: default / wide / tall / large |
+| <kbd>Esc</kbd> | Return from terminal detail to the project board |
 
 ---
 
@@ -195,6 +191,6 @@ All shortcuts are customizable in Settings → Shortcuts. On Windows/Linux, repl
 
 <br>
 
-**Acknowledgements** — [lazygit](https://github.com/jesseduffield/lazygit) is integrated as a built-in terminal type for visual git management on the canvas.
+**Acknowledgements** — [lazygit](https://github.com/jesseduffield/lazygit) is integrated as a built-in terminal type for visual git management inside the project board.
 
 **Contributing** — fork, branch, and open a PR. Licensed under [MIT](LICENSE).

@@ -127,12 +127,11 @@ test("rename title shortcut defaults to mod+semicolon", () => {
   assert.equal(DEFAULT_SHORTCUTS.renameTerminalTitle, "mod+;");
 });
 
-test("cycle focus level shortcut defaults to mod+g and matches correctly", () => {
-  assert.equal(DEFAULT_SHORTCUTS.cycleFocusLevel, "mod+g");
-
+test("toggle right panel shortcut defaults to mod+slash and matches correctly", () => {
+  assert.equal(DEFAULT_SHORTCUTS.toggleRightPanel, "mod+/");
   withPlatform("darwin", () => {
     assert.equal(
-      matchesShortcut(createKeyboardEvent({ key: "g", metaKey: true }), "mod+g"),
+      matchesShortcut(createKeyboardEvent({ key: "/", metaKey: true }), "mod+/"),
       true,
     );
   });

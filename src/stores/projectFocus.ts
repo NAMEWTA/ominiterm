@@ -33,7 +33,7 @@ export function getWorktreeFocusOrder(
     }
   }
 
-  return worktrees.map((w, index) => ({ ...w, index }));
+  return worktrees.map((worktree, index) => ({ ...worktree, index }));
 }
 
 export function getTerminalFocusOrder(

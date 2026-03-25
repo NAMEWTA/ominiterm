@@ -1,16 +1,10 @@
 import { useProjectStore } from "./stores/projectStore";
-import { useCanvasStore } from "./stores/canvasStore";
-import { useDrawingStore } from "./stores/drawingStore";
-import { useBrowserCardStore } from "./stores/browserCardStore";
 import { serializeAllTerminals } from "./terminal/terminalRegistry";
 import { logSlowRendererPath } from "./utils/devPerf";
 
 export interface WorkspaceSnapshot {
   version: number;
-  viewport: ReturnType<typeof useCanvasStore.getState>["viewport"];
   projects: ReturnType<typeof useProjectStore.getState>["projects"];
-  drawings: ReturnType<typeof useDrawingStore.getState>["elements"];
-  browserCards: ReturnType<typeof useBrowserCardStore.getState>["cards"];
 }
 
 export function buildSnapshotState(): WorkspaceSnapshot {
@@ -30,11 +24,8 @@ export function buildSnapshotState(): WorkspaceSnapshot {
   }));
 
   const snapshot = {
-    version: 1,
-    viewport: useCanvasStore.getState().viewport,
+    version: 2,
     projects,
-    drawings: useDrawingStore.getState().elements,
-    browserCards: useBrowserCardStore.getState().cards,
   };
 
   logSlowRendererPath("snapshotState.build", startedAt, {

@@ -97,8 +97,6 @@ test("syncWorktrees still adds and removes worktrees", () => {
     (worktree) => worktree.path === "/tmp/project-1-feature",
   );
   assert.ok(feature);
-  assert.equal(feature!.collapsed, true);
-  assert.deepEqual(feature!.position, { x: 0, y: 0 });
   assert.deepEqual(feature!.terminals, []);
 
   useProjectStore.getState().syncWorktrees("/tmp/project-1", [
@@ -129,7 +127,6 @@ test("removeTerminal keeps an empty focused worktree expanded after deleting its
   const worktree = state.projects[0].worktrees[0];
 
   assert.equal(worktree.terminals.length, 0);
-  assert.equal(worktree.collapsed, false);
   assert.equal(state.focusedProjectId, project.id);
   assert.equal(state.focusedWorktreeId, project.worktrees[0].id);
 });

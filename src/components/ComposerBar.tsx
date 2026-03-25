@@ -5,7 +5,11 @@ import {
 } from "../stores/projectStore";
 import { useComposerStore } from "../stores/composerStore";
 import { useNotificationStore } from "../stores/notificationStore";
-import { useCanvasStore, RIGHT_PANEL_WIDTH, COLLAPSED_TAB_WIDTH } from "../stores/canvasStore";
+import {
+  COLLAPSED_TAB_WIDTH,
+  RIGHT_RAIL_WIDTH,
+  useUiShellStore,
+} from "../stores/uiShellStore";
 import { getComposerAdapter } from "../terminal/cliConfig";
 import { filterSlashCommands } from "../terminal/slashCommands";
 import { shouldSubmitComposerFromKeyEvent } from "./composerInputBehavior";
@@ -140,7 +144,9 @@ export function ComposerBar() {
     (s) => s.updateTerminalCustomTitle,
   );
   const composerLeft = 0;
-  const composerRight = useCanvasStore((s) => s.rightPanelCollapsed ? COLLAPSED_TAB_WIDTH : RIGHT_PANEL_WIDTH);
+  const composerRight = useUiShellStore((state) =>
+    state.rightRailCollapsed ? COLLAPSED_TAB_WIDTH : RIGHT_RAIL_WIDTH,
+  );
   const isRenameMode = mode === "renameTerminalTitle";
 
   const supportedTerminals = useMemo(

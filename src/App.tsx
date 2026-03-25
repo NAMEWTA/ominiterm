@@ -1,59 +1,55 @@
-import { useEffect, useState, useCallback } from "react";
-import { Canvas } from "./canvas/Canvas";
+import { useEffect, useMemo, useState } from "react";
 import { Toolbar } from "./toolbar/Toolbar";
 import { NotificationToast } from "./components/NotificationToast";
-import { Hub } from "./components/Hub";
 import { initUpdaterListeners } from "./stores/updaterStore";
 import { ComposerBar } from "./components/ComposerBar";
 import { usePreferencesStore } from "./stores/preferencesStore";
-import { DrawingPanel } from "./toolbar/DrawingPanel";
 import { ShortcutHints } from "./components/ShortcutHints";
-import { CompletionGlow } from "./components/CompletionGlow";
-import { UsagePanel } from "./components/UsagePanel";
+import { RightRail } from "./components/RightRail";
 import { WelcomePopup } from "./components/WelcomePopup";
-import { useProjectStore, createTerminal } from "./stores/projectStore";
-import { useCanvasStore } from "./stores/canvasStore";
+import { useProjectStore } from "./stores/projectStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useT } from "./i18n/useT";
 import { loadAllDownloadedFonts } from "./terminal/fontLoader";
 import type { ProjectData } from "./types";
 import { normalizeProjectsFocus } from "./stores/projectFocus";
-import { useDrawingStore } from "./stores/drawingStore";
-import { useBrowserCardStore } from "./stores/browserCardStore";
+import {
+  APP_TOOLBAR_HEIGHT,
+  useUiShellStore,
+} from "./stores/uiShellStore";
 import { shouldRunAutoSaveBackstop, useWorkspaceStore } from "./stores/workspaceStore";
 import { snapshotState } from "./snapshotState";
 import { updateWindowTitle } from "./titleHelper";
 import { useNotificationStore } from "./stores/notificationStore";
 import { logSlowRendererPath } from "./utils/devPerf";
+import { ProjectSidebar } from "./components/ProjectSidebar";
+import { ProjectBoard } from "./components/ProjectBoard";
+import { TerminalDetailView } from "./components/TerminalDetailView";
 
 function migrateProjects(projects: unknown[]): ProjectData[] {
-  return projects.map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    path: p.path,
-    position: p.position ?? { x: 0, y: 0 },
-    collapsed: p.collapsed ?? false,
-    zIndex: p.zIndex ?? 0,
-    worktrees: (p.worktrees ?? []).map((wt: any) => ({
-      id: wt.id,
-      name: wt.name,
-      path: wt.path,
-      position: wt.position ?? { x: 0, y: 0 },
-      collapsed: wt.collapsed ?? false,
-      terminals: (wt.terminals ?? []).map((t: any) => ({
-        id: t.id,
-        title: t.title,
-        customTitle: t.customTitle,
-        starred: t.starred ?? false,
-        type: t.type,
-        minimized: t.minimized ?? false,
-        focused: t.focused ?? false,
+  return projects.map((project: any) => ({
+    id: project.id,
+    name: project.name,
+    path: project.path,
+    worktrees: (project.worktrees ?? []).map((worktree: any) => ({
+      id: worktree.id,
+      name: worktree.name,
+      path: worktree.path,
+      terminals: (worktree.terminals ?? []).map((terminal: any) => ({
+        id: terminal.id,
+        title: terminal.title,
+        customTitle: terminal.customTitle,
+        starred: terminal.starred ?? false,
+        type: terminal.type,
+        focused: terminal.focused ?? false,
         ptyId: null,
         status: "idle",
-        span: t.span ?? { cols: 1, rows: 1 },
-        scrollback: t.scrollback,
-        sessionId: t.sessionId,
-        parentTerminalId: t.parentTerminalId,
+        scrollback: terminal.scrollback,
+        sessionId: terminal.sessionId,
+        parentTerminalId: terminal.parentTerminalId,
+        initialPrompt: terminal.initialPrompt,
+        autoApprove: terminal.autoApprove,
+        origin: terminal.origin,
       })),
     })),
   }));
@@ -61,27 +57,10 @@ function migrateProjects(projects: unknown[]): ProjectData[] {
 
 function restoreFromData(data: Record<string, unknown>) {
   try {
-    if (data.viewport) {
-      useCanvasStore.setState({
-        viewport: data.viewport as { x: number; y: number; scale: number },
-      });
-    }
     if (data.projects && Array.isArray(data.projects)) {
       useProjectStore.setState(
         normalizeProjectsFocus(migrateProjects(data.projects)),
       );
-    }
-    if (data.drawings && Array.isArray(data.drawings)) {
-      useDrawingStore.setState({
-        elements: data.drawings as ReturnType<
-          typeof useDrawingStore.getState
-        >["elements"],
-      });
-    }
-    if (data.browserCards && typeof data.browserCards === "object") {
-      useBrowserCardStore.setState({
-        cards: data.browserCards as Record<string, import("./stores/browserCardStore").BrowserCardData>,
-      });
     }
   } catch (err) {
     console.error("[restoreFromData] failed to restore state:", err);
@@ -89,10 +68,12 @@ function restoreFromData(data: Record<string, unknown>) {
 }
 
 function useWorktreeWatcher() {
-  const projectCount = useProjectStore((s) => s.projects.length);
+  const projectCount = useProjectStore((state) => state.projects.length);
 
   useEffect(() => {
-    if (!window.termcanvas || projectCount === 0) return;
+    if (!window.termcanvas || projectCount === 0) {
+      return;
+    }
 
     const inFlight = new Set<string>();
     const pending = new Set<string>();
@@ -112,8 +93,12 @@ function useWorktreeWatcher() {
       void window.termcanvas.project
         .rescanWorktrees(projectPath)
         .then((worktrees) => {
-          if (disposed) return;
-          if (latestSeqByPath.get(projectPath) !== seq) return;
+          if (disposed) {
+            return;
+          }
+          if (latestSeqByPath.get(projectPath) !== seq) {
+            return;
+          }
           useProjectStore.getState().syncWorktrees(projectPath, worktrees);
         })
         .catch((err) => {
@@ -134,16 +119,13 @@ function useWorktreeWatcher() {
 
     const rescanAll = () => {
       const { projects } = useProjectStore.getState();
-      for (const p of projects) {
-        scheduleRescan(p.path);
+      for (const project of projects) {
+        scheduleRescan(project.path);
       }
     };
 
-    // Initial sync
     rescanAll();
-    // Poll every 5s — simple, reliable, cross-platform
     const interval = setInterval(rescanAll, 5000);
-    // Immediate rescan on window focus
     window.addEventListener("focus", rescanAll);
 
     return () => {
@@ -156,12 +138,16 @@ function useWorktreeWatcher() {
 
 function useStatePersistence() {
   useEffect(() => {
-    if (!window.termcanvas) return;
+    if (!window.termcanvas) {
+      return;
+    }
     window.termcanvas.state
       .load()
       .then((saved) => {
-        if (!saved) return;
-        const data = saved as unknown as Record<string, unknown>;
+        if (!saved) {
+          return;
+        }
+        const data = saved as Record<string, unknown>;
         if (data.skipRestore) {
           window.termcanvas.state.save({ skipRestore: false });
           return;
@@ -178,7 +164,9 @@ function useStatePersistence() {
 
 function useAutoSave() {
   useEffect(() => {
-    if (!window.termcanvas) return;
+    if (!window.termcanvas) {
+      return;
+    }
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const saveSnapshot = async () => {
@@ -233,7 +221,7 @@ function useAutoSave() {
 
 function useWorkspaceOpen() {
   useEffect(() => {
-    const handler = (e: Event) => {
+    const handler = (event: Event) => {
       const { dirty } = useWorkspaceStore.getState();
       if (
         dirty &&
@@ -242,7 +230,7 @@ function useWorkspaceOpen() {
         return;
       }
 
-      const raw = (e as CustomEvent<string>).detail;
+      const raw = (event as CustomEvent<string>).detail;
       try {
         restoreFromData(JSON.parse(raw));
         useWorkspaceStore.getState().setWorkspacePath(null);
@@ -262,7 +250,9 @@ function useCloseHandler() {
   const t = useT();
 
   useEffect(() => {
-    if (!window.termcanvas) return;
+    if (!window.termcanvas) {
+      return;
+    }
 
     const unsubscribe = window.termcanvas.app.onBeforeClose(() => {
       const { dirty } = useWorkspaceStore.getState();
@@ -289,7 +279,7 @@ function useCloseHandler() {
     return unsubscribe;
   }, []);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = async () => {
     try {
       const snap = snapshotState();
       const { workspacePath } = useWorkspaceStore.getState();
@@ -312,18 +302,19 @@ function useCloseHandler() {
         .getState()
         .notify("error", t.save_error(String(err)));
     }
-  }, [t]);
+  };
 
-  const handleDiscard = useCallback(async () => {
+  const handleDiscard = async () => {
     await window.termcanvas.state.save({ skipRestore: true });
     window.termcanvas.app.confirmClose();
-  }, []);
+  };
 
-  const handleCancel = useCallback(() => {
-    setShowCloseDialog(false);
-  }, []);
-
-  return { showCloseDialog, handleSave, handleDiscard, handleCancel };
+  return {
+    showCloseDialog,
+    handleSave,
+    handleDiscard,
+    handleCancel: () => setShowCloseDialog(false),
+  };
 }
 
 function CloseDialog({
@@ -338,28 +329,28 @@ function CloseDialog({
   const t = useT();
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 max-w-sm w-full mx-4">
-        <h2 className="text-[15px] font-medium text-[var(--text-primary)] mb-2">
+      <div className="mx-4 w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+        <h2 className="mb-2 text-[15px] font-medium text-[var(--text-primary)]">
           {t.save_workspace_title}
         </h2>
-        <p className="text-[13px] text-[var(--text-secondary)] mb-6">
+        <p className="mb-6 text-[13px] text-[var(--text-secondary)]">
           {t.save_workspace_desc}
         </p>
-        <div className="flex gap-2 justify-end">
+        <div className="flex justify-end gap-2">
           <button
-            className="px-3 py-1.5 rounded-md text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)] transition-colors duration-150"
+            className="rounded-md px-3 py-1.5 text-[13px] text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
             onClick={onCancel}
           >
             {t.cancel}
           </button>
           <button
-            className="px-3 py-1.5 rounded-md text-[13px] text-[var(--red)] hover:bg-[var(--surface-hover)] transition-colors duration-150"
+            className="rounded-md px-3 py-1.5 text-[13px] text-[var(--red)] transition-colors duration-150 hover:bg-[var(--surface-hover)]"
             onClick={onDiscard}
           >
             {t.dont_save}
           </button>
           <button
-            className="px-3 py-1.5 rounded-md text-[13px] text-white bg-[var(--accent)] hover:brightness-110 transition-all duration-150"
+            className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[13px] text-white transition-all duration-150 hover:brightness-110"
             onClick={onSave}
           >
             {t.save}
@@ -376,8 +367,20 @@ export function App() {
   useAutoSave();
   useWorkspaceOpen();
   useKeyboardShortcuts();
-  const composerEnabled = usePreferencesStore((s) => s.composerEnabled);
-  const drawingEnabled = usePreferencesStore((s) => s.drawingEnabled);
+
+  const composerEnabled = usePreferencesStore((state) => state.composerEnabled);
+  const projects = useProjectStore((state) => state.projects);
+  const focusedProjectId = useProjectStore((state) => state.focusedProjectId);
+  const focusedWorktreeId = useProjectStore((state) => state.focusedWorktreeId);
+  const selectedProjectId = useUiShellStore((state) => state.selectedProjectId);
+  const contentMode = useUiShellStore((state) => state.contentMode);
+  const detailTerminalId = useUiShellStore((state) => state.detailTerminalId);
+  const setSelectedProjectId = useUiShellStore((state) => state.setSelectedProjectId);
+  const setBoardScroll = useUiShellStore((state) => state.setBoardScroll);
+  const boardScrollByProject = useUiShellStore((state) => state.boardScrollByProject);
+  const openTerminalDetail = useUiShellStore((state) => state.openTerminalDetail);
+  const closeTerminalDetail = useUiShellStore((state) => state.closeTerminalDetail);
+  const syncSelection = useUiShellStore((state) => state.syncSelection);
   const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
     useCloseHandler();
 
@@ -385,10 +388,8 @@ export function App() {
     return !localStorage.getItem("termcanvas-welcome-seen");
   });
 
-  // Wire IPC updater events into the zustand store (once)
   useEffect(() => initUpdaterListeners(), []);
 
-  // Load downloaded fonts on startup
   useEffect(() => {
     loadAllDownloadedFonts();
   }, []);
@@ -400,132 +401,87 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const api = {
-      getProjects: () => {
-        const { projects } = useProjectStore.getState();
-        return JSON.parse(
-          JSON.stringify(
-            projects.map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              path: p.path,
-              collapsed: p.collapsed,
-              worktrees: p.worktrees.map((w: any) => ({
-                id: w.id,
-                name: w.name,
-                path: w.path,
-                terminals: w.terminals.map((t: any) => ({
-                  id: t.id,
-                  title: t.title,
-                  customTitle: t.customTitle,
-                  starred: t.starred,
-                  type: t.type,
-                  status: t.status,
-                  ptyId: t.ptyId,
-                  span: t.span,
-                  parentTerminalId: t.parentTerminalId,
-                })),
-              })),
-            })),
-          ),
+    const focusedTerminalId = (() => {
+      for (const project of projects) {
+        for (const worktree of project.worktrees) {
+          const focusedTerminal = worktree.terminals.find((terminal) => terminal.focused);
+          if (focusedTerminal) {
+            return focusedTerminal.id;
+          }
+        }
+      }
+      return null;
+    })();
+
+    syncSelection(projects, focusedProjectId, focusedTerminalId);
+  }, [focusedProjectId, projects, syncSelection]);
+
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId],
+  );
+
+  const detailLocation = useMemo(() => {
+    if (!detailTerminalId) {
+      return null;
+    }
+    for (const project of projects) {
+      for (const worktree of project.worktrees) {
+        const terminal = worktree.terminals.find(
+          (candidate) => candidate.id === detailTerminalId,
         );
-      },
-
-      addProject: (projectData: any) => {
-        useProjectStore.getState().addProject(projectData);
-        return true;
-      },
-
-      removeProject: (projectId: string) => {
-        useProjectStore.getState().removeProject(projectId);
-        return true;
-      },
-
-      addTerminal: (projectId: string, worktreeId: string, type: string, prompt?: string, autoApprove?: boolean, parentTerminalId?: string | null) => {
-        const terminal = createTerminal(type as any, undefined, prompt, autoApprove, "agent", parentTerminalId ?? undefined);
-        useProjectStore.getState().addTerminal(projectId, worktreeId, terminal);
-        return JSON.parse(JSON.stringify(terminal));
-      },
-
-      removeTerminal: (
-        projectId: string,
-        worktreeId: string,
-        terminalId: string,
-      ) => {
-        useProjectStore
-          .getState()
-          .removeTerminal(projectId, worktreeId, terminalId);
-        return true;
-      },
-
-      syncWorktrees: (projectPath: string, worktrees: any[]) => {
-        useProjectStore.getState().syncWorktrees(projectPath, worktrees);
-        return true;
-      },
-
-      getTerminal: (terminalId: string) => {
-        const { projects } = useProjectStore.getState();
-        for (const p of projects) {
-          for (const w of p.worktrees) {
-            const t = w.terminals.find((t: any) => t.id === terminalId);
-            if (t)
-              return JSON.parse(
-                JSON.stringify({
-                  id: t.id,
-                  title: t.title,
-                  customTitle: t.customTitle,
-                  starred: t.starred,
-                  type: t.type,
-                  status: t.status,
-                  ptyId: t.ptyId,
-                  span: t.span,
-                  parentTerminalId: t.parentTerminalId,
-                  projectId: p.id,
-                  worktreeId: w.id,
-                  worktreePath: w.path,
-                }),
-              );
-          }
+        if (terminal) {
+          return { project, worktree, terminal };
         }
-        return null;
-      },
-
-      setCustomTitle: (terminalId: string, customTitle: string) => {
-        const { projects } = useProjectStore.getState();
-        for (const p of projects) {
-          for (const w of p.worktrees) {
-            const t = w.terminals.find((t) => t.id === terminalId);
-            if (t) {
-              useProjectStore.getState().updateTerminalCustomTitle(
-                p.id,
-                w.id,
-                terminalId,
-                customTitle,
-              );
-              return true;
-            }
-          }
-        }
-        throw new Error("Terminal not found");
-      },
-    };
-
-    (window as any).__tcApi = api;
-    return () => {
-      delete (window as any).__tcApi;
-    };
-  }, []);
+      }
+    }
+    return null;
+  }, [detailTerminalId, projects]);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[var(--bg)] text-[var(--text-primary)]">
       <Toolbar onShowTutorial={() => setShowWelcome(true)} />
-      <Hub />
-      <Canvas />
-      {drawingEnabled && <DrawingPanel />}
-      <CompletionGlow />
-      <ShortcutHints />
-      <UsagePanel />
+      <div
+        className="flex h-full min-h-0 pt-11"
+        style={{ height: `calc(100vh - ${APP_TOOLBAR_HEIGHT}px)` }}
+      >
+        <ProjectSidebar
+          projects={projects}
+          selectedProjectId={selectedProjectId}
+          hidden={contentMode === "terminalDetail"}
+          onSelectProject={setSelectedProjectId}
+        />
+
+        <main className="min-h-0 flex-1">
+          {contentMode === "terminalDetail" && detailLocation ? (
+            <TerminalDetailView
+              project={detailLocation.project}
+              worktree={detailLocation.worktree}
+              terminal={detailLocation.terminal}
+              onBack={closeTerminalDetail}
+            />
+          ) : (
+            <ProjectBoard
+              project={selectedProject}
+              focusedWorktreeId={focusedWorktreeId}
+              boardScrollTop={
+                selectedProject ? boardScrollByProject[selectedProject.id] ?? 0 : 0
+              }
+              onBoardScroll={(scrollTop) => {
+                if (selectedProject) {
+                  setBoardScroll(selectedProject.id, scrollTop);
+                }
+              }}
+              onOpenDetail={openTerminalDetail}
+            />
+          )}
+        </main>
+
+        <RightRail />
+      </div>
+
       {composerEnabled && <ComposerBar />}
+      <ShortcutHints />
       <NotificationToast />
       {showCloseDialog && (
         <CloseDialog

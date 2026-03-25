@@ -1,13 +1,9 @@
-import { useCallback, useState } from "react";
-import { useCanvasStore } from "../stores/canvasStore";
-import { useProjectStore } from "../stores/projectStore";
+import { useState } from "react";
 import { useThemeStore } from "../stores/themeStore";
-import { useBrowserCardStore } from "../stores/browserCardStore";
 import { useUpdaterStore } from "../stores/updaterStore";
-import { usePreferencesStore } from "../stores/preferencesStore";
 import { useSettingsModalStore } from "../stores/settingsModalStore";
 import { useWorkspaceStore } from "../stores/workspaceStore";
-import { computeWorktreeSize, PROJ_PAD, PROJ_TITLE_H } from "../layout";
+import { useUiShellStore } from "../stores/uiShellStore";
 import { SettingsModal } from "../components/SettingsModal";
 import { UpdateModal } from "../components/UpdateModal";
 import { useT } from "../i18n/useT";
@@ -24,57 +20,20 @@ const controlGroup =
   "relative z-10 flex items-center gap-0.5 rounded-xl border border-[color-mix(in_srgb,var(--border)_92%,transparent)] bg-[color-mix(in_srgb,var(--surface)_74%,transparent)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
 
 export function Toolbar({ onShowTutorial }: { onShowTutorial: () => void }) {
-  const { viewport, setViewport, resetViewport, animateTo } = useCanvasStore();
-  const { projects } = useProjectStore();
   const { theme, toggleTheme } = useThemeStore();
-  const browserEnabled = usePreferencesStore((s) => s.browserEnabled);
-  const t = useT();
-  const workspacePath = useWorkspaceStore((s) => s.workspacePath);
-  const dirty = useWorkspaceStore((s) => s.dirty);
-  const addBrowserCard = useBrowserCardStore((s) => s.addCard);
-  const updateStatus = useUpdaterStore((s) => s.status);
-  const showSettings = useSettingsModalStore((s) => s.open);
-  const openSettings = useSettingsModalStore((s) => s.openSettings);
-  const closeSettings = useSettingsModalStore((s) => s.closeSettings);
+  const workspacePath = useWorkspaceStore((state) => state.workspacePath);
+  const dirty = useWorkspaceStore((state) => state.dirty);
+  const rightRailCollapsed = useUiShellStore((state) => state.rightRailCollapsed);
+  const setRightRailCollapsed = useUiShellStore(
+    (state) => state.setRightRailCollapsed,
+  );
+  const updateStatus = useUpdaterStore((state) => state.status);
+  const showSettings = useSettingsModalStore((state) => state.open);
+  const openSettings = useSettingsModalStore((state) => state.openSettings);
+  const closeSettings = useSettingsModalStore((state) => state.closeSettings);
   const [showUpdate, setShowUpdate] = useState(false);
+  const t = useT();
 
-  const handleFitAll = useCallback(() => {
-    if (projects.length === 0) return;
-    const padding = 80;
-    const toolbarH = 44;
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    for (const p of projects) {
-      let maxW = 300;
-      let totalH = 0;
-      for (const wt of p.worktrees) {
-        const wtSize = computeWorktreeSize(wt.terminals.map((t) => t.span));
-        maxW = Math.max(maxW, wt.position.x + wtSize.w);
-        totalH = Math.max(totalH, wt.position.y + wtSize.h);
-      }
-      const projW = Math.max(340, maxW + PROJ_PAD * 2);
-      const projH = Math.max(
-        PROJ_TITLE_H + PROJ_PAD + 60 + PROJ_PAD,
-        PROJ_TITLE_H + PROJ_PAD + totalH + PROJ_PAD,
-      );
-      minX = Math.min(minX, p.position.x);
-      minY = Math.min(minY, p.position.y);
-      maxX = Math.max(maxX, p.position.x + projW);
-      maxY = Math.max(maxY, p.position.y + projH);
-    }
-    const contentW = maxX - minX;
-    const contentH = maxY - minY;
-    const viewW = window.innerWidth - padding * 2;
-    const viewH = window.innerHeight - toolbarH - padding * 2;
-    const scale = Math.min(1, viewW / contentW, viewH / contentH);
-    const x = -minX * scale + padding;
-    const y = -minY * scale + padding + toolbarH;
-    animateTo(x, y, scale);
-  }, [projects, animateTo]);
-
-  const zoomPercent = Math.round(viewport.scale * 100);
   const workspaceName =
     getWorkspaceBaseName(workspacePath) ?? t.toolbar_untitled_workspace;
 
@@ -109,7 +68,8 @@ export function Toolbar({ onShowTutorial }: { onShowTutorial: () => void }) {
             <span
               className="min-w-0 truncate text-[12px] font-medium tracking-[0.01em] text-[var(--text-secondary)]"
               style={{
-                textShadow: "0 1px 0 color-mix(in srgb, var(--bg) 70%, transparent)",
+                textShadow:
+                  "0 1px 0 color-mix(in srgb, var(--bg) 70%, transparent)",
               }}
             >
               {workspaceName}
@@ -120,30 +80,59 @@ export function Toolbar({ onShowTutorial }: { onShowTutorial: () => void }) {
         <div className="flex-1" />
 
         <div className={controlGroup} style={noDrag}>
-          <button
-            className={btn}
-            onClick={onShowTutorial}
-            title={t.tutorial}
-          >
+          <button className={btn} onClick={onShowTutorial} title={t.tutorial}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M5 5.5a2 2 0 0 1 3.9.5c0 1-1.4 1.2-1.4 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              <circle
+                cx="7"
+                cy="7"
+                r="5.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <path
+                d="M5 5.5a2 2 0 0 1 3.9.5c0 1-1.4 1.2-1.4 2"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
               <circle cx="7" cy="10" r="0.6" fill="currentColor" />
             </svg>
           </button>
 
           <button
             className={btn}
-            onClick={() => {
-              const { rightPanelCollapsed, setRightPanelCollapsed } = useCanvasStore.getState();
-              setRightPanelCollapsed(!rightPanelCollapsed);
-            }}
-            title={t.usage_title}
+            onClick={() => setRightRailCollapsed(!rightRailCollapsed)}
+            title={t.shortcut_toggle_right_panel}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1.5" y="3" width="3" height="8" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="5.5" y="5" width="3" height="6" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="9.5" y="1" width="3" height="10" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
+              <rect
+                x="1.5"
+                y="3"
+                width="3"
+                height="8"
+                rx="0.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="5.5"
+                y="5"
+                width="3"
+                height="6"
+                rx="0.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="9.5"
+                y="1"
+                width="3"
+                height="10"
+                rx="0.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
             </svg>
           </button>
 
@@ -185,44 +174,92 @@ export function Toolbar({ onShowTutorial }: { onShowTutorial: () => void }) {
               className={`${btn} relative`}
               onClick={() => setShowUpdate(true)}
               title={
-                updateStatus === "downloading" ? t.update_downloading
-                : updateStatus === "ready" ? t.update_ready
-                : updateStatus === "error" ? t.update_error
-                : t.update_checking
+                updateStatus === "downloading"
+                  ? t.update_downloading
+                  : updateStatus === "ready"
+                    ? t.update_ready
+                    : updateStatus === "error"
+                      ? t.update_error
+                      : t.update_checking
               }
             >
               {updateStatus === "downloading" ? (
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="animate-bounce">
-                  <path d="M7 2v8M4 7.5L7 10.5 10 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M3 12h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  className="animate-bounce"
+                >
+                  <path
+                    d="M7 2v8M4 7.5L7 10.5 10 7.5"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M3 12h8"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                  />
                 </svg>
               ) : updateStatus === "ready" ? (
                 <>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M7 12V4M4 6.5L7 3.5 10 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M3 2h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    <path
+                      d="M7 12V4M4 6.5L7 3.5 10 6.5"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M3 2h8"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                    />
                   </svg>
                   <span className="absolute top-0.5 right-0.5 h-2 w-2 rounded-full bg-green-500" />
                 </>
               ) : updateStatus === "error" ? (
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 2L1.5 12h11L7 2Z" stroke="var(--amber)" strokeWidth="1.2" strokeLinejoin="round" />
-                  <path d="M7 6v3" stroke="var(--amber)" strokeWidth="1.3" strokeLinecap="round" />
+                  <path
+                    d="M7 2L1.5 12h11L7 2Z"
+                    stroke="var(--amber)"
+                    strokeWidth="1.2"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M7 6v3"
+                    stroke="var(--amber)"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                  />
                   <circle cx="7" cy="10.5" r="0.6" fill="var(--amber)" />
                 </svg>
               ) : (
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="animate-spin">
-                  <path d="M7 1.5A5.5 5.5 0 1 1 1.5 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  className="animate-spin"
+                >
+                  <path
+                    d="M7 1.5A5.5 5.5 0 1 1 1.5 7"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                  />
                 </svg>
               )}
             </button>
           )}
 
-          <button
-            className={btn}
-            onClick={() => openSettings()}
-            title={t.settings}
-          >
+          <button className={btn} onClick={() => openSettings()} title={t.settings}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path
                 d="M5.7 1h2.6l.4 1.7a4.5 4.5 0 0 1 1.1.6l1.7-.5 1.3 2.2-1.3 1.2a4.5 4.5 0 0 1 0 1.2l1.3 1.2-1.3 2.3-1.7-.6a4.5 4.5 0 0 1-1.1.7L8.3 13H5.7l-.4-1.7a4.5 4.5 0 0 1-1.1-.7l-1.7.6-1.3-2.3 1.3-1.2a4.5 4.5 0 0 1 0-1.2L1.2 5.3l1.3-2.2 1.7.5a4.5 4.5 0 0 1 1.1-.6L5.7 1Z"
@@ -238,56 +275,6 @@ export function Toolbar({ onShowTutorial }: { onShowTutorial: () => void }) {
                 strokeWidth="1.2"
               />
             </svg>
-          </button>
-
-          {browserEnabled && (
-            <button
-              className={btn}
-              onClick={() => {
-                const scale = viewport.scale;
-                const x = (-viewport.x + window.innerWidth / 2) / scale - 400;
-                const y = (-viewport.y + window.innerHeight / 2) / scale - 300;
-                addBrowserCard("https://google.com", { x, y });
-              }}
-              title={t.add_browser}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M1.5 7h11M7 1.5c-1.5 2-2 3.5-2 5.5s.5 3.5 2 5.5M7 1.5c1.5 2 2 3.5 2 5.5s-.5 3.5-2 5.5" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
-            </button>
-          )}
-        </div>
-
-        <div className={controlGroup} style={noDrag}>
-          <button
-            className={btn}
-            onClick={() =>
-              setViewport({ scale: Math.max(0.1, viewport.scale * 0.9) })
-            }
-          >
-            −
-          </button>
-          <span
-            className="w-10 text-center text-[11px] text-[var(--text-secondary)] tabular-nums"
-            style={{ fontFamily: '"Geist Mono", monospace' }}
-          >
-            {zoomPercent}%
-          </span>
-          <button
-            className={btn}
-            onClick={() =>
-              setViewport({ scale: Math.min(2, viewport.scale * 1.1) })
-            }
-          >
-            +
-          </button>
-          <div className="mx-1 h-4 w-px bg-[color-mix(in_srgb,var(--border)_86%,transparent)]" />
-          <button className={btn} onClick={resetViewport}>
-            {t.reset}
-          </button>
-          <button className={btn} onClick={handleFitAll}>
-            {t.fit}
           </button>
         </div>
       </div>

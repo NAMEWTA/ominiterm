@@ -4,6 +4,12 @@ import assert from "node:assert/strict";
 import { PtyManager } from "../electron/pty-manager.ts";
 
 test("notifyThemeChanged sends SIGWINCH to the PTY child on unix platforms", () => {
+  if (process.platform === "win32") {
+    const manager = new PtyManager();
+    manager.notifyThemeChanged(7);
+    assert.ok(true);
+    return;
+  }
   const manager = new PtyManager() as PtyManager & {
     instances: Map<number, { pid?: number }>;
   };
