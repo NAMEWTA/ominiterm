@@ -109,6 +109,35 @@ test("syncWorktrees still adds and removes worktrees", () => {
   assert.equal(state.projects[0].worktrees[0].name, "feature");
 });
 
+test("syncWorktrees matches Windows paths across slash styles", () => {
+  const project = createProject();
+  project.path = "C:\\repo";
+  project.worktrees[0].path = "C:\\repo\\worktree-main";
+  project.worktrees[0].terminals = [
+    {
+      id: "terminal-1",
+      title: "Terminal 1",
+      type: "shell",
+      minimized: false,
+      focused: false,
+      ptyId: null,
+      status: "idle",
+      span: { cols: 1, rows: 1 },
+    },
+  ];
+
+  resetStore([project]);
+
+  useProjectStore.getState().syncWorktrees("C:\\repo", [
+    { path: "C:/repo/worktree-main", branch: "main", isMain: true },
+  ]);
+
+  const state = useProjectStore.getState();
+  assert.equal(state.projects[0].worktrees.length, 1);
+  assert.equal(state.projects[0].worktrees[0].terminals.length, 1);
+  assert.equal(state.projects[0].worktrees[0].terminals[0].id, "terminal-1");
+});
+
 test("removeTerminal keeps an empty focused worktree expanded after deleting its last terminal", () => {
   const project = createProject();
   project.worktrees[0].terminals[0].focused = true;

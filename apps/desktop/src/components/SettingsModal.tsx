@@ -26,6 +26,7 @@ type Tab = SettingsTab;
 
 const SHORTCUT_KEYS: { key: keyof ShortcutMap; labelKey: string }[] = [
   { key: "addProject", labelKey: "shortcut_add_project" },
+  { key: "toggleSidebar", labelKey: "shortcut_toggle_sidebar" },
   { key: "toggleRightPanel", labelKey: "shortcut_toggle_right_panel" },
   { key: "newTerminal", labelKey: "shortcut_new_terminal" },
   { key: "saveWorkspace", labelKey: "shortcut_save_workspace" },
@@ -77,7 +78,7 @@ function ShortcutRow({
   );
 }
 
-const AGENT_TYPES = ["claude", "codex", "kimi", "gemini", "opencode"] as const;
+const AGENT_TYPES = ["claude", "codex", "opencode", "copilot"] as const;
 
 type ValidateResult =
   | { ok: true; resolvedPath: string; version: string | null }

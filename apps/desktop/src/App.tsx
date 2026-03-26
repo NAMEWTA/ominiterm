@@ -373,14 +373,23 @@ export function App() {
   const focusedProjectId = useProjectStore((state) => state.focusedProjectId);
   const focusedWorktreeId = useProjectStore((state) => state.focusedWorktreeId);
   const selectedProjectId = useUiShellStore((state) => state.selectedProjectId);
+  const projectSidebarWidth = useUiShellStore((state) => state.projectSidebarWidth);
+  const projectSidebarCollapsed = useUiShellStore(
+    (state) => state.projectSidebarCollapsed,
+  );
   const contentMode = useUiShellStore((state) => state.contentMode);
   const detailTerminalId = useUiShellStore((state) => state.detailTerminalId);
   const setSelectedProjectId = useUiShellStore((state) => state.setSelectedProjectId);
+  const setProjectSidebarWidth = useUiShellStore((state) => state.setProjectSidebarWidth);
+  const setProjectSidebarCollapsed = useUiShellStore(
+    (state) => state.setProjectSidebarCollapsed,
+  );
   const setBoardScroll = useUiShellStore((state) => state.setBoardScroll);
   const boardScrollByProject = useUiShellStore((state) => state.boardScrollByProject);
   const openTerminalDetail = useUiShellStore((state) => state.openTerminalDetail);
   const closeTerminalDetail = useUiShellStore((state) => state.closeTerminalDetail);
   const syncSelection = useUiShellStore((state) => state.syncSelection);
+  const setFocusedTerminal = useProjectStore((state) => state.setFocusedTerminal);
   const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
     useCloseHandler();
 
@@ -451,11 +460,20 @@ export function App() {
         <ProjectSidebar
           projects={projects}
           selectedProjectId={selectedProjectId}
-          hidden={contentMode === "terminalDetail"}
+          width={projectSidebarWidth}
+          collapsed={projectSidebarCollapsed}
+          detailTerminalId={detailTerminalId}
           onSelectProject={setSelectedProjectId}
+          onResizeWidth={setProjectSidebarWidth}
+          onCollapsedChange={setProjectSidebarCollapsed}
+          onOpenTerminal={(projectId, terminalId) => {
+            setSelectedProjectId(projectId);
+            setFocusedTerminal(terminalId, { focusComposer: false });
+            openTerminalDetail(terminalId);
+          }}
         />
 
-        <main className="min-h-0 flex-1">
+        <main className="min-h-0 min-w-0 flex-1">
           {contentMode === "terminalDetail" && detailLocation ? (
             <TerminalDetailView
               project={detailLocation.project}

@@ -235,10 +235,12 @@ test("buildLaunchSpec resolves Windows app aliases from fallback user paths", as
       existsSync: (file) =>
         [
           "C:\\repo",
+          "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
           "C:\\Users\\test\\AppData\\Local\\Microsoft\\WindowsApps\\codex.exe",
         ].includes(file),
       isExecutable: (file) =>
         [
+          "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
           "C:\\Users\\test\\AppData\\Local\\Microsoft\\WindowsApps\\codex.exe",
         ].includes(file),
     }),
@@ -246,9 +248,14 @@ test("buildLaunchSpec resolves Windows app aliases from fallback user paths", as
 
   assert.equal(
     launch.file,
-    "C:\\Users\\test\\AppData\\Local\\Microsoft\\WindowsApps\\codex.exe",
+    "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   );
-  assert.deepEqual(launch.args, ["resume", "session-42"]);
+  assert.deepEqual(launch.args, [
+    "-NoLogo",
+    "-NoProfile",
+    "-Command",
+    "& 'C:\\Users\\test\\AppData\\Local\\Microsoft\\WindowsApps\\codex.exe' 'resume' 'session-42'",
+  ]);
 });
 
 test("buildLaunchSpec prefers the real .exe path over a Windows extensionless alias match", async () => {
@@ -261,11 +268,13 @@ test("buildLaunchSpec prefers the real .exe path over a Windows extensionless al
       existsSync: (file) =>
         [
           "C:\\repo",
+          "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
           "C:\\Program Files\\WindowsApps\\OpenAI.Codex\\app\\resources\\codex",
           "C:\\Program Files\\WindowsApps\\OpenAI.Codex\\app\\resources\\codex.exe",
         ].includes(file),
       isExecutable: (file) =>
         [
+          "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
           "C:\\Program Files\\WindowsApps\\OpenAI.Codex\\app\\resources\\codex",
           "C:\\Program Files\\WindowsApps\\OpenAI.Codex\\app\\resources\\codex.exe",
         ].includes(file),
@@ -281,11 +290,17 @@ test("buildLaunchSpec prefers the real .exe path over a Windows extensionless al
 
   assert.equal(
     launch.file,
-    "C:\\Program Files\\WindowsApps\\OpenAI.Codex\\app\\resources\\codex.exe",
+    "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
   );
+  assert.deepEqual(launch.args, [
+    "-NoLogo",
+    "-NoProfile",
+    "-Command",
+    "& 'C:\\Program Files\\WindowsApps\\OpenAI.Codex\\app\\resources\\codex.exe'",
+  ]);
 });
 
-test("buildLaunchSpec wraps Windows .cmd launchers with cmd.exe", async () => {
+test("buildLaunchSpec hosts Windows .cmd launchers in PowerShell", async () => {
   const launch = await buildLaunchSpec(
     {
       cwd: "C:\\repo",
@@ -297,11 +312,13 @@ test("buildLaunchSpec wraps Windows .cmd launchers with cmd.exe", async () => {
         [
           "C:\\repo",
           "C:\\Windows\\System32\\cmd.exe",
+          "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
           "C:\\Users\\test\\AppData\\Roaming\\npm\\claude.cmd",
         ].includes(file),
       isExecutable: (file) =>
         [
           "C:\\Windows\\System32\\cmd.exe",
+          "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
           "C:\\Users\\test\\AppData\\Roaming\\npm\\claude.cmd",
         ].includes(file),
       getShellEnv: async () => ({
@@ -314,14 +331,30 @@ test("buildLaunchSpec wraps Windows .cmd launchers with cmd.exe", async () => {
     }),
   );
 
-  assert.equal(launch.file, "C:\\Windows\\System32\\cmd.exe");
+  assert.equal(
+    launch.file,
+    "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+  );
   assert.deepEqual(launch.args, [
-    "/d",
-    "/s",
-    "/c",
-    "C:\\Users\\test\\AppData\\Roaming\\npm\\claude.cmd",
-    "--resume",
-    "abc123",
+    "-NoLogo",
+    "-NoProfile",
+    "-Command",
+    "& 'C:\\Users\\test\\AppData\\Roaming\\npm\\claude.cmd' '--resume' 'abc123'",
   ]);
+});
+
+test("buildLaunchSpec defaults to PowerShell on Windows when shell is omitted", async () => {
+  const launch = await buildLaunchSpec(
+    {
+      cwd: "C:\\repo",
+    },
+    createWindowsDeps(),
+  );
+
+  assert.equal(
+    launch.file,
+    "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+  );
+  assert.deepEqual(launch.args, []);
 });
 

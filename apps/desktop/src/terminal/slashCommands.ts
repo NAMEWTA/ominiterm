@@ -42,6 +42,7 @@ const NO_COMMANDS: readonly SlashCommand[] = [];
 const COMMANDS_BY_TYPE: Record<TerminalType, readonly SlashCommand[]> = {
   claude: CLAUDE_COMMANDS,
   codex: CODEX_COMMANDS,
+  copilot: NO_COMMANDS,
   shell: NO_COMMANDS,
   kimi: NO_COMMANDS,
   gemini: NO_COMMANDS,

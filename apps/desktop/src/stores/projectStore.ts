@@ -249,11 +249,24 @@ function syncProjectWorktrees(
   project: ProjectData,
   worktrees: ScannedWorktree[],
 ): ProjectData {
+  const normalizeWorktreePathKey = (value: string): string => {
+    const unified = value.replace(/\\/g, "/").replace(/\/+$/, "");
+    if (/^[a-zA-Z]:\//.test(unified)) {
+      return unified.toLowerCase();
+    }
+    return unified;
+  };
+
   const existingByPath = new Map(
-    project.worktrees.map((worktree) => [worktree.path, worktree]),
+    project.worktrees.map((worktree) => [
+      normalizeWorktreePathKey(worktree.path),
+      worktree,
+    ]),
   );
   const synced = worktrees.map((worktree) => {
-    const existing = existingByPath.get(worktree.path);
+    const existing = existingByPath.get(
+      normalizeWorktreePathKey(worktree.path),
+    );
     if (!existing) {
       return {
         id: generateId(),

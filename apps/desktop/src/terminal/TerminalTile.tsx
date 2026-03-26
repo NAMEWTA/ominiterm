@@ -45,12 +45,15 @@ const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
   shell: { color: "#888", label: "Shell" },
   claude: { color: "#f5a623", label: "Claude" },
   codex: { color: "#7928ca", label: "Codex" },
+  copilot: { color: "#5b9ef5", label: "Copilot CLI" },
   kimi: { color: "#0070f3", label: "Kimi" },
   gemini: { color: "#4285f4", label: "Gemini" },
   opencode: { color: "#50e3c2", label: "OpenCode" },
   lazygit: { color: "#e84d31", label: "Lazygit" },
   tmux: { color: "#1bb91f", label: "Tmux" },
 };
+
+const SESSION_CAPTURE_TYPES = new Set(["claude", "codex", "kimi"]);
 
 async function pollSessionId(
   ptyId: number,
@@ -59,7 +62,7 @@ async function pollSessionId(
   onFound: (sid: string) => void,
   shouldCancel: () => boolean,
 ) {
-  const maxAttempts = 15;
+  const maxAttempts = 45;
   const interval = 2000;
 
   let cachedPid: number | null = null;
@@ -82,7 +85,9 @@ async function pollSessionId(
     if (cliType === "codex") {
       sid = await window.ominiterm.session.getCodexLatest();
       if (sid && sid === codexBaseline) {
-        sid = null;
+        // Baseline can be stale, but Codex may also continue the same session.
+        // Keep filtering it at first and accept as fallback on the final attempt.
+        sid = attempt < maxAttempts - 1 ? null : sid;
       }
     } else if (cliType === "claude") {
       const pid =
@@ -199,6 +204,13 @@ export function TerminalTile({
       return;
     }
 
+    const initialTerminalType = terminal.type;
+    const initialSessionId = terminal.sessionId;
+    const initialPtyId = terminal.ptyId;
+    const initialAutoApprove = terminal.autoApprove;
+    const initialPrompt = terminal.initialPrompt;
+    const initialScrollback = terminal.scrollback;
+
     const xterm = new Terminal({
       theme: XTERM_THEMES[useThemeStore.getState().theme],
       fontFamily: buildFontFamily(
@@ -214,9 +226,112 @@ export function TerminalTile({
         usePreferencesStore.getState().minimumContrastRatio,
       allowTransparency: false,
     });
+    const isWindows = window.ominiterm.app.platform === "win32";
     const fitAddon = new FitAddon();
     const serializeAddon = new SerializeAddon();
-    xterm.loadAddon(fitAddon);
+    let fitAddonLoaded = false;
+    let fitRecoveryAttempts = 0;
+    let fitRecoveryActive = false;
+    let fitRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
+    let fitRecoveryFrame: number | null = null;
+
+    const clearFitRecovery = () => {
+      fitRecoveryActive = false;
+      if (fitRecoveryTimer) {
+        clearTimeout(fitRecoveryTimer);
+        fitRecoveryTimer = null;
+      }
+      if (fitRecoveryFrame) {
+        cancelAnimationFrame(fitRecoveryFrame);
+        fitRecoveryFrame = null;
+      }
+    };
+
+    const ensureFitAddonLoaded = (): boolean => {
+      if (fitAddonLoaded) {
+        return true;
+      }
+      try {
+        xterm.loadAddon(fitAddon);
+        fitAddonLoaded = true;
+        fitAddonRef.current = fitAddon;
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const tryFit = (): boolean => {
+      if (!ensureFitAddonLoaded()) {
+        return false;
+      }
+      const container = containerRef.current;
+      if (!container || container.clientWidth <= 0 || container.clientHeight <= 0) {
+        return false;
+      }
+      let dimensions:
+        | { css?: { cell?: { width?: number; height?: number } } }
+        | undefined;
+      try {
+        dimensions = (xterm as any)?._core?._renderService?.dimensions;
+      } catch {
+        return false;
+      }
+      if (!dimensions?.css?.cell?.width || !dimensions?.css?.cell?.height) {
+        return false;
+      }
+      try {
+        fitAddon.fit();
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const scheduleFitRecovery = () => {
+      if (!isWindows || fitRecoveryActive) {
+        return;
+      }
+      fitRecoveryActive = true;
+      fitRecoveryAttempts = 0;
+
+      const step = () => {
+        fitRecoveryFrame = null;
+        if (!fitRecoveryActive) {
+          return;
+        }
+        fitRecoveryAttempts += 1;
+
+        if (tryFit()) {
+          if (xterm.rows > 0) {
+            xterm.refresh(0, xterm.rows - 1);
+          }
+          if (ptyIdRef.current !== null && xterm.cols > 0 && xterm.rows > 0) {
+            window.ominiterm.terminal.resize(ptyIdRef.current, xterm.cols, xterm.rows);
+          }
+          clearFitRecovery();
+          return;
+        }
+
+        if (fitRecoveryAttempts >= 80) {
+          clearFitRecovery();
+          return;
+        }
+
+        fitRecoveryTimer = setTimeout(() => {
+          fitRecoveryTimer = null;
+          fitRecoveryFrame = requestAnimationFrame(step);
+        }, 100);
+      };
+
+      fitRecoveryFrame = requestAnimationFrame(step);
+    };
+
+    if (!isWindows) {
+      xterm.loadAddon(fitAddon);
+      fitAddonLoaded = true;
+      fitAddonRef.current = fitAddon;
+    }
     xterm.loadAddon(serializeAddon);
     xterm.open(containerRef.current);
     acquireWebGL(terminal.id, xterm);
@@ -240,17 +355,55 @@ export function TerminalTile({
       copiedTimerRef.current = setTimeout(() => setShowCopiedToast(false), 1500);
     });
 
-    if (terminal.scrollback) {
-      xterm.write(terminal.scrollback, () => xterm.scrollToBottom());
+    if (initialScrollback) {
+      xterm.write(initialScrollback);
     }
 
-    requestAnimationFrame(() => {
-      fitAddon.fit();
-      xterm.refresh(0, xterm.rows - 1);
-    });
+    const syncPtySize = () => {
+      if (ptyIdRef.current !== null && xterm.cols > 0 && xterm.rows > 0) {
+        window.ominiterm.terminal.resize(ptyIdRef.current, xterm.cols, xterm.rows);
+      }
+    };
+
+    const fitToContainer = (): boolean => {
+      if (tryFit()) {
+        if (xterm.rows > 0) {
+          xterm.refresh(0, xterm.rows - 1);
+        }
+        syncPtySize();
+        return true;
+      }
+      return false;
+    };
+
+    let pendingFitFrame: number | null = null;
+    const queueFit = () => {
+      if (pendingFitFrame !== null) {
+        cancelAnimationFrame(pendingFitFrame);
+      }
+      pendingFitFrame = requestAnimationFrame(() => {
+        pendingFitFrame = null;
+        if (!fitToContainer() && isWindows) {
+          scheduleFitRecovery();
+        }
+      });
+    };
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => queueFit());
+      resizeObserver.observe(containerRef.current);
+    }
+
+    const handleWindowResize = () => queueFit();
+    window.addEventListener("resize", handleWindowResize);
+
+    queueFit();
 
     xtermRef.current = xterm;
-    fitAddonRef.current = fitAddon;
+    if (!isWindows) {
+      fitAddonRef.current = fitAddon;
+    }
     registerTerminal(terminal.id, xterm, serializeAddon);
 
     let inputDisposable: { dispose(): void } | null = null;
@@ -264,19 +417,18 @@ export function TerminalTile({
     const attachWatch = (sessionId: string | undefined) => {
       if (
         !sessionId ||
-        (terminal.type !== "claude" &&
-          terminal.type !== "codex" &&
-          terminal.type !== "kimi")
+        !SESSION_CAPTURE_TYPES.has(initialTerminalType)
       ) {
         return;
       }
-      void window.ominiterm.session.watch(terminal.type, sessionId, worktreePath);
+      void window.ominiterm.session.watch(initialTerminalType, sessionId, worktreePath);
     };
 
     const attachPty = (
       ptyId: number,
       options: { shouldCaptureSession: boolean; resumeSessionId?: string },
     ) => {
+      let sawOutput = false;
       ptyIdRef.current = ptyId;
       inputDisposable?.dispose();
       resizeDisposable?.dispose();
@@ -290,13 +442,18 @@ export function TerminalTile({
       resizeDisposable = xterm.onResize(({ cols, rows }) => {
         window.ominiterm.terminal.resize(ptyId, cols, rows);
       });
-      fitAddon.fit();
-      window.ominiterm.terminal.resize(ptyId, xterm.cols, xterm.rows);
+      if (!tryFit() && isWindows) {
+        scheduleFitRecovery();
+      }
+      if (xterm.cols > 0 && xterm.rows > 0) {
+        window.ominiterm.terminal.resize(ptyId, xterm.cols, xterm.rows);
+      }
 
       outputCleanup = window.ominiterm.terminal.onOutput((id, data) => {
         if (id !== ptyId) {
           return;
         }
+        sawOutput = true;
         xterm.write(data);
         if (currentStatus !== "active") {
           currentStatus = "active";
@@ -320,6 +477,8 @@ export function TerminalTile({
         if (waitingTimer) {
           clearTimeout(waitingTimer);
         }
+        sessionCancelRef.current?.();
+        sessionCancelRef.current = null;
         ptyIdRef.current = null;
         updateTerminalPtyId(projectId, worktreeId, terminal.id, null);
         xterm.write(t.process_exited(exitCode));
@@ -352,7 +511,7 @@ export function TerminalTile({
         };
         void pollSessionId(
           ptyId,
-          terminal.type,
+          initialTerminalType,
           worktreePath,
           (sid) => {
             updateTerminalSessionId(projectId, worktreeId, terminal.id, sid);
@@ -360,7 +519,22 @@ export function TerminalTile({
           },
           () => cancelled,
         ).then((result) => {
-          if (result === "timeout") {
+          sessionCancelRef.current = null;
+          const state = useProjectStore.getState();
+          const project = state.projects.find((candidate) => candidate.id === projectId);
+          const worktree = project?.worktrees.find((candidate) => candidate.id === worktreeId);
+          const currentTerminal = worktree?.terminals.find(
+            (candidate) => candidate.id === terminal.id,
+          );
+          const hasSession = Boolean(currentTerminal?.sessionId);
+          const stillAttached = ptyIdRef.current === ptyId;
+          if (
+            !cancelled &&
+            result === "timeout" &&
+            stillAttached &&
+            sawOutput &&
+            !hasSession
+          ) {
             notify(
               "warn",
               `Session capture timeout for ${displayTitleRef.current}`,
@@ -370,18 +544,18 @@ export function TerminalTile({
       }
     };
 
-    if (terminal.ptyId !== null) {
-      attachPty(terminal.ptyId, {
+    if (initialPtyId !== null) {
+      attachPty(initialPtyId, {
         shouldCaptureSession: false,
-        resumeSessionId: terminal.sessionId,
+        resumeSessionId: initialSessionId,
       });
     } else {
       const cliOverride =
-        usePreferencesStore.getState().cliCommands[terminal.type] ?? undefined;
+        usePreferencesStore.getState().cliCommands[initialTerminalType] ?? undefined;
       const launch = getTerminalLaunchOptions(
-        terminal.type,
-        terminal.sessionId,
-        terminal.autoApprove,
+        initialTerminalType,
+        initialSessionId,
+        initialAutoApprove,
         cliOverride,
       );
       const options: {
@@ -397,8 +571,8 @@ export function TerminalTile({
       };
       if (launch) {
         const promptArgs =
-          !terminal.sessionId && terminal.initialPrompt
-            ? getTerminalPromptArgs(terminal.type, terminal.initialPrompt)
+          !initialSessionId && initialPrompt
+            ? getTerminalPromptArgs(initialTerminalType, initialPrompt)
             : [];
         options.shell = launch.shell;
         options.args = [...launch.args, ...promptArgs];
@@ -410,8 +584,9 @@ export function TerminalTile({
           updateTerminalPtyId(projectId, worktreeId, terminal.id, ptyId);
           updateTerminalStatus(projectId, worktreeId, terminal.id, "running");
           attachPty(ptyId, {
-            shouldCaptureSession: !terminal.sessionId,
-            resumeSessionId: terminal.sessionId,
+            shouldCaptureSession:
+              !initialSessionId && SESSION_CAPTURE_TYPES.has(initialTerminalType),
+            resumeSessionId: initialSessionId,
           });
         })
         .catch((err) => {
@@ -429,6 +604,14 @@ export function TerminalTile({
         clearTimeout(waitingTimer);
       }
       sessionCancelRef.current?.();
+      sessionCancelRef.current = null;
+      clearFitRecovery();
+      if (pendingFitFrame !== null) {
+        cancelAnimationFrame(pendingFitFrame);
+        pendingFitFrame = null;
+      }
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", handleWindowResize);
       updateTerminalScrollback(
         projectId,
         worktreeId,
@@ -455,16 +638,7 @@ export function TerminalTile({
   }, [
     notify,
     projectId,
-    terminal.autoApprove,
     terminal.id,
-    terminal.initialPrompt,
-    terminal.ptyId,
-    terminal.scrollback,
-    terminal.sessionId,
-    terminal.status,
-    terminal.type,
-    t,
-    updateTerminalCustomTitle,
     updateTerminalPtyId,
     updateTerminalScrollback,
     updateTerminalSessionId,
@@ -477,7 +651,33 @@ export function TerminalTile({
     if (!xtermRef.current || !fitAddonRef.current) {
       return;
     }
-    const frame = requestAnimationFrame(() => fitAddonRef.current?.fit());
+    const frame = requestAnimationFrame(() => {
+      const xterm = xtermRef.current;
+      const fitAddon = fitAddonRef.current;
+      const container = containerRef.current;
+      if (!xterm || !fitAddon || !container) {
+        return;
+      }
+      if (container.clientWidth <= 0 || container.clientHeight <= 0) {
+        return;
+      }
+      let dimensions:
+        | { css?: { cell?: { width?: number; height?: number } } }
+        | undefined;
+      try {
+        dimensions = (xterm as any)?._core?._renderService?.dimensions;
+      } catch {
+        return;
+      }
+      if (!dimensions?.css?.cell?.width || !dimensions?.css?.cell?.height) {
+        return;
+      }
+      try {
+        fitAddon.fit();
+      } catch {
+        // Ignore transient fit failures while xterm renderer is initializing.
+      }
+    });
     return () => cancelAnimationFrame(frame);
   }, [mode, className]);
 

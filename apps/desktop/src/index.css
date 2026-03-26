@@ -1,36 +1,6 @@
 @import "tailwindcss";
 @import "@xterm/xterm/css/xterm.css";
 
-/* Geist Sans - Variable */
-@font-face {
-  font-family: "Geist Sans";
-  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2")
-    format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Geist Mono - Variable */
-@font-face {
-  font-family: "Geist Mono";
-  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2")
-    format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Geist Pixel Square */
-@font-face {
-  font-family: "Geist Pixel Square";
-  src: url("/node_modules/geist/dist/fonts/geist-pixel/GeistPixel-Square.woff2")
-    format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* ── Design tokens: Dark (default) ── */
 :root,
 [data-theme="dark"] {

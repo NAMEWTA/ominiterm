@@ -2,6 +2,7 @@ export type TerminalType =
   | "shell"
   | "claude"
   | "codex"
+  | "copilot"
   | "kimi"
   | "gemini"
   | "opencode"

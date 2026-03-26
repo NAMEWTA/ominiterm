@@ -42,6 +42,18 @@ test("agent terminals beyond claude/codex are composer-supported", () => {
   assert.equal(isComposerSupportedTerminal("opencode"), true);
 });
 
+test("copilot adapter is available and launches with copilot command", () => {
+  const adapter = getComposerAdapter("copilot");
+  assert.ok(adapter);
+  assert.equal(adapter.inputMode, "type");
+  assert.equal(adapter.supportsImages, false);
+
+  assert.deepEqual(getTerminalLaunchOptions("copilot", undefined), {
+    shell: "copilot",
+    args: [],
+  });
+});
+
 test("getTerminalLaunchOptions reuses centralized launch config", () => {
   assert.deepEqual(getTerminalLaunchOptions("claude", undefined), {
     shell: "claude",

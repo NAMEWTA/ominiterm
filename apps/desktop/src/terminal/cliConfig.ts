@@ -115,6 +115,24 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
       pasteStrategy: "separate",
     },
   },
+  copilot: {
+    type: "copilot",
+    launch: {
+      shell: "copilot",
+      resumeArgs: (id) => ["resume", id],
+      newArgs: () => [],
+    },
+    composer: {
+      supportsComposer: true,
+      allowedStatuses: INTERACTIVE_STATUSES,
+      inputMode: "type",
+      supportsImages: false,
+      pasteKeySequence: () => "",
+      imageFallback: "error",
+      pasteDelayMs: 0,
+      pasteStrategy: "separate",
+    },
+  },
   kimi: {
     type: "kimi",
     launch: {

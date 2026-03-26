@@ -49,6 +49,17 @@ const isDev = !!process.env.VITE_DEV_SERVER_URL;
 if (isDev) {
   app.setPath("userData", path.join(app.getPath("appData"), "ominiterm-dev"));
 }
+
+if (process.platform === "win32") {
+  // AMD drivers can fail DirectComposition and leave Electron window black.
+  app.commandLine.appendSwitch("disable-direct-composition");
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+  if (process.env.OMINITERM_ENABLE_GPU !== "1") {
+    app.disableHardwareAcceleration();
+  }
+}
+
 const skipLock = isDev || !!process.env.OMINITERM_SKIP_LOCK;
 const gotLock = skipLock || app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -80,6 +91,7 @@ function cleanupPortFile() {
 
 let mainWindow: BrowserWindow | null = null;
 let forceClose = false;
+let pendingCloseFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 const ptyManager = new PtyManager();
 const outputBatcher = new OutputBatcher((ptyId, data) => {
   sendToWindow(mainWindow, "terminal:output", ptyId, data);
@@ -123,6 +135,7 @@ function createWindow() {
         symbolColor: "#888888",
         height: 44,
       },
+      autoHideMenuBar: true,
     }),
     // Linux: hidden title bar (no native overlay, app handles everything)
     ...(!isMac &&
@@ -136,6 +149,10 @@ function createWindow() {
     shell.openExternal(url);
     return { action: "deny" };
   });
+
+  if (isWin) {
+    mainWindow.removeMenu();
+  }
 
   // Secure webview attachment: enforce isolation, strip preload
   mainWindow.webContents.on("will-attach-webview", (_event, webPreferences) => {
@@ -170,10 +187,63 @@ function createWindow() {
       console.error("[OminiTerm API] Failed to start:", err);
     }
   });
+
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL) => {
+      console.error("[Window] did-fail-load", {
+        errorCode,
+        errorDescription,
+        validatedURL,
+      });
+    },
+  );
+
+  mainWindow.webContents.on(
+    "console-message",
+    (_event, level, message, line, sourceId) => {
+      if (level >= 2) {
+        console.error("[Renderer]", { level, message, line, sourceId });
+      }
+    },
+  );
+
+  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+    console.error("[Window] Renderer process gone:", details);
+  });
+
+  mainWindow.on("unresponsive", () => {
+    console.error("[Window] BrowserWindow became unresponsive.");
+  });
+
   mainWindow.on("close", (e) => {
-    if (forceClose || !mainWindow || !rendererReady) return;
+    if (forceClose || !mainWindow) return;
+
+    const wc = mainWindow.webContents;
+    if (
+      !rendererReady ||
+      wc.isDestroyed() ||
+      wc.isCrashed()
+    ) {
+      forceClose = true;
+      return;
+    }
+
     e.preventDefault();
     sendToWindow(mainWindow, "app:before-close");
+
+    if (pendingCloseFallbackTimer) {
+      clearTimeout(pendingCloseFallbackTimer);
+    }
+
+    pendingCloseFallbackTimer = setTimeout(() => {
+      if (!forceClose && mainWindow && !mainWindow.isDestroyed()) {
+        console.warn("[Window] Close confirmation timed out; forcing close.");
+        forceClose = true;
+        mainWindow.close();
+        app.quit();
+      }
+    }, 1500);
   });
 }
 
@@ -768,6 +838,10 @@ function setupIpc() {
 
   // Close flow
   ipcMain.on("app:close-confirmed", async () => {
+    if (pendingCloseFallbackTimer) {
+      clearTimeout(pendingCloseFallbackTimer);
+      pendingCloseFallbackTimer = null;
+    }
     outputBatcher.dispose();
     await ptyManager.destroyAll();
     gitWatcher.unwatchAll();

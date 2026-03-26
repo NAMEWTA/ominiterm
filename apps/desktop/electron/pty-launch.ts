@@ -248,6 +248,20 @@ function isWindowsBatchScript(file: string, platform: NodeJS.Platform): boolean 
   return lower.endsWith(".cmd") || lower.endsWith(".bat");
 }
 
+function isPowerShellExecutable(file: string): boolean {
+  const lower = file.toLowerCase();
+  return lower.endsWith("\\pwsh.exe") || lower.endsWith("\\powershell.exe");
+}
+
+function quoteForPowerShell(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function buildPowerShellCommand(executable: string, args: string[]): string {
+  const parts = [quoteForPowerShell(executable), ...args.map(quoteForPowerShell)];
+  return `& ${parts.join(" ")}`;
+}
+
 export function resolveUserShell(
   env: Record<string, string>,
   deps: Pick<
@@ -257,7 +271,7 @@ export function resolveUserShell(
 ): string {
   const candidates =
     deps.platform === "win32"
-      ? [env.ComSpec, "pwsh.exe", "powershell.exe", "cmd.exe"]
+      ? ["pwsh.exe", "powershell.exe", env.ComSpec, "cmd.exe"]
       : [env.SHELL, "/bin/zsh", "/bin/bash", "/bin/sh"];
 
   for (const candidate of candidates) {
@@ -415,6 +429,23 @@ export async function buildLaunchSpec(
         `Executable not found: ${options.shell}`,
         options.shell,
       );
+    }
+
+    if (deps.platform === "win32") {
+      const hostShell = resolveUserShell(shellEnv, deps);
+      if (isPowerShellExecutable(hostShell)) {
+        return {
+          cwd: options.cwd,
+          file: hostShell,
+          args: [
+            "-NoLogo",
+            "-NoProfile",
+            "-Command",
+            buildPowerShellCommand(executable, options.args ?? []),
+          ],
+          env: shellEnv,
+        };
+      }
     }
 
     if (isWindowsBatchScript(executable, deps.platform)) {

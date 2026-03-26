@@ -6,18 +6,26 @@ export const COLLAPSED_TAB_WIDTH = 36;
 export const APP_TOOLBAR_HEIGHT = 44;
 export const PROJECT_SIDEBAR_WIDTH = 248;
 export const PROJECT_SIDEBAR_COLLAPSED_WIDTH = 0;
+export const PROJECT_SIDEBAR_TAB_WIDTH = COLLAPSED_TAB_WIDTH;
+export const PROJECT_SIDEBAR_MIN_WIDTH = 220;
+export const PROJECT_SIDEBAR_MAX_WIDTH = 460;
 
 export type ContentMode = "projectBoard" | "terminalDetail";
 export type RightRailTab = "usage" | "files" | "diff";
 
 interface UiShellStore {
   selectedProjectId: string | null;
+  projectSidebarWidth: number;
+  projectSidebarCollapsed: boolean;
   contentMode: ContentMode;
   detailTerminalId: string | null;
   rightRailCollapsed: boolean;
   rightRailTab: RightRailTab;
   boardScrollByProject: Record<string, number>;
   setSelectedProjectId: (projectId: string | null) => void;
+  setProjectSidebarWidth: (width: number) => void;
+  setProjectSidebarCollapsed: (collapsed: boolean) => void;
+  toggleProjectSidebarCollapsed: () => void;
   setContentMode: (mode: ContentMode) => void;
   openTerminalDetail: (terminalId: string) => void;
   closeTerminalDetail: () => void;
@@ -47,6 +55,8 @@ function chooseProjectId(
 
 export const useUiShellStore = create<UiShellStore>((set, get) => ({
   selectedProjectId: null,
+  projectSidebarWidth: PROJECT_SIDEBAR_WIDTH,
+  projectSidebarCollapsed: false,
   contentMode: "projectBoard",
   detailTerminalId: null,
   rightRailCollapsed: true,
@@ -60,6 +70,21 @@ export const useUiShellStore = create<UiShellStore>((set, get) => ({
       detailTerminalId: null,
     });
   },
+
+  setProjectSidebarWidth: (width) => {
+    const nextWidth = Math.max(
+      PROJECT_SIDEBAR_MIN_WIDTH,
+      Math.min(PROJECT_SIDEBAR_MAX_WIDTH, Math.round(width)),
+    );
+    set({ projectSidebarWidth: nextWidth });
+  },
+
+  setProjectSidebarCollapsed: (collapsed) => set({ projectSidebarCollapsed: collapsed }),
+
+  toggleProjectSidebarCollapsed: () =>
+    set((state) => ({
+      projectSidebarCollapsed: !state.projectSidebarCollapsed,
+    })),
 
   setContentMode: (mode) =>
     set((state) => ({

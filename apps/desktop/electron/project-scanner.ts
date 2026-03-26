@@ -14,6 +14,15 @@ interface ProjectInfo {
   worktrees: WorktreeInfo[];
 }
 
+function normalizeSlashes(value: string): string {
+  return value.replace(/\\/g, "/");
+}
+
+function looksLikeGitInternalPath(value: string): boolean {
+  const normalized = normalizeSlashes(value).toLowerCase();
+  return normalized.includes("/.git/modules/") || normalized.endsWith("/.git");
+}
+
 function parseWorktreesOutput(output: string): WorktreeInfo[] {
   const worktrees: WorktreeInfo[] = [];
   let current: Partial<WorktreeInfo> & { prunable?: boolean } = {};
@@ -62,30 +71,103 @@ function runGitAsync(dirPath: string, args: string[]): Promise<string> {
 }
 
 export class ProjectScanner {
-  scan(dirPath: string): ProjectInfo | null {
+  private resolveProjectRoot(dirPath: string): string {
     try {
-      execSync("git rev-parse --git-dir", { cwd: dirPath, stdio: "pipe" });
+      const topLevel = execFileSync("git", ["-C", dirPath, "rev-parse", "--show-toplevel"], {
+        encoding: "utf-8",
+        maxBuffer: 1024 * 1024,
+      }).trim();
+      return topLevel || dirPath;
+    } catch {
+      return dirPath;
+    }
+  }
+
+  private resolveWorktreeRoot(pathCandidate: string): string {
+    if (!looksLikeGitInternalPath(pathCandidate)) {
+      return pathCandidate;
+    }
+
+    try {
+      const output = execFileSync(
+        "git",
+        ["--git-dir", pathCandidate, "worktree", "list", "--porcelain"],
+        {
+          encoding: "utf-8",
+          maxBuffer: 10 * 1024 * 1024,
+        },
+      );
+      for (const line of output.split("\n")) {
+        if (!line.startsWith("worktree ")) {
+          continue;
+        }
+        const worktreePath = line.slice("worktree ".length).trim();
+        if (!worktreePath || !existsSync(worktreePath)) {
+          continue;
+        }
+        if (!looksLikeGitInternalPath(worktreePath)) {
+          return worktreePath;
+        }
+      }
+    } catch {
+      // keep fallback path
+    }
+
+    try {
+      const topLevel = execFileSync("git", ["-C", pathCandidate, "rev-parse", "--show-toplevel"], {
+        encoding: "utf-8",
+        maxBuffer: 1024 * 1024,
+      }).trim();
+      if (topLevel && existsSync(topLevel)) {
+        return topLevel;
+      }
+    } catch {
+      // keep fallback path
+    }
+
+    const parentDir = path.dirname(pathCandidate);
+    if (existsSync(parentDir) && !looksLikeGitInternalPath(parentDir)) {
+      return parentDir;
+    }
+
+    return pathCandidate;
+  }
+
+  private normalizeWorktreePaths(worktrees: WorktreeInfo[]): WorktreeInfo[] {
+    return worktrees.map((worktree) => ({
+      ...worktree,
+      path: this.resolveWorktreeRoot(worktree.path),
+    }));
+  }
+
+  scan(dirPath: string): ProjectInfo | null {
+    const projectPath = this.resolveProjectRoot(dirPath);
+    try {
+      execSync("git rev-parse --git-dir", { cwd: projectPath, stdio: "pipe" });
     } catch {
       return null;
     }
 
-    const name = path.basename(dirPath);
-    const worktrees = this.listWorktrees(dirPath);
+    const name = path.basename(projectPath);
+    const worktrees = this.normalizeWorktreePaths(this.listWorktrees(projectPath));
 
-    return { name, path: dirPath, worktrees };
+    return { name, path: projectPath, worktrees };
   }
 
   async scanAsync(dirPath: string): Promise<ProjectInfo | null> {
+    const projectPath = this.resolveProjectRoot(dirPath);
     try {
-      await runGitAsync(dirPath, ["rev-parse", "--git-dir"]);
+      await runGitAsync(projectPath, ["rev-parse", "--git-dir"]);
     } catch {
       return null;
     }
 
-    const name = path.basename(dirPath);
-    const worktrees = await this.listWorktreesAsync(dirPath);
+    const name = path.basename(projectPath);
+    const worktrees = this.normalizeWorktreePaths(
+      await this.listWorktreesAsync(projectPath),
+    );
 
-    return { name, path: dirPath, worktrees };
+    return { name, path: projectPath, worktrees };
   }
 
   listWorktrees(dirPath: string): WorktreeInfo[] {

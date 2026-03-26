@@ -13,14 +13,10 @@ interface Props {
 }
 
 const TERMINAL_TYPES: TerminalType[] = [
-  "shell",
   "claude",
   "codex",
-  "kimi",
-  "gemini",
   "opencode",
-  "lazygit",
-  "tmux",
+  "copilot",
 ];
 
 interface BoardTerminalItem {
@@ -47,7 +43,7 @@ export function ProjectBoard({
   const t = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedWorktreeId, setSelectedWorktreeId] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<TerminalType>("shell");
+  const [selectedType, setSelectedType] = useState<TerminalType>("claude");
 
   useEffect(() => {
     if (!scrollRef.current) {

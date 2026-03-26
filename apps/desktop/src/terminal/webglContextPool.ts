@@ -12,7 +12,18 @@ const MAX_CONTEXTS = 16;
 const entries = new Map<string, PoolEntry>();
 let focusedId: string | null = null;
 
+function shouldDisableWebGL(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return window.ominiterm?.app.platform === "win32";
+}
+
 export function acquireWebGL(terminalId: string, xterm: Terminal): boolean {
+  if (shouldDisableWebGL()) {
+    return false;
+  }
+
   // Already has a context
   if (entries.has(terminalId)) {
     touch(terminalId);

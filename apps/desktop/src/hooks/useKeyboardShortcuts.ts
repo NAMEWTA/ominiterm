@@ -44,6 +44,13 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      if (matchesShortcut(event, shortcuts.toggleSidebar)) {
+        event.preventDefault();
+        const state = useUiShellStore.getState();
+        state.toggleProjectSidebarCollapsed();
+        return;
+      }
+
       if (matchesShortcut(event, shortcuts.newTerminal)) {
         event.preventDefault();
         const { selectedProjectId } = useUiShellStore.getState();

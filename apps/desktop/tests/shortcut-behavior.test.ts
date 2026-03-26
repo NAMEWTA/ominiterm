@@ -137,6 +137,16 @@ test("toggle right panel shortcut defaults to mod+slash and matches correctly", 
   });
 });
 
+test("toggle sidebar shortcut defaults to mod+backslash and matches correctly", () => {
+  assert.equal(DEFAULT_SHORTCUTS.toggleSidebar, "mod+\\");
+  withPlatform("darwin", () => {
+    assert.equal(
+      matchesShortcut(createKeyboardEvent({ key: "\\", metaKey: true }), "mod+\\"),
+      true,
+    );
+  });
+});
+
 test("terminal focus order follows natural project/worktree/array order", () => {
   const projects: ProjectData[] = [
     {

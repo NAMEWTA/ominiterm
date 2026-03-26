@@ -16,5 +16,10 @@
     "website:build": "pnpm --filter @ominiterm/website build",
     "hydra:build": "pnpm --filter @ominiterm/hydra build",
     "eval:test": "pnpm --filter @ominiterm/eval test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
   }
 }
