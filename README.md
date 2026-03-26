@@ -44,6 +44,8 @@ pnpm dev
 
 **Install CLI tools** — after launching the app, go to Settings → General → Command line interface and click Register. This adds `ominiterm` and `hydra` to your PATH.
 
+**Project docs** — internal notes, plans, and tooling docs are organized under [docs/README.md](./docs/README.md).
+
 ---
 
 ## Features
