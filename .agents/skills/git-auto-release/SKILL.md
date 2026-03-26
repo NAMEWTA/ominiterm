@@ -1,49 +1,49 @@
 ---
 name: git-auto-release
-description: Use when local changes need to be automatically committed, pushed, and tagged with semantic versioning from the latest v* tag, especially when CI release workflows require CHANGELOG version entries.
+description: 在需要根据本地改动自动完成提交、推送和语义化打标时使用，尤其适用于发布流程要求 CHANGELOG 存在对应版本条目的场景。
 ---
 
-# Git Auto Release
+# Git 自动发布
 
-## Overview
+## 概述
 
-This skill standardizes a full release flow: analyze current changes, create a suitable commit, push branch updates, calculate the next semantic version tag, update changelog entry, and push the tag.
+该技能用于规范一套完整发布流程：分析当前改动、生成合适提交、推送分支更新、计算下一个语义化版本标签、更新变更日志条目并推送标签。
 
-It is designed for repositories where release automation is triggered by `v*` tags and `CHANGELOG.md` must contain a matching `[x.y.z]` section.
+它适用于通过 v* 标签触发自动发布、且要求 CHANGELOG.md 中必须包含对应 [x.y.z] 版本段落的仓库。
 
-## When To Use
+## 何时使用
 
-- Need one-shot flow for commit + push + tag.
-- Want tag version to be derived from change impact, not manually chosen.
-- Release pipeline validates `CHANGELOG.md` contains `[version]`.
+- 需要一次性完成提交 + 推送 + 打标签。
+- 希望标签版本由改动影响自动推导，而不是手工指定。
+- 发布流水线会校验 CHANGELOG.md 是否包含对应 [version] 条目。
 
-Do not use this skill when:
-- Branch strategy forbids direct push.
-- The user explicitly requests manual version selection.
+以下场景不建议使用：
+- 分支策略禁止直接推送。
+- 用户明确要求手动指定版本号。
 
-## Inputs
+## 输入项
 
-- Target branch (default: current branch).
-- Remote name (default: `origin`).
-- Optional release note focus (for better changelog bullets).
+- 目标分支（默认：当前分支）。
+- 远程名称（默认：origin）。
+- 可选的发布说明关注点（用于优化 changelog 条目）。
 
-## Workflow
+## 工作流
 
-1. Verify repository state.
-2. Stage relevant files.
-3. Infer commit type and compose commit message.
-4. Compute next semantic version from latest `vX.Y.Z` tag.
-5. Ensure `CHANGELOG.md` has `[newVersion]` entry.
-6. Commit changelog + code changes together.
-7. Push branch.
-8. Create and push tag.
-9. Verify local/remote result.
+1. 校验仓库状态。
+2. 暂存相关文件。
+3. 推断提交类型并生成提交信息。
+4. 基于最近 vX.Y.Z 标签计算下一版本。
+5. 确保 CHANGELOG.md 存在 [newVersion] 条目。
+6. 将代码改动与 changelog 一起提交。
+7. 推送分支。
+8. 创建并推送标签。
+9. 校验本地与远程结果。
 
-## Step Details
+## 步骤细则
 
-### 1. Verify repository state
+### 1. 校验仓库状态
 
-Run:
+执行：
 
 ```bash
 git rev-parse --is-inside-work-tree
@@ -53,81 +53,82 @@ git rev-parse --abbrev-ref HEAD
 ```
 
 Rules:
-- If no changes exist, stop and report "no changes to release".
-- If there are merge conflicts, stop and request manual conflict resolution.
+规则：
+- 如果没有改动，停止并报告 no changes to release。
+- 如果存在冲突，停止并要求先手动解决冲突。
 
-### 2. Stage relevant files
+### 2. 暂存相关文件
 
-Default behavior:
+默认行为：
 
 ```bash
 git add -A
 ```
 
-If user asks partial release, stage only requested paths.
+如果用户要求部分发布，只暂存指定路径。
 
-### 3. Infer commit message from staged changes
+### 3. 基于已暂存改动推断提交信息
 
-Inspect staged data:
+检查已暂存内容：
 
 ```bash
 git diff --cached --name-status
 git diff --cached -- .
 ```
 
-Commit type decision:
-- `feat`: adds user-visible feature/capability.
-- `fix`: bug fix or regression fix.
-- `docs`: docs-only updates.
-- `refactor`: structural/internal improvement with no behavior change.
-- `chore`: tooling/build/infra maintenance.
+提交类型判定：
+- feat：新增用户可见功能或能力。
+- fix：修复缺陷或回归问题。
+- docs：仅文档变更。
+- refactor：不改变行为的结构或内部重构。
+- chore：工具链、构建或基础设施维护。
 
-Subject format:
+标题格式：
 
 ```text
 <type>: <short summary of main change>
 ```
 
-When mixed changes exist, choose highest-impact type by priority:
-`feat` > `fix` > `refactor` > `docs` > `chore`.
+如果是混合改动，按以下优先级选择最高影响的类型：
+feat > fix > refactor > docs > chore。
 
-### 4. Compute next version from tags
+### 4. 从标签计算下一版本
 
-Find latest semantic tag:
+查找最近语义化标签：
 
 ```bash
 git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*"
 ```
 
-Version base rule:
-- If no matching tag exists, next version is `0.0.1`.
+版本基线规则：
+- 如果找不到匹配标签，下一个版本为 0.0.1。
 
-Bump rule from current release impact:
-- Major: breaking change indicators exist.
-- Minor: at least one `feat` and no breaking change.
-- Patch: all other cases.
+版本提升规则：
+- Major：存在破坏性变更信号。
+- Minor：至少包含一个 feat 且不存在破坏性变更。
+- Patch：其他所有情况。
 
-Breaking change indicators (any one):
-- Commit header pattern contains `!` (example `feat!:` or `refactor!:`).
-- Staged text includes `BREAKING CHANGE`.
-- User explicitly states incompatible behavior/API change.
+破坏性变更信号（满足任一即可）：
+- 提交头包含 !（例如 feat!: 或 refactor!:）。
+- 暂存内容中出现 BREAKING CHANGE。
+- 用户明确说明存在不兼容行为或 API 变更。
 
-Semver math:
-- Major: `X+1.0.0`
-- Minor: `X.Y+1.0`
-- Patch: `X.Y.Z+1`
+语义化版本计算：
+- Major：X+1.0.0
+- Minor：X.Y+1.0
+- Patch：X.Y.Z+1
 
-Tag format must be `v<version>`.
+标签格式必须是 v<version>。
 
-### 5. Update CHANGELOG entry
+### 5. 更新 CHANGELOG 条目
 
-Check whether target version entry exists:
+检查目标版本条目是否已存在：
 
 ```bash
 git grep -n "^## \[<newVersion>\]" CHANGELOG.md
 ```
 
-If missing, add a new section before current top released section (usually below `## [Unreleased]`):
+如果不存在，在当前最上方已发布版本之前新增段落（通常位于 ## [Unreleased] 之后）：
 
 ```markdown
 ## [<newVersion>] - <YYYY-MM-DD>
@@ -137,32 +138,32 @@ If missing, add a new section before current top released section (usually below
 - <auto-generated summary from staged diff>
 ```
 
-Requirements:
-- Header must exactly match `## [x.y.z]` (without `v`).
-- Keep concise, user-facing bullet points.
+要求：
+- 标题必须严格匹配 ## [x.y.z]（不带 v）。
+- 变更条目应简洁，面向用户可读。
 
-### 6. Commit
+### 6. 提交
 
-Commit all staged release changes (code + changelog):
+将所有已暂存发布改动（代码 + changelog）一起提交：
 
 ```bash
 git commit -m "<type>: <summary>"
 ```
 
-### 7. Push branch
+### 7. 推送分支
 
 ```bash
 git push <remote> <branch>
 ```
 
-### 8. Create and push tag
+### 8. 创建并推送标签
 
 ```bash
 git tag "v<newVersion>"
 git push <remote> "v<newVersion>"
 ```
 
-### 9. Verify
+### 9. 校验
 
 ```bash
 git status --short
@@ -170,24 +171,24 @@ git log --oneline --decorate -n 5
 git ls-remote --tags <remote>
 ```
 
-Success criteria:
-- Working tree clean.
-- Commit exists on target branch.
-- New tag exists locally and remotely.
-- `CHANGELOG.md` contains exact `## [<newVersion>]` entry.
+成功标准：
+- 工作区干净。
+- 目标分支上存在本次提交。
+- 新标签在本地和远程都存在。
+- CHANGELOG.md 中存在准确的 ## [<newVersion>] 条目。
 
-## Quick Decision Table
+## 快速决策表
 
-| Observed change | Commit type | Version bump |
+| 观察到的改动 | 提交类型 | 版本提升 |
 |---|---|---|
-| Breaking API/behavior | `feat!` or `refactor!` | Major |
-| New capability | `feat` | Minor |
-| Bug fix only | `fix` | Patch |
-| Refactor/docs/chore only | `refactor`/`docs`/`chore` | Patch |
+| 破坏性 API 或行为变更 | feat! 或 refactor! | Major |
+| 新增能力 | feat | Minor |
+| 仅缺陷修复 | fix | Patch |
+| 仅重构/文档/维护 | refactor/docs/chore | Patch |
 
-## Output Template
+## 输出模板
 
-Use this exact completion report shape:
+完成后使用如下固定格式报告：
 
 ```text
 Release completed.
@@ -200,9 +201,9 @@ Release completed.
 - Changelog: CHANGELOG.md includes [<newVersion>]
 ```
 
-## Common Failure Handling
+## 常见失败处理
 
-- Push rejected (protected branch): stop and ask user to grant permission or switch strategy.
-- Tag already exists: recompute version from latest remote tag and retry once.
-- Changelog missing or malformed: fix section header format before tagging.
-- Empty staged diff after filtering: stop and explain nothing to release.
+- 推送被拒绝（受保护分支）：停止并要求用户授权或切换发布策略。
+- 标签已存在：基于远程最新标签重新计算版本，并重试一次。
+- Changelog 缺失或格式异常：先修复版本段落格式，再执行打标。
+- 过滤后暂存内容为空：停止并说明无可发布改动。
