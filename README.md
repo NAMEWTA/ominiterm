@@ -98,6 +98,10 @@ The eval tool supports `single-claude`, `single-codex`, and `hydra` benchmark ru
 - Runtime naming has been unified around `OminiTerm`, including `~/.ominiterm`, the `ominiterm` CLI, and the packaged app name.
 - The desktop app still contains auth, usage, quota, updater, and insights services, but the active shell in this branch is centered on the project board and right rail.
 
+## Acknowledgements
+
+This project references and draws inspiration from [blueberrycongee/termcanvas](https://github.com/blueberrycongee/termcanvas). Many thanks to the original project and its author.
+
 ## License
 
 [MIT](./LICENSE)
