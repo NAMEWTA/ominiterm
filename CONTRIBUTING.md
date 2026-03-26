@@ -1,12 +1,12 @@
-# Contributing to TermCanvas
+# Contributing to OminiTerm
 
 Thank you for your interest in contributing! Here's how to get started.
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/blueberrycongee/termcanvas.git
-cd termcanvas
+git clone https://github.com/blueberrycongee/ominiterm.git
+cd ominiterm
 npm install
 npm run dev
 ```
@@ -45,7 +45,7 @@ refactor: restructure code without behavior change
 
 ## Reporting Issues
 
-Open an issue at [github.com/blueberrycongee/termcanvas/issues](https://github.com/blueberrycongee/termcanvas/issues) with:
+Open an issue at [github.com/blueberrycongee/ominiterm/issues](https://github.com/blueberrycongee/ominiterm/issues) with:
 
 - Steps to reproduce
 - Expected vs actual behavior
@@ -54,3 +54,4 @@ Open an issue at [github.com/blueberrycongee/termcanvas/issues](https://github.c
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+

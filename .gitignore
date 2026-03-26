@@ -1,4 +1,5 @@
 node_modules/
+pnpm-debug.log*
 dist/
 dist-electron/
 dist-cli/
@@ -23,5 +24,7 @@ thirdparty/
 .hydra-task-*.md
 
 # Local workspace state
+.ominiterm/
+*.ominiterm
 .termcanvas/
 *.termcanvas

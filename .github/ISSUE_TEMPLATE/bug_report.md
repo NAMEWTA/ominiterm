@@ -22,7 +22,8 @@ What actually happened.
 **Environment**
 - OS: [e.g. macOS 15.0]
 - Node.js: [e.g. 20.10.0]
-- TermCanvas version: [e.g. 0.1.0]
+- OminiTerm version: [e.g. 0.1.0]
 
 **Screenshots**
 If applicable, add screenshots.
+

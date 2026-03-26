@@ -1,29 +1,29 @@
 <div align="center">
 
-<img src="docs/icon.png" width="128" alt="TermCanvas app icon" />
+<img src="docs/icon.png" width="128" alt="OminiTerm app icon" />
 
-# TermCanvas
+# OminiTerm
 
 **Your terminals, organized as a project board.**
 
-[![GitHub release](https://img.shields.io/github/v/release/blueberrycongee/termcanvas)](https://github.com/blueberrycongee/termcanvas/releases)
+[![GitHub release](https://img.shields.io/github/v/release/blueberrycongee/ominiterm)](https://github.com/blueberrycongee/ominiterm/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
-[![Website](https://img.shields.io/badge/website-termcanvas-e8b840)](https://website-ten-mu-37.vercel.app)
+[![Website](https://img.shields.io/badge/website-ominiterm-e8b840)](https://website-ten-mu-37.vercel.app)
 
-[**termcanvas.dev →**](https://website-ten-mu-37.vercel.app)
+[**ominiterm.dev →**](https://website-ten-mu-37.vercel.app)
 
 <br>
 
-<img src="docs/image.png" alt="TermCanvas demo — multiple AI agents in a project terminal board" />
+<img src="docs/image.png" alt="OminiTerm demo — multiple AI agents in a project terminal board" />
 
 </div>
 
 <br>
 
-TermCanvas organizes your terminals into a project-first workspace shell: a left project navigator, a two-column terminal board for the current project, and a full-page terminal detail view when you need depth.
+OminiTerm organizes your terminals into a project-first workspace shell: a left project navigator, a two-column terminal board for the current project, and a full-page terminal detail view when you need depth.
 
-It still mirrors your git workflow with a **Project → Worktree → Terminal** hierarchy. Add a project, TermCanvas auto-detects its worktrees, and create terminals directly from the project board.
+It still mirrors your git workflow with a **Project → Worktree → Terminal** hierarchy. Add a project, OminiTerm auto-detects its worktrees, and create terminals directly from the project board.
 
 <p align="right"><a href="./README.zh-CN.md">中文文档 →</a></p>
 
@@ -31,18 +31,18 @@ It still mirrors your git workflow with a **Project → Worktree → Terminal** 
 
 ## Quick Start
 
-**Download** — grab the latest build from [GitHub Releases](https://github.com/blueberrycongee/termcanvas/releases).
+**Download** — grab the latest build from [GitHub Releases](https://github.com/blueberrycongee/ominiterm/releases).
 
 **Build from source:**
 
 ```bash
-git clone https://github.com/blueberrycongee/termcanvas.git
-cd termcanvas
-npm install
-npm run dev
+git clone https://github.com/blueberrycongee/ominiterm.git
+cd ominiterm
+pnpm install
+pnpm dev
 ```
 
-**Install CLI tools** — after launching the app, go to Settings → General → Command line interface and click Register. This adds `termcanvas` and `hydra` to your PATH.
+**Install CLI tools** — after launching the app, go to Settings → General → Command line interface and click Register. This adds `ominiterm` and `hydra` to your PATH.
 
 ---
 
@@ -81,13 +81,13 @@ Token usage and cost dashboard — total spend, per-project and per-model breakd
 
 Both CLIs are bundled with the app. Register them from Settings to use in any terminal.
 
-### termcanvas
+### ominiterm
 
 <details>
 <summary>Full command reference</summary>
 
 ```
-Usage: termcanvas <project|terminal|diff|state> <command> [args]
+Usage: ominiterm <project|terminal|diff|state> <command> [args]
 
 Project commands:
   project add <path>                          Add a project to the workspace
@@ -115,10 +115,10 @@ Flags:
 </details>
 
 ```bash
-termcanvas project add ~/my-repo
-termcanvas terminal create --worktree ~/my-repo --type claude
-termcanvas terminal status <id>
-termcanvas diff ~/my-repo --summary
+ominiterm project add ~/my-repo
+ominiterm terminal create --worktree ~/my-repo --type claude
+ominiterm terminal status <id>
+ominiterm diff ~/my-repo --summary
 ```
 
 <br>
@@ -194,3 +194,4 @@ All shortcuts are customizable in Settings → Shortcuts. On Windows/Linux, repl
 **Acknowledgements** — [lazygit](https://github.com/jesseduffield/lazygit) is integrated as a built-in terminal type for visual git management inside the project board.
 
 **Contributing** — fork, branch, and open a PR. Licensed under [MIT](LICENSE).
+

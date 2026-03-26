@@ -1,0 +1,78 @@
+{
+  "name": "ominiterm",
+  "version": "0.8.52",
+  "description": "An OminiTerm desktop app for managing project terminals in a board-first workspace",
+  "main": "dist-electron/main.js",
+  "bin": {
+    "ominiterm": "./dist-cli/ominiterm.js",
+    "hydra": "./dist-cli/hydra.js"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && node scripts/prepare-hydra-cli.mjs",
+    "package": "pnpm run build && electron-builder --publish never",
+    "preview": "vite preview",
+    "generate:icons": "python scripts/generate-icons.py",
+    "postinstall": "node scripts/postinstall.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test --test-concurrency=1 --test-isolation=none tests/pty-launch.test.ts tests/pty-manager.test.ts tests/window-events.test.ts tests/session-watcher.test.ts tests/process-detector.test.ts tests/preferences-store.test.ts tests/cli-launchers.test.ts tests/cli-registration.test.ts tests/insights-engine.test.ts tests/usage-collector.test.ts tests/usage-heatmap-layout.test.ts tests/terminal-state.test.ts tests/terminal-focus-scheduler.test.ts tests/terminal-adapters.test.ts tests/composer-submit.test.ts tests/composer-input-behavior.test.ts tests/composer-store.test.ts tests/slash-commands.test.ts tests/shortcut-behavior.test.ts tests/git-diff.test.ts tests/project-store-sync-worktrees.test.ts tests/project-store-focus.test.ts tests/state-persistence.test.ts tests/migrate-legacy-local-storage.test.ts tests/title-helper.test.ts"
+  },
+  "keywords": [
+    "terminal",
+    "electron",
+    "worktree",
+    "git",
+    "xterm",
+    "terminal-board",
+    "developer-tools"
+  ],
+  "author": {
+    "name": "blueberrycongee",
+    "email": "blueberrycongee@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/blueberrycongee/ominiterm",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blueberrycongee/ominiterm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/blueberrycongee/ominiterm/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.29.2",
+  "engines": {
+    "node": "24.13.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.3",
+    "@xterm/addon-image": "^0.9.0",
+    "@xterm/addon-serialize": "^0.14.0",
+    "adm-zip": "^0.5.16",
+    "electron-updater": "^6.8.3",
+    "geist": "^1.7.0",
+    "marked": "^17.0.4",
+    "node-pty": "^1.1.0",
+    "perfect-freehand": "^1.2.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/adm-zip": "^0.5.8",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-webgl": "^0.19.0",
+    "@xterm/xterm": "^6.0.0",
+    "electron": "41.0.2",
+    "electron-builder": "^26.8.1",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.6"
+  }
+}

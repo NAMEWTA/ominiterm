@@ -1,0 +1,36 @@
+import { FONT_REGISTRY, type FontEntry } from "./fontRegistry";
+
+/** Load a single font into the document via FontFace API */
+export async function loadFont(
+  entry: FontEntry,
+  fontsDir: string,
+): Promise<boolean> {
+  if (entry.source === "builtin") return true;
+  try {
+    const filePath = `file://${fontsDir}/${entry.fileName}`;
+    const face = new FontFace(
+      entry.cssFamily.replace(/"/g, ""),
+      `url("${filePath}")`,
+    );
+    await face.load();
+    document.fonts.add(face);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Load all downloaded fonts on app startup */
+export async function loadAllDownloadedFonts(): Promise<void> {
+  const fontsDir = await window.ominiterm.fonts.getPath();
+  const downloaded = await window.ominiterm.fonts.listDownloaded();
+  const downloadedSet = new Set(downloaded);
+
+  for (const entry of FONT_REGISTRY) {
+    if (entry.source === "builtin") continue;
+    if (downloadedSet.has(entry.fileName)) {
+      await loadFont(entry, fontsDir);
+    }
+  }
+}
+
