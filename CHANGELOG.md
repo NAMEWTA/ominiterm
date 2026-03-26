@@ -30,6 +30,12 @@ Historical notes from the pre-cleanup tree are still available through git histo
 - Obsolete historical docs, plans, and archive material from the active working tree
 - Unused heatmap layout code and stale utility modules left over from the older UI structure
 
+## [0.0.1] - 2026-03-26
+
+### Added
+
+- Added the `git-auto-release` skill for automated commit, push, semantic tagging, and changelog-aligned release flow
+
 ## [0.8.52] - 2026-03-24
 
 ### Fixed
