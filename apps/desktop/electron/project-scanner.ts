@@ -89,6 +89,22 @@ export class ProjectScanner {
     }
 
     try {
+      const topLevel = execFileSync(
+        "git",
+        ["--git-dir", pathCandidate, "rev-parse", "--show-toplevel"],
+        {
+          encoding: "utf-8",
+          maxBuffer: 1024 * 1024,
+        },
+      ).trim();
+      if (topLevel && existsSync(topLevel)) {
+        return topLevel;
+      }
+    } catch {
+      // keep fallback path
+    }
+
+    try {
       const output = execFileSync(
         "git",
         ["--git-dir", pathCandidate, "worktree", "list", "--porcelain"],
@@ -114,10 +130,14 @@ export class ProjectScanner {
     }
 
     try {
-      const topLevel = execFileSync("git", ["-C", pathCandidate, "rev-parse", "--show-toplevel"], {
-        encoding: "utf-8",
-        maxBuffer: 1024 * 1024,
-      }).trim();
+      const topLevel = execFileSync(
+        "git",
+        ["-C", pathCandidate, "rev-parse", "--show-toplevel"],
+        {
+          encoding: "utf-8",
+          maxBuffer: 1024 * 1024,
+        },
+      ).trim();
       if (topLevel && existsSync(topLevel)) {
         return topLevel;
       }
@@ -149,7 +169,7 @@ export class ProjectScanner {
     }
 
     const name = path.basename(projectPath);
-    const worktrees = this.normalizeWorktreePaths(this.listWorktrees(projectPath));
+    const worktrees = this.listWorktrees(projectPath);
 
     return { name, path: projectPath, worktrees };
   }
@@ -163,9 +183,7 @@ export class ProjectScanner {
     }
 
     const name = path.basename(projectPath);
-    const worktrees = this.normalizeWorktreePaths(
-      await this.listWorktreesAsync(projectPath),
-    );
+    const worktrees = await this.listWorktreesAsync(projectPath);
 
     return { name, path: projectPath, worktrees };
   }
@@ -182,15 +200,15 @@ export class ProjectScanner {
         },
       );
 
-      return parseWorktreesOutput(output);
+      return this.normalizeWorktreePaths(parseWorktreesOutput(output));
     } catch {
-      return [
+      return this.normalizeWorktreePaths([
         {
           path: dirPath,
           branch: this.getCurrentBranch(dirPath),
           isMain: true,
         },
-      ];
+      ]);
     }
   }
 
@@ -201,15 +219,15 @@ export class ProjectScanner {
         "list",
         "--porcelain",
       ]);
-      return parseWorktreesOutput(output);
+      return this.normalizeWorktreePaths(parseWorktreesOutput(output));
     } catch {
-      return [
+      return this.normalizeWorktreePaths([
         {
           path: dirPath,
           branch: await this.getCurrentBranchAsync(dirPath),
           isMain: true,
         },
-      ];
+      ]);
     }
   }
 

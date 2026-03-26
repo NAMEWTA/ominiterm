@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { useProjectStore } from "../src/stores/projectStore.ts";
+import { migrateProjects } from "../src/projectStateMigration.ts";
 import type { ProjectData } from "../src/types/index.ts";
 
 function createProject(): ProjectData {
@@ -136,6 +137,134 @@ test("syncWorktrees matches Windows paths across slash styles", () => {
   assert.equal(state.projects[0].worktrees.length, 1);
   assert.equal(state.projects[0].worktrees[0].terminals.length, 1);
   assert.equal(state.projects[0].worktrees[0].terminals[0].id, "terminal-1");
+});
+
+test("syncWorktrees merges a stale git/modules main worktree path into the project root", () => {
+  const project = createProject();
+  project.path = "C:/repo/cde-base";
+  project.worktrees[0].name = "dev";
+  project.worktrees[0].path = "C:/repo/.git/modules/cde-base";
+
+  resetStore([project]);
+
+  const beforeWorktree = useProjectStore.getState().projects[0].worktrees[0];
+
+  useProjectStore.getState().syncWorktrees("C:/repo/cde-base", [
+    { path: "C:/repo/cde-base", branch: "dev", isMain: true },
+    {
+      path: "C:/repo/.worktree/cde-base/feature-dataset-market-backend",
+      branch: "feature/dataset-market-backend",
+      isMain: false,
+    },
+  ]);
+
+  const state = useProjectStore.getState();
+  const mainWorktree = state.projects[0].worktrees.find(
+    (worktree) => worktree.name === "dev",
+  );
+  assert.ok(mainWorktree);
+  assert.equal(mainWorktree.path, "C:/repo/cde-base");
+  assert.equal(mainWorktree.terminals.length, 1);
+  assert.equal(mainWorktree.terminals[0].id, "terminal-1");
+  assert.equal(mainWorktree.id, beforeWorktree.id);
+});
+
+test("syncWorktrees repairs corrupted duplicate worktrees after a bad rescan", () => {
+  resetStore([
+    {
+      id: "project-1",
+      name: "cde-base",
+      path: "C:/repo/cde-base",
+      worktrees: [
+        {
+          id: "dup-worktree",
+          name: "dev",
+          path: "C:/repo/.worktree/cde-base/feature-dataset-market-backend",
+          terminals: [
+            {
+              id: "terminal-dup",
+              title: "Terminal",
+              type: "shell",
+              focused: true,
+              ptyId: null,
+              status: "idle",
+            },
+          ],
+        },
+        {
+          id: "dup-worktree",
+          name: "feature/dataset-market-backend",
+          path: "C:/repo/.worktree/cde-base/feature-dataset-market-backend",
+          terminals: [
+            {
+              id: "terminal-dup",
+              title: "Terminal",
+              type: "shell",
+              focused: true,
+              ptyId: null,
+              status: "idle",
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+
+  useProjectStore.getState().syncWorktrees("C:/repo/cde-base", [
+    { path: "C:/repo/cde-base", branch: "dev", isMain: true },
+    {
+      path: "C:/repo/.worktree/cde-base/feature-dataset-market-backend",
+      branch: "feature/dataset-market-backend",
+      isMain: false,
+    },
+  ]);
+
+  const state = useProjectStore.getState();
+  const [mainWorktree, featureWorktree] = state.projects[0].worktrees;
+
+  assert.equal(state.projects[0].worktrees.length, 2);
+  assert.equal(mainWorktree.name, "dev");
+  assert.equal(mainWorktree.path, "C:/repo/cde-base");
+  assert.equal(mainWorktree.terminals.length, 1);
+  assert.equal(mainWorktree.terminals[0].id, "terminal-dup");
+  assert.equal(featureWorktree.name, "feature/dataset-market-backend");
+  assert.equal(
+    featureWorktree.path,
+    "C:/repo/.worktree/cde-base/feature-dataset-market-backend",
+  );
+  assert.equal(featureWorktree.terminals.length, 0);
+  assert.notEqual(mainWorktree.id, featureWorktree.id);
+});
+
+test("migrateProjects normalizes a restored git/modules main worktree path", () => {
+  const [project] = migrateProjects([
+    {
+      id: "project-1",
+      name: "cde-base",
+      path: "C:/repo/cde-base",
+      worktrees: [
+        {
+          id: "worktree-main",
+          name: "dev",
+          path: "C:/repo/.git/modules/cde-base",
+          terminals: [
+            {
+              id: "terminal-1",
+              title: "Terminal 1",
+              type: "shell",
+              focused: false,
+              ptyId: 123,
+              status: "running",
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+
+  assert.equal(project.worktrees[0].path, "C:/repo/cde-base");
+  assert.equal(project.worktrees[0].terminals[0].ptyId, null);
+  assert.equal(project.worktrees[0].terminals[0].status, "idle");
 });
 
 test("removeTerminal keeps an empty focused worktree expanded after deleting its last terminal", () => {

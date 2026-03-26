@@ -22,3 +22,11 @@ test("project sidebar supports drawer collapse toggle", () => {
   state.toggleProjectSidebarCollapsed();
   assert.equal(useUiShellStore.getState().projectSidebarCollapsed, false);
 });
+
+test("right rail defaults to files tab when usage panel is removed", () => {
+  const initial = (useUiShellStore as unknown as {
+    getInitialState?: () => ReturnType<typeof useUiShellStore.getState>;
+  }).getInitialState?.();
+  assert.ok(initial);
+  assert.equal(initial.rightRailTab, "files");
+});

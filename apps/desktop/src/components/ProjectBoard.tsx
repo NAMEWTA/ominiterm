@@ -3,6 +3,10 @@ import type { ProjectData, TerminalType, WorktreeData } from "../types";
 import { useT } from "../i18n/useT";
 import { createTerminalInWorktree } from "../projectCommands";
 import { TerminalTile } from "../terminal/TerminalTile";
+import {
+  CREATABLE_TERMINAL_TYPES,
+  DEFAULT_CREATABLE_TERMINAL_TYPE,
+} from "./projectBoardOptions";
 
 interface Props {
   project: ProjectData | null;
@@ -11,13 +15,6 @@ interface Props {
   onBoardScroll: (scrollTop: number) => void;
   onOpenDetail: (terminalId: string) => void;
 }
-
-const TERMINAL_TYPES: TerminalType[] = [
-  "claude",
-  "codex",
-  "opencode",
-  "copilot",
-];
 
 interface BoardTerminalItem {
   terminalId: string;
@@ -43,7 +40,9 @@ export function ProjectBoard({
   const t = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedWorktreeId, setSelectedWorktreeId] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<TerminalType>("claude");
+  const [selectedType, setSelectedType] = useState<TerminalType>(
+    DEFAULT_CREATABLE_TERMINAL_TYPE,
+  );
 
   useEffect(() => {
     if (!scrollRef.current) {
@@ -137,7 +136,7 @@ export function ProjectBoard({
               value={selectedType}
               onChange={(event) => setSelectedType(event.target.value as TerminalType)}
             >
-              {TERMINAL_TYPES.map((type) => (
+              {CREATABLE_TERMINAL_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>

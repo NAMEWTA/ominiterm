@@ -11,7 +11,6 @@ import { useProjectStore } from "./stores/projectStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useT } from "./i18n/useT";
 import { loadAllDownloadedFonts } from "./terminal/fontLoader";
-import type { ProjectData } from "./types";
 import { normalizeProjectsFocus } from "./stores/projectFocus";
 import {
   APP_TOOLBAR_HEIGHT,
@@ -25,35 +24,7 @@ import { logSlowRendererPath } from "./utils/devPerf";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { ProjectBoard } from "./components/ProjectBoard";
 import { TerminalDetailView } from "./components/TerminalDetailView";
-
-function migrateProjects(projects: unknown[]): ProjectData[] {
-  return projects.map((project: any) => ({
-    id: project.id,
-    name: project.name,
-    path: project.path,
-    worktrees: (project.worktrees ?? []).map((worktree: any) => ({
-      id: worktree.id,
-      name: worktree.name,
-      path: worktree.path,
-      terminals: (worktree.terminals ?? []).map((terminal: any) => ({
-        id: terminal.id,
-        title: terminal.title,
-        customTitle: terminal.customTitle,
-        starred: terminal.starred ?? false,
-        type: terminal.type,
-        focused: terminal.focused ?? false,
-        ptyId: null,
-        status: "idle",
-        scrollback: terminal.scrollback,
-        sessionId: terminal.sessionId,
-        parentTerminalId: terminal.parentTerminalId,
-        initialPrompt: terminal.initialPrompt,
-        autoApprove: terminal.autoApprove,
-        origin: terminal.origin,
-      })),
-    })),
-  }));
-}
+import { migrateProjects } from "./projectStateMigration";
 
 function restoreFromData(data: Record<string, unknown>) {
   try {
@@ -522,4 +493,3 @@ export function App() {
     </div>
   );
 }
-

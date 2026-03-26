@@ -16,6 +16,10 @@ import {
   withUpdatedTerminalType,
 } from "./terminalState.ts";
 import { logSlowRendererPath } from "../utils/devPerf.ts";
+import {
+  normalizeStoredWorktreePath,
+  normalizeWorktreePathKey,
+} from "../projectPaths.ts";
 
 interface ProjectStore {
   projects: ProjectData[];
@@ -245,55 +249,147 @@ function updateFocusedTerminalFlags(
   return changed ? updated : projects;
 }
 
+interface ExistingWorktreeEntry {
+  index: number;
+  pathKey: string;
+  worktree: WorktreeData;
+}
+
+function takeExistingWorktree(
+  existingEntries: ExistingWorktreeEntry[],
+  usedIndexes: Set<number>,
+  predicate: (entry: ExistingWorktreeEntry) => boolean,
+): WorktreeData | null {
+  const match = existingEntries.find(
+    (entry) => !usedIndexes.has(entry.index) && predicate(entry),
+  );
+  if (!match) {
+    return null;
+  }
+  usedIndexes.add(match.index);
+  return match.worktree;
+}
+
+function ensureUniqueWorktreeIds(worktrees: WorktreeData[]): WorktreeData[] {
+  const seen = new Set<string>();
+  let changed = false;
+
+  const next = worktrees.map((worktree) => {
+    if (!seen.has(worktree.id)) {
+      seen.add(worktree.id);
+      return worktree;
+    }
+    changed = true;
+    const repaired = {
+      ...worktree,
+      id: generateId(),
+    };
+    seen.add(repaired.id);
+    return repaired;
+  });
+
+  return changed ? next : worktrees;
+}
+
+function dedupeTerminalIdsAcrossWorktrees(
+  worktrees: WorktreeData[],
+): WorktreeData[] {
+  const seen = new Set<string>();
+  let changed = false;
+
+  const next = worktrees.map((worktree) => {
+    let worktreeChanged = false;
+    const terminals = worktree.terminals.filter((terminal) => {
+      if (seen.has(terminal.id)) {
+        worktreeChanged = true;
+        changed = true;
+        return false;
+      }
+      seen.add(terminal.id);
+      return true;
+    });
+
+    if (!worktreeChanged) {
+      return worktree;
+    }
+
+    return {
+      ...worktree,
+      terminals,
+    };
+  });
+
+  return changed ? next : worktrees;
+}
+
 function syncProjectWorktrees(
   project: ProjectData,
   worktrees: ScannedWorktree[],
 ): ProjectData {
-  const normalizeWorktreePathKey = (value: string): string => {
-    const unified = value.replace(/\\/g, "/").replace(/\/+$/, "");
-    if (/^[a-zA-Z]:\//.test(unified)) {
-      return unified.toLowerCase();
-    }
-    return unified;
-  };
-
-  const existingByPath = new Map(
-    project.worktrees.map((worktree) => [
-      normalizeWorktreePathKey(worktree.path),
+  const existingEntries: ExistingWorktreeEntry[] = project.worktrees.map(
+    (worktree, index) => ({
+      index,
+      pathKey: normalizeWorktreePathKey(project.path, worktree.path),
       worktree,
-    ]),
+    }),
   );
+  const usedIndexes = new Set<number>();
+
   const synced = worktrees.map((worktree) => {
-    const existing = existingByPath.get(
-      normalizeWorktreePathKey(worktree.path),
+    const normalizedPath = normalizeStoredWorktreePath(
+      project.path,
+      worktree.path,
     );
+    const normalizedPathKey = normalizeWorktreePathKey(
+      project.path,
+      normalizedPath,
+    );
+    const existing =
+      takeExistingWorktree(
+        existingEntries,
+        usedIndexes,
+        (entry) => entry.pathKey === normalizedPathKey,
+      ) ??
+      takeExistingWorktree(
+        existingEntries,
+        usedIndexes,
+        (entry) => entry.worktree.name === worktree.branch,
+      );
+
     if (!existing) {
       return {
         id: generateId(),
         name: worktree.branch,
-        path: worktree.path,
+        path: normalizedPath,
         terminals: [],
       };
     }
-    if (existing.name === worktree.branch) {
+    if (
+      existing.name === worktree.branch &&
+      existing.path === normalizedPath
+    ) {
       return existing;
     }
     return {
       ...existing,
       name: worktree.branch,
+      path: normalizedPath,
     };
   });
+  const repaired = dedupeTerminalIdsAcrossWorktrees(
+    ensureUniqueWorktreeIds(synced),
+  );
 
   if (
-    synced.length === project.worktrees.length &&
-    synced.every((worktree, index) => worktree === project.worktrees[index])
+    repaired.length === project.worktrees.length &&
+    repaired.every((worktree, index) => worktree === project.worktrees[index])
   ) {
     return project;
   }
 
   return {
     ...project,
-    worktrees: synced,
+    worktrees: repaired,
   };
 }
 
@@ -701,4 +797,3 @@ export function getChildTerminals(
   }
   return children;
 }
-

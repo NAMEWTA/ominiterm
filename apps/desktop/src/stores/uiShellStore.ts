@@ -11,7 +11,7 @@ export const PROJECT_SIDEBAR_MIN_WIDTH = 220;
 export const PROJECT_SIDEBAR_MAX_WIDTH = 460;
 
 export type ContentMode = "projectBoard" | "terminalDetail";
-export type RightRailTab = "usage" | "files" | "diff";
+export type RightRailTab = "files" | "diff";
 
 interface UiShellStore {
   selectedProjectId: string | null;
@@ -60,7 +60,7 @@ export const useUiShellStore = create<UiShellStore>((set, get) => ({
   contentMode: "projectBoard",
   detailTerminalId: null,
   rightRailCollapsed: true,
-  rightRailTab: "usage",
+  rightRailTab: "files",
   boardScrollByProject: {},
 
   setSelectedProjectId: (projectId) => {
@@ -148,10 +148,7 @@ export const useUiShellStore = create<UiShellStore>((set, get) => ({
         state.contentMode === "terminalDetail" && detailTerminalExists
           ? state.detailTerminalId
           : null,
-      rightRailTab:
-        state.rightRailTab === "usage" || focusedTerminalExists
-          ? state.rightRailTab
-          : "usage",
+      rightRailTab: focusedTerminalExists ? state.rightRailTab : "files",
     });
   },
 }));

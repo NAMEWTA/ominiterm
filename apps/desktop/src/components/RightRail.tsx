@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useT } from "../i18n/useT";
 import { findTerminalById, useProjectStore } from "../stores/projectStore";
 import {
@@ -6,98 +6,8 @@ import {
   RIGHT_RAIL_WIDTH,
   useUiShellStore,
 } from "../stores/uiShellStore";
-import { useUsageStore } from "../stores/usageStore";
-import { useAuthStore } from "../stores/authStore";
-import { QuotaSection } from "./usage/QuotaSection";
-import { SparklineChart } from "./usage/SparklineChart";
-import { TokenHeatmap } from "./usage/TokenHeatmap";
-import { DateNavigator } from "./usage/DateNavigator";
-import { InsightsButton } from "./usage/InsightsButton";
-import { LoginButton } from "./LoginButton";
 import { WorktreeFilesPanel } from "./WorktreeFilesPanel";
 import { WorktreeDiffPanel } from "./WorktreeDiffPanel";
-
-function UsageRailContent() {
-  const t = useT();
-  const { summary, loading, date, cachedDates, fetch, fetchHeatmap } =
-    useUsageStore();
-  const { init } = useAuthStore();
-
-  useEffect(() => {
-    void init();
-    void fetch();
-  }, [fetch, init]);
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <DateNavigator
-        date={date}
-        cachedDates={cachedDates}
-        onDateChange={(nextDate) => void fetch(nextDate)}
-        onCollapse={() => useUiShellStore.getState().setRightRailCollapsed(true)}
-      />
-      <QuotaSection />
-      <div className="mx-3 h-px bg-[var(--border)]" />
-      <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-1.5">
-        <InsightsButton compact />
-        <div className="ml-auto">
-          <LoginButton />
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {loading && !summary ? (
-          <div className="px-3 py-4 text-[11px] text-[var(--text-faint)]">
-            {t.loading}
-          </div>
-        ) : summary ? (
-          <>
-            <div className="px-3 pt-3 pb-2">
-              <div
-                className="text-[24px] font-semibold text-[var(--text-primary)] tabular-nums"
-                style={{ fontFamily: '"Geist Mono", monospace' }}
-              >
-                ${summary.totalCost.toFixed(summary.totalCost >= 1 ? 2 : 3)}
-              </div>
-              <div
-                className="mt-1 flex gap-3 text-[11px] text-[var(--text-muted)]"
-                style={{ fontFamily: '"Geist Mono", monospace' }}
-              >
-                <span>
-                  {t.usage_sessions}: {summary.sessions}
-                </span>
-                <span>
-                  {t.usage_output}: {summary.totalOutput}
-                </span>
-              </div>
-            </div>
-            <div className="mx-3 h-px bg-[var(--border)]" />
-            <div className="px-3 py-3">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
-                {t.usage_timeline}
-              </div>
-              <div className="mt-2">
-                <SparklineChart
-                  buckets={summary.buckets}
-                  animate
-                  date={summary.date}
-                />
-              </div>
-            </div>
-            <div className="mx-3 h-px bg-[var(--border)]" />
-            <TokenHeatmap
-              animate
-              onVisible={() => void fetchHeatmap()}
-            />
-          </>
-        ) : (
-          <div className="px-3 py-4 text-[11px] text-[var(--text-faint)]">
-            {t.usage_no_data}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export function RightRail() {
   const t = useT();
@@ -129,7 +39,7 @@ export function RightRail() {
     return terminalId ? findTerminalById(projects, terminalId) : null;
   }, [contentMode, detailTerminalId, focusedTerminalId, projects]);
 
-  const tabButton = (tab: "usage" | "files" | "diff", label: string) => (
+  const tabButton = (tab: "files" | "diff", label: string) => (
     <button
       key={tab}
       className={`rounded-md px-2 py-1 text-[11px] transition-colors duration-150 ${
@@ -164,7 +74,6 @@ export function RightRail() {
       >
         <div className="flex items-center gap-1 border-b border-[var(--border)] px-3 py-2">
           <div className="flex gap-1">
-            {tabButton("usage", t.usage_title)}
             {tabButton("files", t.files)}
             {tabButton("diff", t.diff)}
           </div>
@@ -177,9 +86,7 @@ export function RightRail() {
         </div>
 
         <div className="min-h-0 flex-1">
-          {rightRailTab === "usage" ? (
-            <UsageRailContent />
-          ) : rightRailTab === "files" ? (
+          {rightRailTab === "files" ? (
             <WorktreeFilesPanel worktreePath={contextLocation?.worktree.path ?? null} />
           ) : (
             <WorktreeDiffPanel worktreePath={contextLocation?.worktree.path ?? null} />
