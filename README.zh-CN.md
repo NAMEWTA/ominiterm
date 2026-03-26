@@ -1,37 +1,51 @@
-<div align="center">
-
-<img src="docs/icon.png" width="128" alt="OminiTerm 应用图标" />
-
 # OminiTerm
 
-**你的终端，整理成项目看板。**
+面向 git worktree、本地终端和 AI 编程 Agent 的项目看板式桌面壳层。
 
-[![GitHub release](https://img.shields.io/github/v/release/blueberrycongee/ominiterm)](https://github.com/blueberrycongee/ominiterm/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
-[![Website](https://img.shields.io/badge/website-ominiterm-e8b840)](https://website-ten-mu-37.vercel.app)
+当前 `pure-term` 分支已经完成一轮 pnpm monorepo 重构和文档清理。如果你之前看过旧版偏「无限画布」的资料，建议直接从下方开发文档入口重新建立认知，不要再依赖历史截图或旧方案文档。
 
-<br>
+[English README](./README.md)
 
-<img src="docs/image.png" alt="OminiTerm 演示 — 多个 AI agent 在项目终端看板中协作" />
+## 当前分支快照
 
-</div>
+- 仓库结构已经收敛为 `apps/desktop`、`apps/website`、`tools/hydra`、`tools/eval`
+- 桌面端主界面已经收敛为「项目侧栏 + 项目看板 + 终端详情页 + 右侧栏」
+- 核心数据模型是 `Project -> Worktree -> Terminal`
+- 随桌面端一起打包的 CLI 只有 `ominiterm` 和 `hydra`
+- 当前有效文档已经重建为一套轻量开发文档，统一放在 [`docs/`](./docs/README.md)
 
-<br>
+## 子项目说明
 
-OminiTerm 现在以“项目壳层”的方式组织终端：左侧项目导航，中间是当前项目的两列终端看板，需要深入时再进入单终端全页详情。
+- `apps/desktop`
+  Electron 桌面应用本体，包括 React 渲染层、Electron 主进程、打包时附带的 CLI、技能资源和桌面端测试。
+- `apps/website`
+  一个独立的 Vite 落地页项目。
+- `tools/hydra`
+  子 Agent 编排 CLI。负责创建 worktree、在 OminiTerm 中打开终端、写入任务文件并跟踪 Agent 元数据。
+- `tools/eval`
+  面向单 Agent 与 Hydra 模式的评测框架。
+- `supabase`
+  认证与用量同步相关的后端配置。
 
-它仍然使用 **Project → Worktree → Terminal** 三层结构，和真实的 git 工作方式保持一致。添加项目后会自动识别 worktree，并可直接从项目看板新建终端。
+## 当前桌面端能力
 
-<p align="right"><a href="./README.md">English →</a></p>
-
----
+- 以项目为核心的工作方式：左侧切项目，中间看板看当前项目全部终端。
+- 单终端详情页：需要深入时，进入全页终端视图。
+- Composer：向当前聚焦终端统一发消息，支持部分 Agent CLI 的图片粘贴。
+- 右侧栏：浏览当前终端所在 worktree 的文件树和 git diff。
+- 工作区保存与恢复、自定义终端标题、星标、主题、字体、快捷键。
+- 当前内置终端类型：`shell`、`claude`、`codex`、`copilot`、`kimi`、`gemini`、`opencode`、`lazygit`、`tmux`。
 
 ## 快速开始
 
-**下载** —— 从 [GitHub Releases](https://github.com/blueberrycongee/ominiterm/releases) 获取最新构建。
+### 环境要求
 
-**从源码构建：**
+- Node.js `24.13.0`
+- pnpm `10.29.2`
+- Git
+- Python 3.x（仅当你需要重新生成桌面端图标时）
+
+### 安装与启动
 
 ```bash
 git clone https://github.com/blueberrycongee/ominiterm.git
@@ -40,158 +54,50 @@ pnpm install
 pnpm dev
 ```
 
-**安装命令行工具** —— 启动应用后，进入 设置 → 通用 → 命令行工具，点击注册。这会将 `ominiterm` 和 `hydra` 添加到你的 PATH。
-
-**项目文档** —— 内部说明、方案记录和工具文档已统一整理到 [docs/README.md](./docs/README.md)。
-
----
-
-## 功能特性
-
-### 项目看板
-
-以项目为主的工作壳层——从左侧栏切换项目，在统一的两列终端看板中查看当前项目全部终端，用 worktree 标签保留上下文，而不是靠嵌套浮动容器。
-
-单击终端会聚焦并供 Composer 与快捷键使用；双击会进入独立的终端详情页，占满主内容区。
-
-### AI 编程 Agent
-
-原生支持 **Claude Code**、**Codex**、**Kimi**、**Gemini**、**OpenCode**。
-
-- **Composer** —— 统一输入栏，向聚焦的 agent 发送提示，支持粘贴图片
-- **实时状态** —— 一眼看到 agent 正在工作、等待还是已完成
-- **会话恢复** —— 关闭并重新打开 agent 终端，不丢失上下文
-- **右侧文件与变更面板** —— 不离开看板就能查看终端对应 worktree 的文件和 diff
-
-### 终端
-
-Shell、lazygit、tmux 与 AI agent 共存于同一项目看板。你可以在看板中聚焦终端、进入全页详情、自定义标题、星标重要终端，并为不同 agent 覆盖 CLI 路径。
-
-### 用量追踪
-
-Token 用量与成本看板——总花费、按项目和按模型分布。每小时 token 热力图、24 小时成本趋势图、缓存命中率。5 小时与 7 天速率限制配额监控。登录后跨设备同步用量。
-
-### 设置
-
-6 款可下载等宽字体 · 深色/浅色主题 · 自定义键盘快捷键 · 最小对比度无障碍设置 · 中英文自动检测 · 应用内自动更新与更新日志。
-
----
-
-## 命令行工具
-
-两个 CLI 都随应用打包。在设置中注册后即可在任意终端使用。
-
-### ominiterm
-
-<details>
-<summary>完整命令参考</summary>
-
-```
-用法: ominiterm <project|terminal|diff|state> <command> [args]
-
-项目命令:
-  project add <path>                          添加项目到工作区
-  project list                                列出所有项目
-  project remove <id>                         移除项目
-  project rescan <id>                         重新扫描项目的 worktree
-
-终端命令:
-  terminal create --worktree <path> --type <type>   创建终端
-          [--prompt <text>] [--parent-terminal <id>] [--auto-approve]
-  terminal list [--worktree <path>]            列出终端
-  terminal status <id>                         获取终端状态
-  terminal input <id> <text>                   向终端发送文本输入
-  terminal output <id> [--lines N]             读取终端输出（默认 50 行）
-  terminal destroy <id>                        销毁终端
-
-其他命令:
-  diff <worktree-path> [--summary]             查看 worktree 的 git diff
-  state                                        导出完整画布状态为 JSON
-
-标志:
-  --json    以 JSON 格式输出
-```
-
-</details>
+### 常用命令
 
 ```bash
-ominiterm project add ~/my-repo
-ominiterm terminal create --worktree ~/my-repo --type claude
-ominiterm terminal status <id>
-ominiterm diff ~/my-repo --summary
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm desktop:package
 ```
 
-<br>
+## 命令行与配套工具
 
-<div align="center">
-<img src="docs/hydra-icon.png" width="80" alt="Hydra icon" />
+### `ominiterm`
 
-### hydra
-</div>
+桌面端启动后会在本地打开一个 HTTP API Server，`ominiterm` CLI 只是这个 API 的薄封装。它可以做项目增删、终端创建、状态查询、输出读取、diff 查询和状态导出。
 
-<br>
+### `hydra`
 
-Hydra 让你把大任务拆成小块，分派给不同的 AI agent，每个 agent 在独立的 git worktree 中工作。所有 agent 都有自己的看板终端，你可以同时观察它们并行推进。
+Hydra 会为每个子 Agent 创建独立 worktree，在 OminiTerm 中打开对应终端，把任务写入 worktree 中的任务文件，再把 Agent 元数据写到 `~/.hydra/agents/`。
 
-**最简单的用法是直接告诉你的 AI agent。** 在项目中运行 `hydra init` 之后，只需对 agent 说：
+### Eval
 
-> *"用 Hydra 把这次重构拆成子任务，并行执行。"*
+评测工具支持 `single-claude`、`single-codex` 和 `hydra` 三种模式。结果默认写入 `tools/eval/results/<runId>/`。
 
-Agent 已经知道如何调用 `hydra spawn`、监控进度、合并结果——你不需要记任何 CLI 参数。
+## 二次开发入口
 
-```bash
-hydra init    # 教会 Claude Code / Codex 在这个项目中使用 Hydra
-```
+- [`docs/README.md`](./docs/README.md)
+  当前有效文档总览和阅读顺序。
+- [`docs/architecture.md`](./docs/architecture.md)
+  系统架构、核心数据模型、运行时文件和关键链路。
+- [`docs/development.md`](./docs/development.md)
+  二次开发命令、验证策略、常见改动入口和扩展方式。
+- [`docs/tooling/cli-and-hydra.md`](./docs/tooling/cli-and-hydra.md)
+  `ominiterm`、Hydra 与桌面端之间的关系和工作流。
+- [`docs/tooling/eval-framework.md`](./docs/tooling/eval-framework.md)
+  评测框架的命令、结果目录和扩展点。
+- [`AGENTS.md`](./AGENTS.md)
+  面向编码代理的仓库级工作说明。
 
-<details>
-<summary>手动使用</summary>
+## 当前分支说明
 
-```bash
-hydra spawn --task "fix the login bug" --type claude --repo .
-hydra list
-hydra cleanup <agent-id>
-```
+- 历史设计方案、问题复盘和大批归档文档已经在本分支清理出工作树，默认请以 git 历史为准，不要在没有明确需求时把它们整批搬回来。
+- 运行时命名已经统一为 `OminiTerm`，包括 `~/.ominiterm`、`ominiterm` CLI 和桌面应用名。
+- 代码里仍然保留了认证、用量、额度、更新器、洞察报告等服务，但当前主界面的重心已经是项目看板和右侧文件 / diff 面板。
 
-`hydra spawn` 会创建 worktree + 分支，在看板中打开终端，并发送任务。传入 `--auto-approve` 可继承父 agent 的权限级别。只读任务（审查、分析）可传入 `--worktree <path>` 复用已有 worktree。
+## 许可证
 
-</details>
-
----
-
-## 快捷键
-
-所有快捷键均可在 设置 → 快捷键 中自定义。Windows/Linux 上用 <kbd>Ctrl</kbd> 替换 <kbd>⌘</kbd>。
-
-| 快捷键 | 功能 |
-|--------|------|
-| <kbd>⌘</kbd> <kbd>O</kbd> | 添加项目 |
-| <kbd>⌘</kbd> <kbd>/</kbd> | 切换右侧面板（用量） |
-| <kbd>⌘</kbd> <kbd>T</kbd> | 新建终端 |
-| <kbd>⌘</kbd> <kbd>D</kbd> | 关闭聚焦的终端 |
-| <kbd>⌘</kbd> <kbd>;</kbd> | 重命名终端标题 |
-| <kbd>⌘</kbd> <kbd>]</kbd> | 下一个终端 |
-| <kbd>⌘</kbd> <kbd>[</kbd> | 上一个终端 |
-| <kbd>⌘</kbd> <kbd>F</kbd> | 星标 / 取消星标聚焦的终端 |
-| <kbd>⌘</kbd> <kbd>S</kbd> | 保存工作区 |
-| <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>S</kbd> | 工作区另存为 |
-| <kbd>Esc</kbd> | 从终端详情页返回项目看板 |
-
----
-
-<table>
-<tr><td><b>桌面框架</b></td><td>Electron</td></tr>
-<tr><td><b>前端</b></td><td>React · TypeScript</td></tr>
-<tr><td><b>终端</b></td><td>xterm.js (WebGL) · node-pty</td></tr>
-<tr><td><b>状态管理</b></td><td>Zustand</td></tr>
-<tr><td><b>样式</b></td><td>Tailwind CSS · Geist</td></tr>
-<tr><td><b>绘图</b></td><td>perfect-freehand</td></tr>
-<tr><td><b>认证与同步</b></td><td>Supabase</td></tr>
-<tr><td><b>构建</b></td><td>Vite · esbuild</td></tr>
-</table>
-
-<br>
-
-**致谢** —— [lazygit](https://github.com/jesseduffield/lazygit) 作为内置终端类型集成，在画布上提供可视化的 git 管理。
-
-**参与贡献** —— Fork、创建分支、发起 PR。基于 [MIT](LICENSE) 许可。
-
+[MIT](./LICENSE)

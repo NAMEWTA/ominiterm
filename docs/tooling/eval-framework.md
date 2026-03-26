@@ -1,127 +1,170 @@
-# Hydra Evaluation Framework
+# Hydra Eval 评测框架
 
-Evaluation pipeline for measuring Hydra multi-agent orchestration effectiveness against single-agent baselines, using SWE-bench Docker test harness.
+## 1. 工具定位
 
-## Overview
+`tools/eval` 是当前仓库里的独立评测包，用来比较：
 
-This framework runs coding tasks from SWE-bench against different agent configurations, then validates results using SWE-bench's Docker harness (FAIL_TO_PASS test execution).
+- 单 Agent 模式：`single-claude`
+- 单 Agent 模式：`single-codex`
+- 多 Agent 模式：`hydra`
 
-```
-Supported modes:
-┌──────────────────────────────────────────────────┐
-│ single-claude  │ One Claude Code agent            │
-│ single-codex   │ One Codex agent                  │
-│ hydra          │ Hydra multi-agent orchestration   │
-└──────────────────────────────────────────────────┘
-```
+它的目标不是驱动桌面 UI，而是为基准任务跑出可比对的补丁、耗时、Token、成本和通过率结果。
 
-## Two-Phase Evaluation
+## 2. 入口与模式
 
-```
-Phase 1: Agent Run
-  eval run --mode single-claude --tasks tasks/swe-bench-multi-file.json
-  → Agent generates patches, saved to results/<run_id>/
+主入口：
 
-Phase 2: SWE-bench Docker Evaluation
-  python3 scripts/export-predictions.py <run_id>
-  DOCKER_HOST=... python3 -m swebench.harness.run_evaluation \
-    --predictions_path results/<run_id>/predictions.jsonl \
-    --dataset_name princeton-nlp/SWE-bench --run_id <run_id>
-  python3 scripts/update-results-with-swebench.py
-  → Real pass/fail from test execution updates results/
-```
+- `tools/eval/src/cli.ts`
 
-## Quick Start
+当前命令：
 
-```bash
-cd tools/eval
-pnpm install
-pip install swebench pyarrow
+- `run`
+- `compare`
+- `list`
+- `report`
+- `download`
+- `tasks`
 
-# Download task set
-python3 scripts/download-dataset.py --min-files 3 --max-tasks 20
+当前模式：
 
-# Phase 1: Run agents
-node --experimental-strip-types --no-warnings src/cli.ts run \
-  --mode single-claude \
-  --tasks tasks/swe-bench-multi-file.json \
-  --timeout 1800
+- `single-claude`
+- `single-codex`
+- `hydra`
 
-# Phase 2: Evaluate with SWE-bench Docker
-python3 scripts/export-predictions.py <run_id>
-DOCKER_HOST=unix:///path/to/docker.sock \
-  python3 -m swebench.harness.run_evaluation \
-  --dataset_name princeton-nlp/SWE-bench \
-  --predictions_path results/<run_id>/predictions.jsonl \
-  --max_workers 2 --run_id <run_id> --cache_level env
-python3 scripts/update-results-with-swebench.py
+## 3. 常用命令
 
-# Compare runs
-node --experimental-strip-types --no-warnings src/cli.ts compare <run_a> <run_b>
-node --experimental-strip-types --no-warnings src/cli.ts list
-```
-
-## Configuration
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `--mode` | Agent mode: `single-claude`, `single-codex`, `hydra` | `single-claude` |
-| `--tasks` | Path to task JSON file | auto-download |
-| `--prompt-version` | Prompt version tag for tracking | `v1` |
-| `--run-id` | Custom run identifier | auto-generated |
-| `--timeout` | Per-task timeout in seconds | `600` |
-| `--max-tasks` | Limit number of tasks to run | all |
-| `--max-workers` | Parallel task execution | `1` |
-| `--orchestrator` | Hydra orchestrator model | `claude` |
-| `--sub-agents` | Hydra sub-agent types (comma-separated) | `claude,codex` |
-
-## Task Sets
-
-Task files are not checked into the repo — generate them with `scripts/download-dataset.py`:
+### 查看帮助
 
 ```bash
-# SWE-bench Pro (recommended — multi-file, multi-language, pollution-resistant)
-python3 scripts/download-dataset.py --dataset swe-bench-pro --max-tasks 50 --output pro-50
-
-# SWE-bench Full, stratified sample of multi-file tasks
-python3 scripts/download-dataset.py --dataset swe-bench --min-files 3 --max-tasks 30 --output multi-file-30
-
-# SWE-bench Verified (deprecated by OpenAI, not recommended)
-python3 scripts/download-dataset.py --dataset swe-bench-verified --max-tasks 50 --output verified-50
+pnpm --filter @ominiterm/eval eval --help
 ```
 
-Available datasets: `swe-bench`, `swe-bench-verified`, `swe-bench-pro`
-
-## Architecture
-
-```
-tools/eval/
-  src/
-    cli.ts              CLI entry point
-    runner.ts           Orchestrates evaluation runs (Phase 1)
-    types.ts            Type definitions
-    dataset.ts          SWE-bench task loading and filtering
-    evaluator.ts        SWE-bench Docker integration
-    results.ts          Result storage and loading
-    compare.ts          Cross-run comparison
-    agents/
-      single.ts         Claude Code / Codex single-agent runner
-      hydra.ts          Hydra multi-agent runner (direct + OminiTerm)
-  scripts/
-    download-dataset.py         Download SWE-bench from HuggingFace
-    export-predictions.py       Convert results to SWE-bench JSONL
-    run-swebench-eval.py        Run SWE-bench Docker evaluation
-    update-results-with-swebench.py  Merge Docker verdicts into results
-    select-tasks.py             Select balanced task subsets
-  tasks/                Task definitions (JSON)
-  results/              Run results (JSON, updated with Docker verdicts)
-  logs/                 SWE-bench Docker evaluation logs + reports
-```
-
-## Development
+### 跑一次评测
 
 ```bash
-pnpm typecheck
-node --experimental-strip-types --no-warnings --test tests/*.test.ts
+pnpm --filter @ominiterm/eval eval run --mode single-claude --max-tasks 5
+pnpm --filter @ominiterm/eval eval run --mode hydra --max-tasks 5
 ```
 
+### 对比两次 run
+
+```bash
+pnpm --filter @ominiterm/eval eval compare run-a run-b
+```
+
+### 查看已有 run
+
+```bash
+pnpm --filter @ominiterm/eval eval list
+pnpm --filter @ominiterm/eval eval report <runId>
+```
+
+### 下载任务集
+
+```bash
+pnpm --filter @ominiterm/eval eval download --min-files 3 --max-tasks 20
+```
+
+### 查看任务元信息
+
+```bash
+pnpm --filter @ominiterm/eval eval tasks <file>
+```
+
+## 4. 结果落盘位置
+
+结果默认写到：
+
+- `tools/eval/results/<runId>/result.json`
+- `tools/eval/results/<runId>/summary.json`
+- `tools/eval/results/<runId>/tasks/*.json`
+
+其中：
+
+- `result.json`
+  完整 run 结果
+- `summary.json`
+  摘要和配置
+- `tasks/*.json`
+  每个任务的单独结果，方便抽样排查
+
+## 5. 执行链路
+
+主要实现入口：
+
+- `tools/eval/src/runner.ts`
+- `tools/eval/src/evaluator.ts`
+- `tools/eval/src/results.ts`
+- `tools/eval/src/agents/single.ts`
+- `tools/eval/src/agents/hydra.ts`
+
+主流程：
+
+1. 读取任务集
+2. 根据 `mode` 选择 runner
+3. 为每个任务准备隔离工作目录
+4. 运行代理，生成 patch
+5. 保存每个任务的耗时、Token、成本和错误信息
+6. 汇总成 run 级结果
+7. 可选地接入 SWE-bench Docker 评测
+
+## 6. 配置重点
+
+当前核心配置定义在 `tools/eval/src/types.ts`：
+
+- `mode`
+- `models`
+- `sub_agent_types`
+- `prompt_version`
+- `benchmark`
+- `timeout_per_task_s`
+- `max_workers`
+- `run_swebench_eval`
+
+默认模型配置：
+
+- Claude：`sonnet`
+- Hydra orchestrator：`sonnet`
+- Codex：如果不显式传入，则走本地 Codex 默认配置
+
+## 7. SWE-bench 相关
+
+当前工具支持：
+
+- 自动下载任务筛选结果
+- 生成 predictions
+- 可选调用 SWE-bench Docker 评测
+
+如果开启 `--swebench-eval`，runner 会在完成补丁生成后继续跑 Docker 评测，并把结果回写到任务结果中。
+
+## 8. 二次开发入口
+
+### 新增 agent 模式
+
+通常要一起改：
+
+- `tools/eval/src/types.ts`
+- `tools/eval/src/cli.ts`
+- `tools/eval/src/runner.ts`
+- `tools/eval/src/agents/`
+- 对应测试
+
+### 调整结果结构
+
+改这里：
+
+- `tools/eval/src/types.ts`
+- `tools/eval/src/results.ts`
+- `tools/eval/src/compare.ts`
+
+### 调整任务源或下载规则
+
+改这里：
+
+- `tools/eval/src/dataset.ts`
+- `tools/eval/scripts/*.py`
+
+## 9. 维护提醒
+
+- `tools/eval/README.md` 应始终指向本文，不要再引用已删除的旧文档路径。
+- 如果你新增命令或输出目录，记得同时更新根目录和 `docs/` 下的说明。

@@ -1,39 +1,51 @@
-<div align="center">
-
-<img src="docs/icon.png" width="128" alt="OminiTerm app icon" />
-
 # OminiTerm
 
-**Your terminals, organized as a project board.**
+Project-board desktop shell for git worktrees, local terminals, and AI coding agents.
 
-[![GitHub release](https://img.shields.io/github/v/release/blueberrycongee/ominiterm)](https://github.com/blueberrycongee/ominiterm/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
-[![Website](https://img.shields.io/badge/website-ominiterm-e8b840)](https://website-ten-mu-37.vercel.app)
+The current `pure-term` branch is a cleaned-up pnpm monorepo. If you previously used older canvas-centric docs, start from the developer docs linked below instead of relying on historical screenshots or archived notes.
 
-[**ominiterm.dev →**](https://website-ten-mu-37.vercel.app)
+[中文说明](./README.zh-CN.md)
 
-<br>
+## Current Snapshot
 
-<img src="docs/image.png" alt="OminiTerm demo — multiple AI agents in a project terminal board" />
+- Monorepo layout: `apps/desktop`, `apps/website`, `tools/hydra`, `tools/eval`
+- Desktop shell layout: Project Sidebar + Project Board + Terminal Detail + Right Rail
+- Core data model: `Project -> Worktree -> Terminal`
+- Bundled CLI tools: `ominiterm`, `hydra`
+- Active docs are intentionally lean and live under [`docs/`](./docs/README.md)
 
-</div>
+## Package Map
 
-<br>
+- `apps/desktop`
+  The Electron desktop app, renderer, bundled CLI entrypoints, shipped skills, and desktop tests.
+- `apps/website`
+  A lightweight Vite landing page.
+- `tools/hydra`
+  Sub-agent orchestration CLI that spawns agents into OminiTerm terminals and git worktrees.
+- `tools/eval`
+  Benchmark runner for single-agent and Hydra evaluation workflows.
+- `supabase`
+  Auth and usage-sync backend configuration.
 
-OminiTerm organizes your terminals into a project-first workspace shell: a left project navigator, a two-column terminal board for the current project, and a full-page terminal detail view when you need depth.
+## Desktop Capabilities
 
-It still mirrors your git workflow with a **Project → Worktree → Terminal** hierarchy. Add a project, OminiTerm auto-detects its worktrees, and create terminals directly from the project board.
-
-<p align="right"><a href="./README.zh-CN.md">中文文档 →</a></p>
-
----
+- Worktree-aware project board with a left project navigator and a two-column terminal board.
+- Terminal detail mode for a full-page view of a single terminal.
+- Composer for sending prompts to the focused terminal, including image paste for supported agent CLIs.
+- Right rail for browsing worktree files and live git diffs.
+- Workspace save and restore, custom terminal titles, starring, themes, fonts, and shortcuts.
+- Supported terminal types: `shell`, `claude`, `codex`, `copilot`, `kimi`, `gemini`, `opencode`, `lazygit`, `tmux`.
 
 ## Quick Start
 
-**Download** — grab the latest build from [GitHub Releases](https://github.com/blueberrycongee/ominiterm/releases).
+### Requirements
 
-**Build from source:**
+- Node.js `24.13.0`
+- pnpm `10.29.2`
+- Git
+- Python 3.x only if you need to regenerate desktop icons
+
+### Install and Run
 
 ```bash
 git clone https://github.com/blueberrycongee/ominiterm.git
@@ -42,158 +54,50 @@ pnpm install
 pnpm dev
 ```
 
-**Install CLI tools** — after launching the app, go to Settings → General → Command line interface and click Register. This adds `ominiterm` and `hydra` to your PATH.
-
-**Project docs** — internal notes, plans, and tooling docs are organized under [docs/README.md](./docs/README.md).
-
----
-
-## Features
-
-### Project Board
-
-Project-first shell — switch projects from the left rail, inspect all terminals for the current project in a unified two-column board, and keep worktree context visible through terminal badges instead of nested floating containers.
-
-Single-click focuses a terminal for Composer and keyboard actions. Double-click opens a dedicated terminal detail page that fills the main content area.
-
-### AI Coding Agents
-
-First-class support for **Claude Code**, **Codex**, **Kimi**, **Gemini**, and **OpenCode**.
-
-- **Composer** — a unified input bar that sends prompts to the focused agent, with image paste support
-- **Live status** — see at a glance whether an agent is working, waiting, or done
-- **Session resume** — close and reopen an agent terminal without losing context
-- **Right-rail diff + files** — inspect a terminal's worktree without leaving the board
-
-### Terminals
-
-Shell, lazygit, and tmux terminals live alongside AI agents in the same project board. Focus terminals from the board, open one full-page when needed, customize titles, star important terminals, and override CLI paths per agent.
-
-### Usage Tracking
-
-Token usage and cost dashboard — total spend, per-project and per-model breakdown. Hourly token heatmap, 24-hour cost sparkline, cache hit/miss stats. Quota monitor for 5-hour and 7-day rate limits. Sign in to sync usage across devices.
-
-### Settings
-
-6 downloadable monospace fonts · dark/light theme · customizable keyboard shortcuts · minimum contrast ratio for accessibility · English and Chinese (auto-detected) · auto-update with in-app changelog.
-
----
-
-## CLI
-
-Both CLIs are bundled with the app. Register them from Settings to use in any terminal.
-
-### ominiterm
-
-<details>
-<summary>Full command reference</summary>
-
-```
-Usage: ominiterm <project|terminal|diff|state> <command> [args]
-
-Project commands:
-  project add <path>                          Add a project to the workspace
-  project list                                List all projects
-  project remove <id>                         Remove a project
-  project rescan <id>                         Rescan worktrees for a project
-
-Terminal commands:
-  terminal create --worktree <path> --type <type>   Create a terminal
-          [--prompt <text>] [--parent-terminal <id>] [--auto-approve]
-  terminal list [--worktree <path>]            List terminals
-  terminal status <id>                         Get terminal status
-  terminal input <id> <text>                   Send text input to a terminal
-  terminal output <id> [--lines N]             Read terminal output (default 50 lines)
-  terminal destroy <id>                        Destroy a terminal
-
-Other commands:
-  diff <worktree-path> [--summary]             View git diff for a worktree
-  state                                        Dump full canvas state as JSON
-
-Flags:
-  --json    Output in JSON format
-```
-
-</details>
+### Common Commands
 
 ```bash
-ominiterm project add ~/my-repo
-ominiterm terminal create --worktree ~/my-repo --type claude
-ominiterm terminal status <id>
-ominiterm diff ~/my-repo --summary
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm desktop:package
 ```
 
-<br>
+## CLI and Tooling
 
-<div align="center">
-<img src="docs/hydra-icon.png" width="80" alt="Hydra icon" />
+### `ominiterm`
 
-### hydra
-</div>
+The desktop app exposes a local HTTP API server and bundles the `ominiterm` CLI as a thin wrapper around that API. Use it to add projects, create terminals, inspect status and output, query diffs, and dump the current state.
 
-<br>
+### `hydra`
 
-Hydra lets you break a big task into smaller pieces and hand each piece to an AI agent running in its own git worktree. Every agent gets its own terminal in the board, so you can watch them all work in parallel.
+Hydra creates an isolated worktree for each sub-agent, opens a matching terminal inside OminiTerm, writes a task file into the worktree, and stores agent metadata under `~/.hydra/agents/`.
 
-**The easiest way to use Hydra is to ask your AI agent directly.** After running `hydra init` in your project, just tell your agent:
+### Eval
 
-> *"Use Hydra to split this refactor into subtasks and run them in parallel."*
+The eval tool supports `single-claude`, `single-codex`, and `hydra` benchmark runs. Results are written under `tools/eval/results/<runId>/`.
 
-The agent already knows how to call `hydra spawn`, monitor progress, and merge results — you don't need to memorize any CLI flags.
+## Developer Docs
 
-```bash
-hydra init    # teach Claude Code / Codex how to use Hydra in this project
-```
+- [`docs/README.md`](./docs/README.md)
+  Reading order and active documentation map.
+- [`docs/architecture.md`](./docs/architecture.md)
+  Monorepo structure, desktop architecture, data model, and runtime files.
+- [`docs/development.md`](./docs/development.md)
+  Secondary-development workflow, commands, validation, and extension points.
+- [`docs/tooling/cli-and-hydra.md`](./docs/tooling/cli-and-hydra.md)
+  Internal relationship between the desktop app, `ominiterm`, and Hydra.
+- [`docs/tooling/eval-framework.md`](./docs/tooling/eval-framework.md)
+  Evaluation runner structure and command reference.
+- [`AGENTS.md`](./AGENTS.md)
+  Repository-specific guidance for coding agents.
 
-<details>
-<summary>Manual usage</summary>
+## Notes for This Branch
 
-```bash
-hydra spawn --task "fix the login bug" --type claude --repo .
-hydra list
-hydra cleanup <agent-id>
-```
+- Historical design plans and large doc archives were intentionally removed from the working tree during cleanup.
+- Runtime naming has been unified around `OminiTerm`, including `~/.ominiterm`, the `ominiterm` CLI, and the packaged app name.
+- The desktop app still contains auth, usage, quota, updater, and insights services, but the active shell in this branch is centered on the project board and right rail.
 
-`hydra spawn` creates a worktree + branch, opens a terminal in the board, and sends the task. Pass `--auto-approve` to inherit the parent agent's permission level. For read-only tasks (review, analysis), pass `--worktree <path>` to reuse an existing worktree.
+## License
 
-</details>
-
----
-
-## Keyboard Shortcuts
-
-All shortcuts are customizable in Settings → Shortcuts. On Windows/Linux, replace <kbd>⌘</kbd> with <kbd>Ctrl</kbd>.
-
-| Shortcut | Action |
-|----------|--------|
-| <kbd>⌘</kbd> <kbd>O</kbd> | Add project |
-| <kbd>⌘</kbd> <kbd>/</kbd> | Toggle right panel (usage) |
-| <kbd>⌘</kbd> <kbd>T</kbd> | New terminal |
-| <kbd>⌘</kbd> <kbd>D</kbd> | Close focused terminal |
-| <kbd>⌘</kbd> <kbd>;</kbd> | Rename terminal title |
-| <kbd>⌘</kbd> <kbd>]</kbd> | Next terminal |
-| <kbd>⌘</kbd> <kbd>[</kbd> | Previous terminal |
-| <kbd>⌘</kbd> <kbd>F</kbd> | Star / unstar focused terminal |
-| <kbd>⌘</kbd> <kbd>S</kbd> | Save workspace |
-| <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>S</kbd> | Save workspace as |
-| <kbd>Esc</kbd> | Return from terminal detail to the project board |
-
----
-
-<table>
-<tr><td><b>Desktop</b></td><td>Electron</td></tr>
-<tr><td><b>Frontend</b></td><td>React · TypeScript</td></tr>
-<tr><td><b>Terminal</b></td><td>xterm.js (WebGL) · node-pty</td></tr>
-<tr><td><b>State</b></td><td>Zustand</td></tr>
-<tr><td><b>Styling</b></td><td>Tailwind CSS · Geist</td></tr>
-<tr><td><b>Drawing</b></td><td>perfect-freehand</td></tr>
-<tr><td><b>Auth & sync</b></td><td>Supabase</td></tr>
-<tr><td><b>Build</b></td><td>Vite · esbuild</td></tr>
-</table>
-
-<br>
-
-**Acknowledgements** — [lazygit](https://github.com/jesseduffield/lazygit) is integrated as a built-in terminal type for visual git management inside the project board.
-
-**Contributing** — fork, branch, and open a PR. Licensed under [MIT](LICENSE).
-
+[MIT](./LICENSE)
