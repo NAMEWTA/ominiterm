@@ -28,6 +28,7 @@ import { queryCloudUsage, queryCloudHeatmap, backfillHistory, flushSyncQueue, sy
 import type { ComposerSubmitRequest } from "../src/types";
 import { getProjectDiff } from "./git-diff";
 import { validateAgentCommand } from "./agent-command.js";
+import { registerAiConfigIpc } from "./ai-config/ai-config-ipc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -774,6 +775,8 @@ function setupIpc() {
     }
     app.quit();
   });
+
+  registerAiConfigIpc();
 }
 
 function dataUrlToPngBuffer(dataUrl: string): Buffer {

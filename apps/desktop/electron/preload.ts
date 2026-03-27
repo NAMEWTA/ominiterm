@@ -1,4 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { TerminalType } from "../src/types/index";
+import type { AiCliConfig } from "./ai-config/ai-config-types";
 
 contextBridge.exposeInMainWorld("ominiterm", {
   terminal: {
@@ -125,6 +127,21 @@ contextBridge.exposeInMainWorld("ominiterm", {
         | { ok: false; error: string }
       >,
   },
+    aiConfig: {
+      loadAll: () => ipcRenderer.invoke("ai-config:load-all"),
+      getByType: (type: TerminalType) =>
+        ipcRenderer.invoke("ai-config:get-by-type", type),
+      add: (config: AiCliConfig) =>
+        ipcRenderer.invoke("ai-config:add", config),
+      update: (configId: string, updates: Partial<AiCliConfig>) =>
+        ipcRenderer.invoke("ai-config:update", configId, updates),
+      delete: (configId: string) =>
+        ipcRenderer.invoke("ai-config:delete", configId),
+      setDefault: (configId: string) =>
+        ipcRenderer.invoke("ai-config:set-default", configId),
+      generateId: (type: TerminalType, baseName: string) =>
+        ipcRenderer.invoke("ai-config:generate-id", type, baseName),
+    },
   fonts: {
     getPath: () =>
       ipcRenderer.invoke("font:get-path") as Promise<string>,
