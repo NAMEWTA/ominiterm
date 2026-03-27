@@ -59,9 +59,15 @@ export class AiConfigPersistence {
    */
   static save(db: AiConfigDatabase): void {
     try {
-      db.metadata.lastUpdated = Date.now();
+      const dbToSave: AiConfigDatabase = {
+        ...db,
+        metadata: {
+          ...db.metadata,
+          lastUpdated: Date.now(),
+        },
+      };
       const tmp = AI_CONFIG_FILE + ".tmp";
-      const content = JSON.stringify(db, null, 2);
+      const content = JSON.stringify(dbToSave, null, 2);
       fs.writeFileSync(tmp, content, "utf-8");
       fs.renameSync(tmp, AI_CONFIG_FILE);
       console.log("[AiConfigPersistence] Config saved successfully");
@@ -88,6 +94,8 @@ export class AiConfigPersistence {
         const backupFile = `${AI_CONFIG_FILE}.${timestamp}.backup`;
         fs.copyFileSync(AI_CONFIG_FILE, backupFile);
         console.log(`[AiConfigPersistence] Backup created: ${backupFile}`);
+      } else {
+        console.warn("[AiConfigPersistence] Backup skipped: config file does not exist");
       }
     } catch (err) {
       console.warn("[AiConfigPersistence] Backup failed:", err);
