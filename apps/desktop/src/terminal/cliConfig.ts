@@ -226,13 +226,20 @@ export const TERMINAL_CONFIG: Record<TerminalType, TerminalAdapterConfig> = {
   },
 };
 
+function resolveTerminalConfig(type: TerminalType): TerminalAdapterConfig | null {
+  const config = (TERMINAL_CONFIG as Record<string, TerminalAdapterConfig | undefined>)[
+    type
+  ];
+  return config ?? null;
+}
+
 export function getTerminalLaunchOptions(
   type: TerminalType,
   sessionId: string | undefined,
   autoApprove?: boolean,
   cliOverride?: CliCommandConfig,
 ): { shell: string; args: string[] } | null {
-  const config = TERMINAL_CONFIG[type].launch;
+  const config = resolveTerminalConfig(type)?.launch;
   if (!config) return null;
 
   const shell = cliOverride?.command || config.shell;
@@ -253,7 +260,7 @@ export function getTerminalPromptArgs(
   type: TerminalType,
   prompt: string,
 ): string[] {
-  const config = TERMINAL_CONFIG[type].launch;
+  const config = resolveTerminalConfig(type)?.launch;
   if (!config) return [prompt];
   return config.promptArgs ? config.promptArgs(prompt) : [prompt];
 }
@@ -261,7 +268,7 @@ export function getTerminalPromptArgs(
 export function getComposerAdapter(
   type: TerminalType,
 ): ComposerAdapterConfig | null {
-  const composer = TERMINAL_CONFIG[type].composer ?? NO_COMPOSER;
+  const composer = resolveTerminalConfig(type)?.composer ?? NO_COMPOSER;
   return composer.supportsComposer ? composer : null;
 }
 

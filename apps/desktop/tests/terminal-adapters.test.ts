@@ -123,3 +123,14 @@ test("getTerminalPromptArgs uses kimi's explicit prompt flag", () => {
     "Explore the repo",
   ]);
 });
+
+test("unknown terminal type does not crash adapter lookups", () => {
+  const malformedType = "claude code" as unknown as Parameters<
+    typeof getTerminalLaunchOptions
+  >[0];
+
+  assert.equal(getTerminalLaunchOptions(malformedType, undefined), null);
+  assert.deepEqual(getTerminalPromptArgs(malformedType, "Hello"), ["Hello"]);
+  assert.equal(getComposerAdapter(malformedType), null);
+  assert.equal(isComposerSupportedTerminal(malformedType), false);
+});

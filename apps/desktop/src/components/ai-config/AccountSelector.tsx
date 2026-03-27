@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { TerminalType } from "../../types/index";
 import { useAiConfigStore } from "../../stores/aiConfigStore";
 
@@ -9,7 +10,11 @@ interface Props {
 }
 
 export function AccountSelector({ type, value, onChange, onNewAccount }: Props) {
-  const configs = useAiConfigStore((state) => state.getConfigsByType(type));
+  const configsMap = useAiConfigStore((state) => state.configs);
+  const configs = useMemo(
+    () => Object.values(configsMap).filter((cfg) => cfg.type === type),
+    [configsMap, type],
+  );
 
   return (
     <div className="flex flex-wrap items-center gap-2">
