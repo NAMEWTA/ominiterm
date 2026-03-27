@@ -399,6 +399,21 @@ export class PtyLaunchError extends Error {
   }
 }
 
+function validateRequiredAiConfig(config: { type: string; commonConfig: { model?: string } }): void {
+  if (config.type !== "claude" && config.type !== "codex") {
+    return;
+  }
+
+  const model = config.commonConfig.model;
+  if (typeof model !== "string" || model.trim().length === 0) {
+    throw new PtyLaunchError(
+      "ai-config-invalid",
+      `AI config for ${config.type} requires a non-empty model`,
+      config.type,
+    );
+  }
+}
+
 export async function buildLaunchSpec(
   options: PtyLaunchOptions,
   deps: LaunchResolverDeps = defaultDeps,
@@ -410,14 +425,24 @@ export async function buildLaunchSpec(
   if (options.configId) {
     const config = aiConfigManager.getConfig(options.configId);
     if (!config) {
-      console.warn(`[AiConfigWriter] Config not found: ${options.configId}`);
+      throw new PtyLaunchError(
+        "ai-config-not-found",
+        `AI config not found: ${options.configId}`,
+        options.configId,
+      );
     } else {
       try {
+        validateRequiredAiConfig(config);
         AiConfigWriter.writeConfigToTool(config.type, config);
       } catch (error) {
-        console.warn(
-          `[AiConfigWriter] Failed to write config ${options.configId}:`,
-          error,
+        if (error instanceof PtyLaunchError) {
+          throw error;
+        }
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new PtyLaunchError(
+          "ai-config-write-failed",
+          `Failed to write AI config ${options.configId}: ${detail}`,
+          config.type,
         );
       }
     }

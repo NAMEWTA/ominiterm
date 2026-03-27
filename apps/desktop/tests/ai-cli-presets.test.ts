@@ -26,3 +26,13 @@ test("CLI_PRESETS maps all terminal types", () => {
   assert.ok(CLI_PRESETS.tmux);
   assert.ok(CLI_PRESETS.lazygit);
 });
+
+test("Claude and Codex model fields are required", () => {
+  const claudeModel = getCliPreset("claude").commonFields.find((field) => field.key === "model");
+  const codexModel = getCliPreset("codex").commonFields.find((field) => field.key === "model");
+
+  assert.ok(claudeModel);
+  assert.ok(codexModel);
+  assert.equal(claudeModel.required, true);
+  assert.equal(codexModel.required, true);
+});

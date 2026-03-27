@@ -191,6 +191,8 @@ function useAutoSave() {
 }
 
 function useWorkspaceOpen() {
+  const t = useT();
+
   useEffect(() => {
     const handler = (event: Event) => {
       const { dirty } = useWorkspaceStore.getState();
@@ -202,18 +204,24 @@ function useWorkspaceOpen() {
       }
 
       const raw = (event as CustomEvent<string>).detail;
-      try {
-        restoreFromData(JSON.parse(raw));
-        useWorkspaceStore.getState().setWorkspacePath(null);
-        useWorkspaceStore.getState().markClean();
-      } catch (err) {
-        console.error("[useWorkspaceOpen] failed to parse workspace file:", err);
-      }
+      void (async () => {
+        try {
+          restoreFromData(JSON.parse(raw));
+          await window.ominiterm?.state.save(raw);
+          useWorkspaceStore.getState().setWorkspacePath(null);
+          useWorkspaceStore.getState().markClean();
+        } catch (err) {
+          console.error("[useWorkspaceOpen] failed to parse workspace file:", err);
+          useNotificationStore
+            .getState()
+            .notify("error", t.open_workspace_error(err));
+        }
+      })();
     };
     window.addEventListener("ominiterm:open-workspace", handler);
     return () =>
       window.removeEventListener("ominiterm:open-workspace", handler);
-  }, []);
+  }, [t]);
 }
 
 function useCloseHandler() {

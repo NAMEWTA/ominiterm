@@ -23,6 +23,7 @@ export const en = {
   projects: "Projects",
   add: "+ Add",
   open: "Open",
+  open_workspace: "Open WS",
   no_projects: "No projects",
   sidebar_worktrees: "worktrees",
   sidebar_terminals: "terminals",
@@ -102,6 +103,7 @@ export const en = {
 
   // ShortcutHints
   shortcut_add_project: "Add project",
+  shortcut_open_workspace: "Open workspace",
   shortcut_toggle_sidebar: "Toggle sidebar",
   shortcut_toggle_right_panel: "Toggle right panel",
   shortcut_new_terminal: "New terminal",
@@ -122,6 +124,7 @@ export const en = {
   shortcut_save_workspace_as: "Save As",
   save_as: "Save As",
   save_error: (err: string) => `Save failed: ${err}`,
+  open_workspace_error: (err: unknown) => `Open workspace failed: ${err}`,
 
   // Selection / batch delete
   confirm_delete_projects: (n: number) =>

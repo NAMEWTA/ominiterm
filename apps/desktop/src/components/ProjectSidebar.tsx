@@ -7,7 +7,7 @@ import {
 } from "react";
 import type { ProjectData, TerminalStatus } from "../types";
 import { useT } from "../i18n/useT";
-import { addProjectFromDialog } from "../projectCommands";
+import { addProjectFromDialog, openWorkspaceFromDialog } from "../projectCommands";
 import { useProjectStore } from "../stores/projectStore";
 import { PROJECT_SIDEBAR_TAB_WIDTH } from "../stores/uiShellStore";
 
@@ -186,6 +186,13 @@ export function ProjectSidebar({
             onClick={() => void addProjectFromDialog(t)}
           >
             {t.add}
+          </button>
+          <button
+            className="rounded-md border border-[var(--border)] px-2 py-1 text-[12px] text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+            onClick={() => void openWorkspaceFromDialog(t)}
+            title={t.shortcut_open_workspace}
+          >
+            {t.open_workspace}
           </button>
           <button
             className="rounded-md px-2 py-1 text-[11px] text-[var(--text-muted)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"

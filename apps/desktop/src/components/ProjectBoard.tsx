@@ -8,8 +8,9 @@ import {
   CREATABLE_TERMINAL_TYPES,
   DEFAULT_CREATABLE_TERMINAL_TYPE,
 } from "./projectBoardOptions";
-import { AccountSelector } from "./ai-config/AccountSelector";
+import { AccountLaunchDialog } from "./ai-config/AccountLaunchDialog";
 import { NewAccountDialog } from "./ai-config/NewAccountDialog";
+import { EditAccountDialog } from "./ai-config/EditAccountDialog";
 
 interface Props {
   project: ProjectData | null;
@@ -47,9 +48,13 @@ export function ProjectBoard({
     DEFAULT_CREATABLE_TERMINAL_TYPE,
   );
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  const [accountLaunchOpen, setAccountLaunchOpen] = useState(false);
   const [newAccountOpen, setNewAccountOpen] = useState(false);
+  const [editAccountOpen, setEditAccountOpen] = useState(false);
   const loadConfigs = useAiConfigStore((state) => state.loadConfigs);
   const addConfig = useAiConfigStore((state) => state.addConfig);
+  const deleteConfig = useAiConfigStore((state) => state.deleteConfig);
+  const setDefaultConfig = useAiConfigStore((state) => state.setDefaultConfig);
 
   const accountTypeSelected = selectedType !== "shell";
 
@@ -185,20 +190,25 @@ export function ProjectBoard({
               ))}
             </select>
             {accountTypeSelected ? (
-              <AccountSelector
-                type={selectedType}
-                value={selectedConfigId}
-                onChange={setSelectedConfigId}
-                onNewAccount={() => setNewAccountOpen(true)}
-              />
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[12px] text-[var(--text-secondary)]">
+                {selectedConfigId
+                  ? `Account: ${useAiConfigStore.getState().getConfig(selectedConfigId)?.name ?? selectedConfigId}`
+                  : "Account: auto select"}
+              </div>
             ) : null}
             <button
               className="rounded-lg bg-[var(--accent)] px-3 py-2 text-[12px] font-medium text-white transition-all duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!selectedWorktree || (accountTypeSelected && !selectedConfigId)}
+              disabled={!selectedWorktree}
               onClick={() => {
                 if (!selectedWorktree) {
                   return;
                 }
+
+                if (accountTypeSelected) {
+                  setAccountLaunchOpen(true);
+                  return;
+                }
+
                 createTerminalInWorktree(
                   project.id,
                   selectedWorktree.id,
@@ -258,6 +268,93 @@ export function ProjectBoard({
         onSubmit={async (config) => {
           await addConfig(config);
           setSelectedConfigId(config.configId);
+        }}
+      />
+
+      <EditAccountDialog
+        open={editAccountOpen && accountTypeSelected}
+        config={selectedConfigId ? useAiConfigStore.getState().getConfig(selectedConfigId) : null}
+        onClose={() => setEditAccountOpen(false)}
+        onSubmit={async (configId, updates) => {
+          await useAiConfigStore.getState().updateConfig(configId, updates);
+          setSelectedConfigId(configId);
+        }}
+      />
+
+      <AccountLaunchDialog
+        open={accountLaunchOpen && accountTypeSelected}
+        type={selectedType}
+        value={selectedConfigId}
+        onChange={setSelectedConfigId}
+        onClose={() => setAccountLaunchOpen(false)}
+        onCreate={() => {
+          if (!selectedWorktree || !selectedConfigId) {
+            return;
+          }
+
+          createTerminalInWorktree(
+            project.id,
+            selectedWorktree.id,
+            selectedType,
+            undefined,
+            undefined,
+            undefined,
+            selectedConfigId,
+          );
+          setAccountLaunchOpen(false);
+        }}
+        onCreateWithoutAccount={() => {
+          if (!selectedWorktree) {
+            return;
+          }
+
+          createTerminalInWorktree(
+            project.id,
+            selectedWorktree.id,
+            selectedType,
+          );
+          setAccountLaunchOpen(false);
+        }}
+        onNewAccount={() => setNewAccountOpen(true)}
+        onEditAccount={() => {
+          if (!selectedConfigId) {
+            return;
+          }
+          setEditAccountOpen(true);
+        }}
+        onDeleteAccount={() => {
+          if (!selectedConfigId) {
+            return;
+          }
+
+          const selected = useAiConfigStore.getState().getConfig(selectedConfigId);
+          const selectedName = selected?.displayName || selected?.name || selectedConfigId;
+          const confirmed = window.confirm(
+            `Delete account \"${selectedName}\"? This cannot be undone.`,
+          );
+          if (!confirmed) {
+            return;
+          }
+
+          void (async () => {
+            await deleteConfig(selectedConfigId);
+            const store = useAiConfigStore.getState();
+            const byType = store.getConfigsByType(selectedType);
+            const fallback = store.getDefaultConfig(selectedType)?.configId ?? byType[0]?.configId ?? null;
+            setSelectedConfigId(fallback);
+          })();
+        }}
+        onSetDefaultAccount={() => {
+          if (!selectedConfigId) {
+            return;
+          }
+          void setDefaultConfig(selectedConfigId);
+        }}
+        onUseSystemDefault={() => {
+          const store = useAiConfigStore.getState();
+          const byType = store.getConfigsByType(selectedType);
+          const fallback = store.getDefaultConfig(selectedType)?.configId ?? byType[0]?.configId ?? null;
+          setSelectedConfigId(fallback);
         }}
       />
     </div>

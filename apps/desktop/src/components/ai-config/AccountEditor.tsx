@@ -31,6 +31,7 @@ export function AccountEditor({ config, onUpdate }: Props) {
         <div key={field.key}>
           <label className="mb-1 block text-[12px] text-[var(--text-secondary)]">
             {field.label}
+            {field.required ? " *" : ""}
           </label>
           <input
             type={field.type}

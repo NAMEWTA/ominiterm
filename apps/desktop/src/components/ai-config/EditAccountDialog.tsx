@@ -1,97 +1,84 @@
 import { useEffect, useMemo, useState } from "react";
-import type { TerminalType } from "../../types/index";
 import type { AiCliConfig } from "../../types/ai-config";
-import { useAiConfigStore } from "../../stores/aiConfigStore";
-import { getCliPreset } from "../../config/aiCliPresets";
 import { AccountEditor } from "./AccountEditor";
 import { AdvancedJsonEditor } from "./AdvancedJsonEditor";
 import { buildAccountPreviewFiles } from "./accountFilePreview";
-import { buildDefaultCommonConfig, buildDefaultToolConfig } from "./accountDefaults";
+import { getCliPreset } from "../../config/aiCliPresets";
 
 interface Props {
-  type: TerminalType;
   open: boolean;
+  config: AiCliConfig | null;
   onClose: () => void;
-  onSubmit: (config: AiCliConfig) => Promise<void>;
+  onSubmit: (configId: string, updates: Partial<AiCliConfig>) => Promise<void>;
 }
 
-function createDraftConfig(type: TerminalType): AiCliConfig {
-  const now = Date.now();
-  const preset = getCliPreset(type);
-  return {
-    configId: "",
-    type,
-    name: "",
-    providerName: preset.displayName,
-    displayName: "",
-    commonConfig: buildDefaultCommonConfig(type),
-    toolConfig: buildDefaultToolConfig(type),
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-export function NewAccountDialog({ type, open, onClose, onSubmit }: Props) {
-  const generateConfigId = useAiConfigStore((state) => state.generateConfigId);
-  const preset = useMemo(() => getCliPreset(type), [type]);
-  const [config, setConfig] = useState<AiCliConfig>(() => createDraftConfig(type));
+export function EditAccountDialog({ open, config, onClose, onSubmit }: Props) {
+  const [draft, setDraft] = useState<AiCliConfig | null>(config);
   const [submitting, setSubmitting] = useState(false);
   const [editMode, setEditMode] = useState<"form" | "json">("form");
   const [jsonError, setJsonError] = useState<string | null>(null);
 
-  const missingRequiredFields = useMemo(
-    () =>
-      preset.commonFields.filter((field) => {
-        if (!field.required) {
-          return false;
-        }
-        const value = config.commonConfig[field.key as keyof typeof config.commonConfig];
-        return !(typeof value === "string" && value.trim().length > 0);
-      }),
-    [config.commonConfig, preset.commonFields],
-  );
-
-  const previewFiles = useMemo(() => buildAccountPreviewFiles(config), [config]);
-
-  const canSubmit = useMemo(() => {
-    if (config.name.trim().length === 0) {
-      return false;
-    }
-
-    return missingRequiredFields.length === 0;
-  }, [config.name, missingRequiredFields.length]);
-
   useEffect(() => {
     if (open) {
-      setConfig(createDraftConfig(type));
+      setDraft(config);
       setSubmitting(false);
       setEditMode("form");
       setJsonError(null);
     }
-  }, [open, type]);
+  }, [open, config]);
+
+  const preset = useMemo(
+    () => (draft ? getCliPreset(draft.type) : null),
+    [draft],
+  );
+
+  const missingRequiredFields = useMemo(() => {
+    if (!draft || !preset) {
+      return [];
+    }
+
+    return preset.commonFields.filter((field) => {
+      if (!field.required) {
+        return false;
+      }
+      const value = draft.commonConfig[field.key as keyof typeof draft.commonConfig];
+      return !(typeof value === "string" && value.trim().length > 0);
+    });
+  }, [draft, preset]);
+
+  const canSubmit = useMemo(() => {
+    if (!draft) {
+      return false;
+    }
+    return draft.name.trim().length > 0 && missingRequiredFields.length === 0;
+  }, [draft, missingRequiredFields.length]);
+
+  const previewFiles = useMemo(() => {
+    if (!draft) {
+      return [];
+    }
+    return buildAccountPreviewFiles(draft);
+  }, [draft]);
 
   const handleSubmit = async () => {
-    if (!canSubmit || submitting) {
+    if (!draft || submitting || !canSubmit) {
       return;
     }
 
     setSubmitting(true);
     try {
-      const configId = await generateConfigId(type, config.name);
-      const nextConfig: AiCliConfig = {
-        ...config,
-        configId,
-        displayName: `${getCliPreset(type).displayName} - ${config.name.trim()}`,
+      const updates: Partial<AiCliConfig> = {
+        ...draft,
         updatedAt: Date.now(),
       };
-      await onSubmit(nextConfig);
+      await onSubmit(draft.configId, updates);
       onClose();
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (!open) {
+  if (!open || !draft) {
     return null;
   }
 
@@ -105,16 +92,17 @@ export function NewAccountDialog({ type, open, onClose, onSubmit }: Props) {
       }}
     >
       <div className="w-full max-w-5xl rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5 shadow-2xl">
-        <h2 className="text-[16px] font-semibold text-[var(--text-primary)]">
-          New {type} Account
-        </h2>
+        <h2 className="text-[16px] font-semibold text-[var(--text-primary)]">Edit {draft.type} Account</h2>
         <p className="mt-1 text-[12px] text-[var(--text-muted)]">
-          Create an account profile used to write tool-specific CLI config before launch.
+          Update account details used to write tool-specific CLI config before launch.
         </p>
 
         <div className="mt-3 flex items-center justify-between gap-2">
           <div className="text-[11px] text-[var(--text-muted)]">
-            Required fields: Name + {preset.commonFields.filter((field) => field.required).map((field) => field.label).join(", ")}
+            Required fields: Name + {(preset?.commonFields ?? [])
+              .filter((field) => field.required)
+              .map((field) => field.label)
+              .join(", ")}
           </div>
           <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1">
             <button
@@ -138,16 +126,16 @@ export function NewAccountDialog({ type, open, onClose, onSubmit }: Props) {
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
             {editMode === "form" ? (
               <AccountEditor
-                config={config}
-                onUpdate={(updates) => setConfig((prev) => ({ ...prev, ...updates }))}
+                config={draft}
+                onUpdate={(updates) => setDraft((prev) => (prev ? { ...prev, ...updates } : prev))}
               />
             ) : (
               <>
                 <AdvancedJsonEditor
-                  config={config}
+                  config={draft}
                   onUpdate={(updates) => {
                     setJsonError(null);
-                    setConfig((prev) => ({ ...prev, ...updates }));
+                    setDraft((prev) => (prev ? { ...prev, ...updates } : prev));
                   }}
                   onError={(message) => setJsonError(message)}
                 />
@@ -159,24 +147,16 @@ export function NewAccountDialog({ type, open, onClose, onSubmit }: Props) {
           </div>
 
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-            <div className="mb-2 text-[12px] font-semibold text-[var(--text-primary)]">
-              Live Config Preview
-            </div>
+            <div className="mb-2 text-[12px] font-semibold text-[var(--text-primary)]">Live Config Preview</div>
             <div className="space-y-3">
-              {previewFiles.length === 0 ? (
-                <div className="text-[12px] text-[var(--text-muted)]">
-                  No preview available for this terminal type.
+              {previewFiles.map((file) => (
+                <div key={file.path} className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-2">
+                  <div className="mb-1 text-[11px] text-[var(--text-secondary)]">{file.path}</div>
+                  <pre className="max-h-44 overflow-auto rounded bg-black/10 p-2 font-mono text-[11px] text-[var(--text-primary)]">
+                    {file.content}
+                  </pre>
                 </div>
-              ) : (
-                previewFiles.map((file) => (
-                  <div key={file.path} className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-2">
-                    <div className="mb-1 text-[11px] text-[var(--text-secondary)]">{file.path}</div>
-                    <pre className="max-h-44 overflow-auto rounded bg-black/10 p-2 font-mono text-[11px] text-[var(--text-primary)]">
-                      {file.content}
-                    </pre>
-                  </div>
-                ))
-              )}
+              ))}
             </div>
           </div>
         </div>
@@ -202,7 +182,7 @@ export function NewAccountDialog({ type, open, onClose, onSubmit }: Props) {
             disabled={!canSubmit || submitting}
             className="rounded-lg bg-[var(--accent)] px-3 py-2 text-[12px] font-medium text-white transition-all duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Creating..." : "Create"}
+            {submitting ? "Saving..." : "Save"}
           </button>
         </div>
       </div>

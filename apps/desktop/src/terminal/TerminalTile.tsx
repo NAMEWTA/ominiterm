@@ -12,8 +12,6 @@ import { usePreferencesStore } from "../stores/preferencesStore";
 import { useT } from "../i18n/useT";
 import {
   getComposerAdapter,
-  getTerminalLaunchOptions,
-  getTerminalPromptArgs,
 } from "./cliConfig";
 import { buildFontFamily } from "./fontRegistry";
 import { getTerminalDisplayTitle } from "../stores/terminalState";
@@ -26,6 +24,7 @@ import {
   releaseWebGL,
   touch as touchWebGL,
 } from "./webglContextPool";
+import { buildTerminalCreateRequest } from "./terminalLaunchRequest";
 
 type TerminalTileMode = "board" | "detail";
 
@@ -552,33 +551,18 @@ export function TerminalTile({
     } else {
       const cliOverride =
         usePreferencesStore.getState().cliCommands[initialTerminalType] ?? undefined;
-      const launch = getTerminalLaunchOptions(
-        initialTerminalType,
-        initialSessionId,
-        initialAutoApprove,
-        cliOverride,
-      );
-      const options: {
-        cwd: string;
-        shell?: string;
-        args?: string[];
-        terminalId?: string;
-        configId?: string;
-        theme?: "dark" | "light";
-      } = {
-        cwd: worktreePath,
-        terminalId: terminal.id,
-        configId: terminal.configId,
+      const options = buildTerminalCreateRequest({
+        terminal: {
+          ...terminal,
+          type: initialTerminalType,
+          sessionId: initialSessionId,
+          autoApprove: initialAutoApprove,
+          initialPrompt,
+        },
+        worktreePath,
         theme: useThemeStore.getState().theme,
-      };
-      if (launch) {
-        const promptArgs =
-          !initialSessionId && initialPrompt
-            ? getTerminalPromptArgs(initialTerminalType, initialPrompt)
-            : [];
-        options.shell = launch.shell;
-        options.args = [...launch.args, ...promptArgs];
-      }
+        cliOverride,
+      });
 
       void window.ominiterm.terminal
         .create(options)

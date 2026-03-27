@@ -11,7 +11,12 @@ import { shouldIgnoreShortcutTarget } from "./shortcutTarget";
 import { snapshotState } from "../snapshotState";
 import { updateWindowTitle } from "../titleHelper";
 import { useT } from "../i18n/useT";
-import { addProjectFromDialog, chooseDefaultWorktree, createTerminalInWorktree } from "../projectCommands";
+import {
+  addProjectFromDialog,
+  chooseDefaultWorktree,
+  createTerminalInWorktree,
+  openWorkspaceFromDialog,
+} from "../projectCommands";
 
 export function useKeyboardShortcuts() {
   const shortcuts = useShortcutStore((state) => state.bindings);
@@ -35,6 +40,12 @@ export function useKeyboardShortcuts() {
       if (matchesShortcut(event, shortcuts.addProject)) {
         event.preventDefault();
         void addProjectFromDialog(t);
+        return;
+      }
+
+      if (matchesShortcut(event, shortcuts.openWorkspace)) {
+        event.preventDefault();
+        void openWorkspaceFromDialog(t);
         return;
       }
 

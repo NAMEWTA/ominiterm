@@ -199,6 +199,7 @@ test("xterm helper textarea allows non-printable global shortcuts without modifi
 });
 
 test("new default shortcuts prefer the reorganized keymap", () => {
+  assert.equal(DEFAULT_SHORTCUTS.openWorkspace, "mod+shift+o");
   assert.equal(DEFAULT_SHORTCUTS.toggleSidebar, "mod+b");
   assert.equal(DEFAULT_SHORTCUTS.toggleRightPanel, "mod+shift+b");
   assert.equal(DEFAULT_SHORTCUTS.renameTerminalTitle, "f2");

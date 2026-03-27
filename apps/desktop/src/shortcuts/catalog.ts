@@ -2,6 +2,7 @@ export type ShortcutCategory = "app" | "context";
 
 export type EditableShortcutId =
   | "addProject"
+  | "openWorkspace"
   | "toggleSidebar"
   | "toggleRightPanel"
   | "newTerminal"
@@ -41,6 +42,7 @@ export type ShortcutBindingsMap = Record<EditableShortcutId, readonly string[]>;
 
 export const LEGACY_DEFAULT_SHORTCUTS: ResolvedShortcutMap = {
   addProject: "mod+o",
+  openWorkspace: "mod+shift+o",
   toggleSidebar: "mod+\\",
   toggleRightPanel: "mod+/",
   newTerminal: "mod+t",
@@ -60,6 +62,15 @@ export const APP_SHORTCUT_DEFINITIONS = [
     editable: true,
     category: "app",
     defaultBinding: "mod+o",
+    legacyBindings: [],
+    showInHints: true,
+  },
+  {
+    id: "openWorkspace",
+    labelKey: "shortcut_open_workspace",
+    editable: true,
+    category: "app",
+    defaultBinding: "mod+shift+o",
     legacyBindings: [],
     showInHints: true,
   },

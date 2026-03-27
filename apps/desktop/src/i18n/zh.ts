@@ -22,6 +22,7 @@ export const zh = {
   projects: "项目",
   add: "+ 添加",
   open: "打开",
+  open_workspace: "打开工作区",
   no_projects: "暂无项目",
   sidebar_worktrees: "工作树",
   sidebar_terminals: "终端",
@@ -100,6 +101,7 @@ export const zh = {
 
   // ShortcutHints
   shortcut_add_project: "添加项目",
+  shortcut_open_workspace: "打开工作区",
   shortcut_toggle_sidebar: "切换侧栏",
   shortcut_toggle_right_panel: "切换右侧面板",
   shortcut_new_terminal: "新建终端",
@@ -120,6 +122,7 @@ export const zh = {
   shortcut_save_workspace_as: "另存为",
   save_as: "另存为",
   save_error: (err: string) => `保存失败：${err}`,
+  open_workspace_error: (err: unknown) => `打开工作区失败：${err}`,
 
   // Selection / batch delete
   confirm_delete_projects: (n: number) =>

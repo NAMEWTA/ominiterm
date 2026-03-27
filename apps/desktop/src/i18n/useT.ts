@@ -1,6 +1,6 @@
-import { useLocaleStore } from "../stores/localeStore";
-import { en } from "./en";
-import { zh } from "./zh";
+import { useLocaleStore } from "../stores/localeStore.ts";
+import { en } from "./en.ts";
+import { zh } from "./zh.ts";
 
 const dictionaries = { en, zh } as const;
 
