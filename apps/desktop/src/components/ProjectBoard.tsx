@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectData, TerminalType, WorktreeData } from "../types";
 import { useT } from "../i18n/useT";
 import { createTerminalInWorktree } from "../projectCommands";
+import { useAiConfigStore } from "../stores/aiConfigStore";
 import { TerminalTile } from "../terminal/TerminalTile";
 import {
   CREATABLE_TERMINAL_TYPES,
   DEFAULT_CREATABLE_TERMINAL_TYPE,
 } from "./projectBoardOptions";
+import { AccountSelector } from "./ai-config/AccountSelector";
+import { NewAccountDialog } from "./ai-config/NewAccountDialog";
 
 interface Props {
   project: ProjectData | null;
@@ -43,6 +46,12 @@ export function ProjectBoard({
   const [selectedType, setSelectedType] = useState<TerminalType>(
     DEFAULT_CREATABLE_TERMINAL_TYPE,
   );
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  const [newAccountOpen, setNewAccountOpen] = useState(false);
+  const loadConfigs = useAiConfigStore((state) => state.loadConfigs);
+  const addConfig = useAiConfigStore((state) => state.addConfig);
+
+  const accountTypeSelected = selectedType !== "shell";
 
   useEffect(() => {
     if (!scrollRef.current) {
@@ -65,6 +74,37 @@ export function ProjectBoard({
       null;
     setSelectedWorktreeId(nextWorktreeId);
   }, [focusedWorktreeId, project]);
+
+  useEffect(() => {
+    if (!accountTypeSelected) {
+      setSelectedConfigId(null);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      await loadConfigs();
+      if (cancelled) {
+        return;
+      }
+
+      const store = useAiConfigStore.getState();
+      const allConfigs = store.getConfigsByType(selectedType);
+      const defaultConfig = store.getDefaultConfig(selectedType);
+      const fallbackConfigId = defaultConfig?.configId ?? allConfigs[0]?.configId ?? null;
+
+      setSelectedConfigId((previous) => {
+        if (previous && allConfigs.some((cfg) => cfg.configId === previous)) {
+          return previous;
+        }
+        return fallbackConfigId;
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountTypeSelected, loadConfigs, selectedType]);
 
   const terminals = useMemo(
     () => (project ? flattenProjectTerminals(project) : []),
@@ -134,7 +174,9 @@ export function ProjectBoard({
             <select
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[12px] text-[var(--text-primary)] outline-none"
               value={selectedType}
-              onChange={(event) => setSelectedType(event.target.value as TerminalType)}
+              onChange={(event) => {
+                setSelectedType(event.target.value as TerminalType);
+              }}
             >
               {CREATABLE_TERMINAL_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -142,9 +184,17 @@ export function ProjectBoard({
                 </option>
               ))}
             </select>
+            {accountTypeSelected ? (
+              <AccountSelector
+                type={selectedType}
+                value={selectedConfigId}
+                onChange={setSelectedConfigId}
+                onNewAccount={() => setNewAccountOpen(true)}
+              />
+            ) : null}
             <button
               className="rounded-lg bg-[var(--accent)] px-3 py-2 text-[12px] font-medium text-white transition-all duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!selectedWorktree}
+              disabled={!selectedWorktree || (accountTypeSelected && !selectedConfigId)}
               onClick={() => {
                 if (!selectedWorktree) {
                   return;
@@ -153,6 +203,10 @@ export function ProjectBoard({
                   project.id,
                   selectedWorktree.id,
                   selectedType,
+                  undefined,
+                  undefined,
+                  undefined,
+                  selectedConfigId ?? undefined,
                 );
               }}
             >
@@ -196,6 +250,16 @@ export function ProjectBoard({
           </div>
         )}
       </div>
+
+      <NewAccountDialog
+        type={selectedType}
+        open={newAccountOpen && accountTypeSelected}
+        onClose={() => setNewAccountOpen(false)}
+        onSubmit={async (config) => {
+          await addConfig(config);
+          setSelectedConfigId(config.configId);
+        }}
+      />
     </div>
   );
 }

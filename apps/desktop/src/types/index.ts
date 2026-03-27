@@ -99,6 +99,7 @@ export interface TerminalData {
   sessionId?: string;
   initialPrompt?: string;
   autoApprove?: boolean;
+  configId?: string;
 }
 
 export interface WorktreeData {
@@ -240,6 +241,7 @@ export interface OminiTermAPI {
       shell?: string;
       args?: string[];
       terminalId?: string;
+      configId?: string;
       theme?: "dark" | "light";
     }) => Promise<number>;
     destroy: (ptyId: number) => Promise<void>;

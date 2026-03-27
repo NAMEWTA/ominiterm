@@ -117,6 +117,7 @@ export function createTerminal(
   autoApprove?: boolean,
   origin: TerminalOrigin = "user",
   parentTerminalId?: string,
+  configId?: string,
 ): TerminalData {
   return {
     id: generateId(),
@@ -130,6 +131,7 @@ export function createTerminal(
     ...(initialPrompt ? { initialPrompt } : {}),
     ...(autoApprove ? { autoApprove } : {}),
     ...(parentTerminalId ? { parentTerminalId } : {}),
+    ...(configId ? { configId } : {}),
   };
 }
 

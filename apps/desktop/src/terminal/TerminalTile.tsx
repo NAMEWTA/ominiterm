@@ -563,10 +563,12 @@ export function TerminalTile({
         shell?: string;
         args?: string[];
         terminalId?: string;
+        configId?: string;
         theme?: "dark" | "light";
       } = {
         cwd: worktreePath,
         terminalId: terminal.id,
+        configId: terminal.configId,
         theme: useThemeStore.getState().theme,
       };
       if (launch) {
