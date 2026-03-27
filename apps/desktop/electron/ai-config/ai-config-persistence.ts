@@ -11,6 +11,16 @@ import {
 
 let AI_CONFIG_FILE = path.join(OMINITERM_DIR, "ai-config.json");
 
+function createEmptyDb(): AiConfigDatabase {
+  return {
+    version: EMPTY_AI_CONFIG_DB.version,
+    configs: {},
+    metadata: {
+      lastUpdated: EMPTY_AI_CONFIG_DB.metadata.lastUpdated,
+    },
+  };
+}
+
 export class AiConfigPersistence {
   /**
    * 仅用于测试：设置自定义配置文件路径
@@ -32,7 +42,7 @@ export class AiConfigPersistence {
   static load(): AiConfigDatabase {
     try {
       if (!fs.existsSync(AI_CONFIG_FILE)) {
-        return EMPTY_AI_CONFIG_DB;
+        return createEmptyDb();
       }
 
       const data = fs.readFileSync(AI_CONFIG_FILE, "utf-8");
@@ -43,13 +53,13 @@ export class AiConfigPersistence {
         console.warn(
           `[AiConfigPersistence] Unknown version: ${db.version}, initializing new DB`,
         );
-        return EMPTY_AI_CONFIG_DB;
+        return createEmptyDb();
       }
 
       return db;
     } catch (err) {
       console.error("[AiConfigPersistence] Failed to load config:", err);
-      return EMPTY_AI_CONFIG_DB;
+      return createEmptyDb();
     }
   }
 
