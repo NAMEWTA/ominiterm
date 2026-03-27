@@ -118,15 +118,9 @@ contextBridge.exposeInMainWorld("ominiterm", {
         | { error: string; size?: string }
       >,
   },
-  cli: {
-    isRegistered: () =>
-      ipcRenderer.invoke("cli:is-registered") as Promise<boolean>,
-    register: () =>
-      ipcRenderer.invoke("cli:register") as Promise<boolean>,
-    unregister: () =>
-      ipcRenderer.invoke("cli:unregister") as Promise<boolean>,
-    validateCommand: (command: string, args?: string[]) =>
-      ipcRenderer.invoke("cli:validate-command", command, args) as Promise<
+  agents: {
+    validateCommand: (command: string) =>
+      ipcRenderer.invoke("agents:validate-command", command) as Promise<
         | { ok: true; resolvedPath: string; version: string | null }
         | { ok: false; error: string }
       >,

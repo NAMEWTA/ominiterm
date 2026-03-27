@@ -1,4 +1,5 @@
 import { formatShortcut, useShortcutStore } from "../stores/shortcutStore";
+import { getHintShortcutDefinitions } from "../shortcuts/catalog";
 import { useT } from "../i18n/useT";
 
 const isMac = (window.ominiterm?.app.platform ?? "darwin") === "darwin";
@@ -7,9 +8,10 @@ export function WelcomePopup({ onClose }: { onClose: () => void }) {
   const shortcuts = useShortcutStore((state) => state.shortcuts);
   const t = useT();
 
+  const definitions = getHintShortcutDefinitions();
   const tips = [
-    `${formatShortcut(shortcuts.addProject, isMac)} · ${t.shortcut_add_project}`,
-    `${formatShortcut(shortcuts.newTerminal, isMac)} · ${t.shortcut_new_terminal}`,
+    `${formatShortcut(shortcuts[definitions[0].id], isMac)} · ${t.shortcut_add_project}`,
+    `${formatShortcut(shortcuts[definitions[3].id], isMac)} · ${t.shortcut_new_terminal}`,
     `${formatShortcut(shortcuts.nextTerminal, isMac)} / ${formatShortcut(shortcuts.prevTerminal, isMac)} · ${t.shortcut_next_terminal}`,
   ];
 

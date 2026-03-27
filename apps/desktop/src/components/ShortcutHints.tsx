@@ -3,6 +3,13 @@ import { useT } from "../i18n/useT";
 import { formatShortcut, useShortcutStore } from "../stores/shortcutStore";
 import { shouldIgnoreShortcutTarget } from "../hooks/shortcutTarget";
 import {
+  getHintShortcutDefinitions,
+} from "../shortcuts/catalog";
+import {
+  registerWindowKeydownListener,
+  registerWindowKeyupListener,
+} from "../shortcuts/listeners";
+import {
   COLLAPSED_TAB_WIDTH,
   RIGHT_RAIL_WIDTH,
   useUiShellStore,
@@ -34,29 +41,21 @@ export function ShortcutHints() {
     };
     const onBlur = () => setVisible(false);
 
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
+    const disposeKeyDown = registerWindowKeydownListener(window, onKeyDown);
+    const disposeKeyUp = registerWindowKeyupListener(window, onKeyUp);
     window.addEventListener("blur", onBlur);
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
+      disposeKeyDown();
+      disposeKeyUp();
       window.removeEventListener("blur", onBlur);
     };
   }, []);
 
-  const hints = [
-    { key: shortcuts.addProject, desc: t.shortcut_add_project },
-    { key: shortcuts.toggleSidebar, desc: t.shortcut_toggle_sidebar },
-    { key: shortcuts.toggleRightPanel, desc: t.shortcut_toggle_right_panel },
-    { key: shortcuts.newTerminal, desc: t.shortcut_new_terminal },
-    { key: shortcuts.renameTerminalTitle, desc: t.shortcut_rename_terminal_title },
-    { key: shortcuts.closeFocused, desc: t.shortcut_close_focused },
-    { key: shortcuts.toggleStarFocused, desc: t.shortcut_toggle_star_focused },
-    { key: shortcuts.nextTerminal, desc: t.shortcut_next_terminal },
-    { key: shortcuts.prevTerminal, desc: t.shortcut_prev_terminal },
-    { key: shortcuts.saveWorkspace, desc: t.shortcut_save_workspace },
-    { key: shortcuts.saveWorkspaceAs, desc: t.shortcut_save_workspace_as },
-  ];
+  const hints = getHintShortcutDefinitions().map((definition) => ({
+    id: definition.id,
+    key: shortcuts[definition.id],
+    desc: (t as unknown as Record<string, string>)[definition.labelKey],
+  }));
 
   const rightOffset =
     (rightRailCollapsed ? COLLAPSED_TAB_WIDTH : RIGHT_RAIL_WIDTH) + 16;
@@ -72,7 +71,7 @@ export function ShortcutHints() {
     >
       {hints.map((hint) => (
         <div
-          key={hint.key}
+          key={hint.id}
           className="flex items-center gap-2.5 text-[15px]"
           style={{ fontFamily: '"Geist Mono", monospace' }}
         >

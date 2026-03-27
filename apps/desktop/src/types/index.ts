@@ -293,11 +293,8 @@ export interface OminiTermAPI {
       error?: string;
     }>;
   };
-  cli: {
-    isRegistered: () => Promise<boolean>;
-    register: () => Promise<boolean>;
-    unregister: () => Promise<boolean>;
-    validateCommand: (command: string, args?: string[]) => Promise<
+  agents: {
+    validateCommand: (command: string) => Promise<
       | { ok: true; resolvedPath: string; version: string | null }
       | { ok: false; error: string }
     >;

@@ -4,7 +4,7 @@ copyright: Copyright © 2026 blueberrycongee
 
 publish:
   provider: github
-  owner: blueberrycongee
+  owner: NAMEWTA
   repo: ominiterm
 
 directories:
@@ -14,16 +14,6 @@ directories:
 files:
   - dist/**/*
   - dist-electron/**/*
-
-extraResources:
-  - from: dist-cli
-    to: cli
-    filter:
-      - "**/*"
-  - from: skills
-    to: skills
-    filter:
-      - "**/*"
 
 asarUnpack:
   - node_modules/node-pty/**/*

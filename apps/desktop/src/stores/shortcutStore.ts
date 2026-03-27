@@ -1,35 +1,27 @@
 import { create } from "zustand";
 import { hasPrimaryModifier } from "../hooks/shortcutTarget.ts";
+import {
+  DEFAULT_SHORTCUTS,
+  applyShortcutOverride,
+  createResolvedBindings,
+  createResolvedShortcuts,
+  migrateLegacyShortcutMap,
+  sanitizeShortcutOverrides,
+  type EditableShortcutId,
+  type ResolvedShortcutMap,
+  type ShortcutBindingsMap,
+  type ShortcutMap,
+} from "../shortcuts/catalog.ts";
 
-export interface ShortcutMap {
-  addProject: string;
-  toggleSidebar: string;
-  newTerminal: string;
-  saveWorkspace: string;
-  saveWorkspaceAs: string;
-  renameTerminalTitle: string;
-  nextTerminal: string;
-  prevTerminal: string;
-  closeFocused: string;
-  toggleRightPanel: string;
-  toggleStarFocused: string;
-}
-
-export const DEFAULT_SHORTCUTS: ShortcutMap = {
-  addProject: "mod+o",
-  toggleSidebar: "mod+\\",
-  newTerminal: "mod+t",
-  saveWorkspace: "mod+s",
-  saveWorkspaceAs: "mod+shift+s",
-  renameTerminalTitle: "mod+;",
-  nextTerminal: "mod+]",
-  prevTerminal: "mod+[",
-  closeFocused: "mod+d",
-  toggleRightPanel: "mod+/",
-  toggleStarFocused: "mod+f",
-};
+export type {
+  EditableShortcutId,
+  ResolvedShortcutMap,
+  ShortcutBindingsMap,
+  ShortcutMap,
+} from "../shortcuts/catalog.ts";
 
 const STORAGE_KEY = "ominiterm-shortcuts";
+export const SHORTCUT_STORAGE_VERSION = 2;
 
 export type ShortcutPlatform = "darwin" | "win32" | "linux";
 
@@ -55,38 +47,73 @@ function hasUnsupportedPlatformModifier(
     : e.metaKey && !e.ctrlKey;
 }
 
+function persistShortcuts(overrides: ShortcutMap) {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: SHORTCUT_STORAGE_VERSION,
+      overrides,
+    }),
+  );
+}
+
 function loadShortcuts(): ShortcutMap {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ...DEFAULT_SHORTCUTS, ...parsed };
+    if (!saved) {
+      return {};
     }
+    const parsed = JSON.parse(saved);
+    const overrides =
+      parsed &&
+      typeof parsed === "object" &&
+      "version" in parsed &&
+      parsed.version === SHORTCUT_STORAGE_VERSION &&
+      parsed.overrides &&
+      typeof parsed.overrides === "object"
+        ? sanitizeShortcutOverrides(parsed.overrides as Record<string, unknown>)
+        : parsed && typeof parsed === "object"
+          ? migrateLegacyShortcutMap(parsed as Record<string, unknown>)
+          : {};
+    persistShortcuts(overrides);
+    return overrides;
   } catch {
     // ignore
   }
-  return { ...DEFAULT_SHORTCUTS };
+  return {};
+}
+
+function createShortcutState(overrides: ShortcutMap) {
+  return {
+    overrides,
+    shortcuts: createResolvedShortcuts(overrides),
+    bindings: createResolvedBindings(overrides),
+  };
 }
 
 interface ShortcutStore {
-  shortcuts: ShortcutMap;
-  setShortcut: (key: keyof ShortcutMap, value: string) => void;
+  overrides: ShortcutMap;
+  shortcuts: ResolvedShortcutMap;
+  bindings: ShortcutBindingsMap;
+  setShortcut: (key: EditableShortcutId, value: string) => void;
   resetAll: () => void;
 }
 
-export const useShortcutStore = create<ShortcutStore>((set) => ({
-  shortcuts: loadShortcuts(),
+const initialOverrides = loadShortcuts();
 
+export const useShortcutStore = create<ShortcutStore>((set) => ({
+  ...createShortcutState(initialOverrides),
   setShortcut: (key, value) =>
     set((state) => {
-      const next = { ...state.shortcuts, [key]: value };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return { shortcuts: next };
+      const overrides = applyShortcutOverride(state.overrides, key, value);
+      persistShortcuts(overrides);
+      return createShortcutState(overrides);
     }),
 
   resetAll: () => {
-    localStorage.removeItem(STORAGE_KEY);
-    return set({ shortcuts: { ...DEFAULT_SHORTCUTS } });
+    const overrides = {};
+    persistShortcuts(overrides);
+    return set(createShortcutState(overrides));
   },
 }));
 
@@ -111,7 +138,15 @@ export function eventToShortcut(e: KeyboardEvent): string {
 /**
  * Check if a KeyboardEvent matches a shortcut string.
  */
-export function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
+export function matchesShortcut(
+  e: KeyboardEvent,
+  shortcut: string | readonly string[],
+): boolean {
+  const shortcuts = Array.isArray(shortcut) ? shortcut : [shortcut];
+  return shortcuts.some((candidate) => matchesSingleShortcut(e, candidate));
+}
+
+function matchesSingleShortcut(e: KeyboardEvent, shortcut: string): boolean {
   const platform = getShortcutPlatform();
   if (hasUnsupportedPlatformModifier(e, platform)) return false;
   const parts = shortcut.split("+");
@@ -137,12 +172,18 @@ export function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
 export function formatShortcut(shortcut: string, isMac: boolean): string {
   return shortcut
     .split("+")
-    .map((p) => {
-      if (p === "mod") return isMac ? "⌘" : "Ctrl";
-      if (p === "shift") return isMac ? "⇧" : "Shift";
-      if (p === "alt") return isMac ? "⌥" : "Alt";
-      if (p === "escape") return "Esc";
-      return p.toUpperCase();
+    .map((part) => {
+      if (part === "mod") return isMac ? "⌘" : "Ctrl";
+      if (part === "shift") return isMac ? "⇧" : "Shift";
+      if (part === "alt") return isMac ? "⌥" : "Alt";
+      if (part === "escape") return "Esc";
+      if (part === "enter") return "Enter";
+      if (part === "tab") return "Tab";
+      if (part === "pageup") return "Page Up";
+      if (part === "pagedown") return "Page Down";
+      if (part === "arrowup") return "Arrow Up";
+      if (part === "arrowdown") return "Arrow Down";
+      return part.toUpperCase();
     })
     .join(" ");
 }

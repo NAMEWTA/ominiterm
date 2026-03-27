@@ -1,49 +1,51 @@
 # Changelog
 
-This changelog tracks the refactored OminiTerm monorepo line.
+This changelog tracks the active OminiTerm desktop product line.
 
-Historical notes from the pre-cleanup tree are still available through git history and GitHub Releases. The active working tree now keeps only the current branch snapshot plus the latest tagged baseline that the release workflow depends on.
+Historical notes from removed CLI, Hydra, eval, and older branch structures remain available through git history and GitHub Releases. The current working tree only documents the active desktop and website packages.
 
-## [Unreleased]
+## [1.0.0] - 2026-03-27
 
-### Refactored
+### Breaking Changes
 
-- Reorganized the repository into a pnpm monorepo with `apps/desktop`, `apps/website`, `tools/hydra`, and `tools/eval`
-- Unified product naming around `OminiTerm`, including the packaged desktop app, runtime data directory, and bundled CLI names
-- Reframed the desktop shell around a project sidebar, project board, terminal detail page, and right rail
-
-### Added
-
-- Workspace-local agent skills under `.agents/skills/` for planning, debugging, documentation, and collaboration workflows
-- A dedicated `tools/eval` package for Hydra and single-agent benchmark runs
-- Project path normalization so git internal worktree paths no longer leak into restored UI state
-- Legacy runtime migration from `~/.termcanvas*` to `~/.ominiterm*`
+- Removed the legacy `ominiterm` packaged CLI and local HTTP API server
+- Removed the entire `tools/hydra` orchestration and `tools/eval` evaluation toolchain
+- Removed command registration flow and shipped skill distribution chain
 
 ### Changed
 
-- `ominiterm` and `hydra` are now bundled from the desktop package and registered together
-- The active docs set has been reset to a lightweight developer-oriented structure under `docs/`
-- The right rail now focuses on worktree files and git diffs for the active terminal context
+- Reorganized workspace to focus on maintained `apps/desktop` and `apps/website` packages
+- Reworked desktop settings bridge to use a dedicated agent command validator instead of the removed desktop CLI bridge
+- Updated all documentation to reflect the simplified package boundaries
 
 ### Removed
 
-- Obsolete historical docs, plans, and archive material from the active working tree
-- Unused heatmap layout code and stale utility modules left over from the older UI structure
+- Obsolete CLI/Hydra/Eval documentation and legacy structures
+- Unused build scripts and outdated integration points
 
-## [0.0.1] - 2026-03-26
-
-### Added
-
-- Added the `git-auto-release` skill for automated commit, push, semantic tagging, and changelog-aligned release flow
-
-## [0.8.52] - 2026-03-24
-
-### Fixed
-
-- Removed unused heatmap layout and utility code
-- Added project and worktree path normalization to avoid `.git/modules` paths surfacing in the desktop state
+## [0.0.1] - 2026-03-27
 
 ### Changed
 
+- Reset the active workspace baseline to `0.0.1` for the remaining desktop and website packages
+- Simplified the workspace to the maintained `apps/desktop` and `apps/website` packages
+- Reworked the desktop settings bridge so Agent CLI validation uses a dedicated runtime API instead of the removed desktop CLI bridge
+
+### Removed
+
+- Removed the legacy `ominiterm` packaged CLI, local HTTP API server, command registration flow, and shipped skill distribution chain
+- Removed the obsolete `tools/hydra` and `tools/eval` packages from the active working tree
+- Removed outdated CLI / Hydra / Eval documentation and aligned the docs set with the current package boundaries
+
+## Historical Notes
+
+### Historical `v0.0.1` tag - 2026-03-26
+
+The repository already contains an older Git tag named `v0.0.1` from a previous release flow. That historical tag is preserved in git history and is not rewritten by the current desktop/website baseline reset.
+
+### Historical `0.8.52` baseline - 2026-03-24
+
+- Removed unused heatmap layout and utility code
+- Added project and worktree path normalization to avoid `.git/modules` paths surfacing in the desktop state
 - Added a shortcut to toggle the project sidebar
 - Refreshed the available agent type list in the desktop shell

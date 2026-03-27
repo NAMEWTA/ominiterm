@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { matchesShortcut, useShortcutStore } from "../stores/shortcutStore";
+import { registerWindowKeydownListener } from "../shortcuts/listeners";
 import { useNotificationStore } from "../stores/notificationStore";
 import { useComposerStore } from "../stores/composerStore";
 import { usePreferencesStore } from "../stores/preferencesStore";
@@ -13,7 +14,7 @@ import { useT } from "../i18n/useT";
 import { addProjectFromDialog, chooseDefaultWorktree, createTerminalInWorktree } from "../projectCommands";
 
 export function useKeyboardShortcuts() {
-  const shortcuts = useShortcutStore((state) => state.shortcuts);
+  const shortcuts = useShortcutStore((state) => state.bindings);
   const t = useT();
 
   useEffect(() => {
@@ -226,8 +227,7 @@ export function useKeyboardShortcuts() {
       }
     };
 
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return registerWindowKeydownListener(window, handler);
   }, [shortcuts, t]);
 }
 

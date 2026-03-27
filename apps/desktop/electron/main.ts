@@ -14,22 +14,8 @@ import {
 } from "./state-persistence";
 import { GitFileWatcher } from "./git-watcher";
 import { SessionWatcher, type SessionType } from "./session-watcher";
-import { ApiServer } from "./api-server";
 import { sendToWindow } from "./window-events";
 import { detectCli } from "./process-detector";
-import { ensureCliLauncher } from "./cli-launchers";
-import {
-  isCliRegistered,
-  registerCli,
-  unregisterCli,
-} from "./cli-registration";
-import {
-  ensureSkillLinks,
-  getSkillsSourceDir,
-  installSkillLinks,
-  uninstallSkillLinks,
-} from "./skill-manager";
-import { buildLaunchSpec } from "./pty-launch.js";
 import {
   createDefaultComposerSubmitDeps,
   submitComposerRequest,
@@ -41,6 +27,7 @@ import { toFileUrl } from "./file-url";
 import { queryCloudUsage, queryCloudHeatmap, backfillHistory, flushSyncQueue, syncRecentRecords } from "./usage-sync";
 import type { ComposerSubmitRequest } from "../src/types";
 import { getProjectDiff } from "./git-diff";
+import { validateAgentCommand } from "./agent-command.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,21 +59,9 @@ if (!gotLock) {
 
 migrateLegacyOminiTermData();
 
-const PORT_FILE = path.join(OMINITERM_DIR, "port");
-
 function perfLog(label: string, details: Record<string, unknown>) {
   if (!isDev) return;
   console.log(`[Perf] ${label}`, details);
-}
-
-function writePortFile(port: number) {
-  fs.writeFileSync(PORT_FILE, String(port), "utf-8");
-}
-
-function cleanupPortFile() {
-  try {
-    fs.unlinkSync(PORT_FILE);
-  } catch {}
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -100,11 +75,6 @@ const projectScanner = new ProjectScanner();
 const statePersistence = new StatePersistence();
 const gitWatcher = new GitFileWatcher();
 const sessionWatcher = new SessionWatcher();
-const apiServer = new ApiServer({
-  getWindow: () => mainWindow,
-  ptyManager,
-  projectScanner,
-});
 
 function createWindow() {
   forceClose = false;
@@ -179,13 +149,6 @@ function createWindow() {
   // Intercept close to ask user about saving (only after page loads)
   mainWindow.webContents.on("did-finish-load", async () => {
     rendererReady = true;
-    try {
-      const port = await apiServer.start();
-      writePortFile(port);
-      console.log(`[OminiTerm API] http://127.0.0.1:${port}`);
-    } catch (err) {
-      console.error("[OminiTerm API] Failed to start:", err);
-    }
   });
 
   mainWindow.webContents.on(
@@ -260,10 +223,7 @@ function setupIpc() {
     "terminal:create",
     async (_event, options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; theme?: "dark" | "light" }) => {
       dbg(`terminal:create shell=${options.shell ?? "(default)"} args=${JSON.stringify(options.args)} cwd=${options.cwd}`);
-      const ptyId = await ptyManager.create({
-        ...options,
-        extraPathEntries: [getCliDir()],
-      });
+      const ptyId = await ptyManager.create(options);
       const pid = ptyManager.getPid(ptyId);
       dbg(`terminal:create => ptyId=${ptyId} pid=${pid ?? "null"}`);
       ptyManager.onData(ptyId, (data: string) => {
@@ -542,48 +502,10 @@ function setupIpc() {
     }
   });
 
-  // CLI registration
-  ipcMain.handle("cli:is-registered", () => isCliRegistered(getCliDir()));
-  ipcMain.handle("cli:register", () => {
-    const ok = registerCli(getCliDir());
-    if (ok) installSkill();
-    return ok;
-  });
-  ipcMain.handle("cli:unregister", () => {
-    const ok = unregisterCli(getCliDir());
-    if (ok) uninstallSkill();
-    return ok;
-  });
-
   ipcMain.handle(
-    "cli:validate-command",
-    async (_event, command: string, _args?: string[]) => {
-      try {
-        const spec = await buildLaunchSpec({
-          cwd: process.cwd(),
-          shell: command,
-          extraPathEntries: [getCliDir()],
-        });
-        const { execFile } = await import("child_process");
-        const version = await new Promise<string | null>((resolve) => {
-          execFile(
-            spec.file,
-            ["--version"],
-            { timeout: 5000, env: spec.env },
-            (err, stdout) => {
-              if (err) { resolve(null); return; }
-              const line = stdout.toString().trim().split("\n")[0];
-              resolve(line || null);
-            },
-          );
-        });
-        return { ok: true as const, resolvedPath: spec.file, version };
-      } catch (err) {
-        return {
-          ok: false as const,
-          error: err instanceof Error ? err.message : String(err),
-        };
-      }
+    "agents:validate-command",
+    async (_event, command: string) => {
+      return validateAgentCommand(command);
     },
   );
 
@@ -854,58 +776,12 @@ function setupIpc() {
   });
 }
 
-function getCliDir(): string {
-  const prodDir = path.join(process.resourcesPath, "cli");
-  if (fs.existsSync(prodDir)) return prodDir;
-  // dev mode: dist-cli/ relative to dist-electron/
-  return path.resolve(__dirname, "..", "dist-cli");
-}
-
 function dataUrlToPngBuffer(dataUrl: string): Buffer {
   const image = nativeImage.createFromDataURL(dataUrl);
   if (image.isEmpty()) {
     throw new Error("Invalid image data.");
   }
   return image.toPNG();
-}
-
-const CLI_NAMES = ["ominiterm", "hydra"];
-
-/** Ensure CLI launchers exist for the current platform. */
-function ensureCliLinks(): void {
-  const cliDir = getCliDir();
-  if (!fs.existsSync(cliDir)) return;
-
-  for (const name of CLI_NAMES) {
-    const jsFile = path.join(cliDir, `${name}.js`);
-    try {
-      ensureCliLauncher(jsFile);
-    } catch {
-      // read-only fs in packaged apps; best-effort only
-    }
-  }
-}
-
-function getSkillSourceDir(): string {
-  return getSkillsSourceDir(process.resourcesPath, __dirname);
-}
-
-function installSkill(): boolean {
-  return installSkillLinks({
-    sourceDir: getSkillSourceDir(),
-    appVersion: app.getVersion(),
-  });
-}
-
-function ensureSkillInstalled(): boolean {
-  return ensureSkillLinks({
-    sourceDir: getSkillSourceDir(),
-    appVersion: app.getVersion(),
-  });
-}
-
-function uninstallSkill(): boolean {
-  return uninstallSkillLinks({ sourceDir: getSkillSourceDir() });
 }
 
 // Register ominiterm:// protocol for OAuth callback
@@ -933,8 +809,6 @@ app.whenReady().then(async () => {
     }
   });
 
-  ensureCliLinks();
-  if (isCliRegistered(getCliDir())) ensureSkillInstalled();
   setupIpc();
   await initAuth();
   createWindow();
@@ -985,8 +859,6 @@ app.whenReady().then(async () => {
 
 app.on("will-quit", () => {
   stopAutoUpdater();
-  apiServer.stop();
-  cleanupPortFile();
 });
 
 app.on("window-all-closed", () => {

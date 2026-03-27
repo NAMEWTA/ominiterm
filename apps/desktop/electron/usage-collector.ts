@@ -393,7 +393,7 @@ export function parseClaudeSession(
   if (topDir && topDir.startsWith("-")) {
     // Strip worktree suffix so usage is attributed to the parent project:
     //   --worktrees-*  → EnterWorktree adjacent dirs (e.g. repo--worktrees/branch)
-    //   -.worktrees-*  → Hydra .worktrees subdirs   (e.g. repo/.worktrees/hydra-id)
+//   -.worktrees-*  → internal .worktrees subdirs   (e.g. repo/.worktrees/feature-branch)
     const cleaned = topDir.replace(/(--worktrees-|-.worktrees-).*$/, "");
     projectPath = cleaned.replace(/-/g, "/");
   }

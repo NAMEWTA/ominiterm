@@ -7,15 +7,13 @@
   },
   "scripts": {
     "dev": "pnpm --filter ominiterm dev",
-    "build": "pnpm --filter @ominiterm/hydra build && pnpm --filter ominiterm build && pnpm --filter @ominiterm/website build",
+    "build": "pnpm --filter ominiterm build && pnpm --filter @ominiterm/website build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter ominiterm test && pnpm --filter @ominiterm/hydra test && pnpm --filter @ominiterm/eval test",
+    "test": "pnpm --filter ominiterm test",
     "desktop:dev": "pnpm --filter ominiterm dev",
-    "desktop:build": "pnpm --filter @ominiterm/hydra build && pnpm --filter ominiterm build",
-    "desktop:package": "pnpm --filter @ominiterm/hydra build && pnpm --filter ominiterm package",
-    "website:build": "pnpm --filter @ominiterm/website build",
-    "hydra:build": "pnpm --filter @ominiterm/hydra build",
-    "eval:test": "pnpm --filter @ominiterm/eval test"
+    "desktop:build": "pnpm --filter ominiterm build",
+    "desktop:package": "pnpm --filter ominiterm package",
+    "website:build": "pnpm --filter @ominiterm/website build"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

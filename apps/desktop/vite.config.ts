@@ -4,8 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
 import path from "path";
-import { build as esbuild, context as esbuildCtx, type Plugin as EsbuildPlugin } from "esbuild";
-import { ensureCliLauncher } from "./electron/cli-launchers";
+import { build as esbuild, context as esbuildCtx } from "esbuild";
 
 function buildPreload(): Plugin {
   const opts = {
@@ -29,49 +28,11 @@ function buildPreload(): Plugin {
   };
 }
 
-/** esbuild plugin: after write, create the platform-appropriate CLI launcher. */
-function cliSymlinkPlugin(outfile: string): EsbuildPlugin {
-  const jsPath = path.resolve(outfile);
-  return {
-    name: "cli-symlink",
-    setup(build) {
-      build.onEnd(() => {
-        ensureCliLauncher(jsPath);
-      });
-    },
-  };
-}
-
-function buildCli(): Plugin {
-  const outfile = "dist-cli/ominiterm.js";
-  const opts = {
-    entryPoints: ["cli/ominiterm.ts"],
-    outfile,
-    format: "esm" as const,
-    platform: "node" as const,
-    bundle: true,
-    banner: { js: "#!/usr/bin/env node" },
-    plugins: [cliSymlinkPlugin(outfile)],
-  };
-  return {
-    name: "build-cli",
-    async buildStart() {
-      if (this.meta.watchMode) {
-        const ctx = await esbuildCtx(opts);
-        await ctx.watch();
-      } else {
-        await esbuild(opts);
-      }
-    },
-  };
-}
-
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     buildPreload(),
-    buildCli(),
     electron([
       {
         entry: "electron/main.ts",

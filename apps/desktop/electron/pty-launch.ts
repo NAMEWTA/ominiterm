@@ -406,7 +406,7 @@ export async function buildLaunchSpec(
 
   const shellEnv = sanitizeEnv(await deps.getShellEnv(), deps);
 
-  // Inject terminal ID so child processes (e.g. Hydra) can identify their parent
+  // Inject terminal ID so child processes can identify their parent terminal.
   if (options.terminalId) {
     shellEnv.OMINITERM_TERMINAL_ID = options.terminalId;
   }

@@ -3,12 +3,19 @@ import assert from "node:assert/strict";
 
 import { shouldIgnoreShortcutTarget } from "../src/hooks/shortcutTarget.ts";
 import {
-  DEFAULT_SHORTCUTS,
   eventToShortcut,
+  formatShortcut,
   matchesShortcut,
 } from "../src/stores/shortcutStore.ts";
+import {
+  DEFAULT_SHORTCUTS,
+  LEGACY_DEFAULT_SHORTCUTS,
+  createResolvedBindings,
+} from "../src/shortcuts/catalog.ts";
 import { getTerminalFocusOrder } from "../src/stores/projectFocus.ts";
 import type { ProjectData } from "../src/types/index.ts";
+
+const STORAGE_KEY = "ominiterm-shortcuts";
 
 function withPlatform(
   platform: "darwin" | "win32" | "linux",
@@ -49,11 +56,42 @@ function createKeyboardEvent(
 function createTarget(
   tagName: string,
   isContentEditable: boolean = false,
+  className: string = "",
 ): EventTarget {
   return {
     tagName,
     isContentEditable,
+    className,
   } as unknown as EventTarget;
+}
+
+function installLocalStorage(initialValue?: string) {
+  const backingStore = new Map<string, string>();
+  if (initialValue !== undefined) {
+    backingStore.set(STORAGE_KEY, initialValue);
+  }
+
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem(key: string) {
+        return backingStore.get(key) ?? null;
+      },
+      setItem(key: string, value: string) {
+        backingStore.set(key, value);
+      },
+      removeItem(key: string) {
+        backingStore.delete(key);
+      },
+      clear() {
+        backingStore.clear();
+      },
+    },
+  });
+}
+
+async function loadShortcutStoreModule(tag: string) {
+  return import(`../src/stores/shortcutStore.ts?${tag}`);
 }
 
 test("matchesShortcut uses command as mod on macOS", () => {
@@ -123,27 +161,197 @@ test("editable targets allow command shortcuts to reach the app on macOS", () =>
   });
 });
 
-test("rename title shortcut defaults to mod+semicolon", () => {
-  assert.equal(DEFAULT_SHORTCUTS.renameTerminalTitle, "mod+;");
-});
-
-test("toggle right panel shortcut defaults to mod+slash and matches correctly", () => {
-  assert.equal(DEFAULT_SHORTCUTS.toggleRightPanel, "mod+/");
+test("xterm helper textarea still ignores printable keys without modifiers", () => {
   withPlatform("darwin", () => {
     assert.equal(
-      matchesShortcut(createKeyboardEvent({ key: "/", metaKey: true }), "mod+/"),
+      shouldIgnoreShortcutTarget(
+        createKeyboardEvent({
+          key: "?",
+          target: createTarget("TEXTAREA", false, "xterm-helper-textarea"),
+        }),
+      ),
       true,
     );
   });
 });
 
-test("toggle sidebar shortcut defaults to mod+backslash and matches correctly", () => {
-  assert.equal(DEFAULT_SHORTCUTS.toggleSidebar, "mod+\\");
+test("xterm helper textarea allows non-printable global shortcuts without modifiers", () => {
   withPlatform("darwin", () => {
     assert.equal(
-      matchesShortcut(createKeyboardEvent({ key: "\\", metaKey: true }), "mod+\\"),
+      shouldIgnoreShortcutTarget(
+        createKeyboardEvent({
+          key: "F2",
+          target: createTarget("TEXTAREA", false, "xterm-helper-textarea"),
+        }),
+      ),
+      false,
+    );
+    assert.equal(
+      shouldIgnoreShortcutTarget(
+        createKeyboardEvent({
+          key: "PageDown",
+          target: createTarget("TEXTAREA", false, "xterm-helper-textarea"),
+        }),
+      ),
+      false,
+    );
+  });
+});
+
+test("new default shortcuts prefer the reorganized keymap", () => {
+  assert.equal(DEFAULT_SHORTCUTS.toggleSidebar, "mod+b");
+  assert.equal(DEFAULT_SHORTCUTS.toggleRightPanel, "mod+shift+b");
+  assert.equal(DEFAULT_SHORTCUTS.renameTerminalTitle, "f2");
+  assert.equal(DEFAULT_SHORTCUTS.nextTerminal, "mod+pagedown");
+  assert.equal(DEFAULT_SHORTCUTS.prevTerminal, "mod+pageup");
+});
+
+test("resolved bindings include legacy aliases until a shortcut is customized", () => {
+  assert.deepEqual(createResolvedBindings({}).toggleSidebar, ["mod+b", "mod+\\"]);
+  assert.deepEqual(createResolvedBindings({}).toggleRightPanel, [
+    "mod+shift+b",
+    "mod+/",
+  ]);
+  assert.deepEqual(createResolvedBindings({}).renameTerminalTitle, ["f2", "mod+;"]);
+  assert.deepEqual(createResolvedBindings({}).nextTerminal, [
+    "mod+pagedown",
+    "mod+]",
+  ]);
+  assert.deepEqual(createResolvedBindings({ toggleSidebar: "alt+s" }).toggleSidebar, [
+    "alt+s",
+  ]);
+});
+
+test("legacy aliases continue to match while defaults are still active", () => {
+  const bindings = createResolvedBindings({});
+
+  withPlatform("darwin", () => {
+    assert.equal(
+      matchesShortcut(
+        createKeyboardEvent({ key: "\\", metaKey: true }),
+        bindings.toggleSidebar,
+      ),
       true,
     );
+    assert.equal(
+      matchesShortcut(
+        createKeyboardEvent({ key: "/", metaKey: true }),
+        bindings.toggleRightPanel,
+      ),
+      true,
+    );
+    assert.equal(
+      matchesShortcut(
+        createKeyboardEvent({ key: ";", metaKey: true }),
+        bindings.renameTerminalTitle,
+      ),
+      true,
+    );
+    assert.equal(
+      matchesShortcut(
+        createKeyboardEvent({ key: "]", metaKey: true }),
+        bindings.nextTerminal,
+      ),
+      true,
+    );
+    assert.equal(
+      matchesShortcut(
+        createKeyboardEvent({ key: "[", metaKey: true }),
+        bindings.prevTerminal,
+      ),
+      true,
+    );
+  });
+});
+
+test("matchesShortcut accepts array bindings for new non-printable defaults", () => {
+  withPlatform("win32", () => {
+    assert.equal(
+      matchesShortcut(
+        createKeyboardEvent({ key: "F2" }),
+        createResolvedBindings({}).renameTerminalTitle,
+      ),
+      true,
+    );
+    assert.equal(
+      matchesShortcut(
+        createKeyboardEvent({ key: "PageDown", ctrlKey: true }),
+        createResolvedBindings({}).nextTerminal,
+      ),
+      true,
+    );
+    assert.equal(
+      matchesShortcut(
+        createKeyboardEvent({ key: "PageUp", ctrlKey: true }),
+        createResolvedBindings({}).prevTerminal,
+      ),
+      true,
+    );
+  });
+});
+
+test("formatShortcut renders named keys in a desktop-friendly way", () => {
+  assert.equal(formatShortcut("f2", false), "F2");
+  assert.equal(formatShortcut("pageup", false), "Page Up");
+  assert.equal(formatShortcut("mod+pagedown", false), "Ctrl Page Down");
+  assert.equal(formatShortcut("mod+shift+b", true), "⌘ ⇧ B");
+});
+
+test("shortcut store migrates legacy full-map defaults to empty overrides", async () => {
+  installLocalStorage(JSON.stringify(LEGACY_DEFAULT_SHORTCUTS));
+
+  const { useShortcutStore, SHORTCUT_STORAGE_VERSION } =
+    await loadShortcutStoreModule("legacy-defaults");
+  const state = useShortcutStore.getState();
+
+  assert.deepEqual(state.overrides, {});
+  assert.equal(state.shortcuts.toggleSidebar, DEFAULT_SHORTCUTS.toggleSidebar);
+  assert.equal(
+    state.bindings.renameTerminalTitle.includes(LEGACY_DEFAULT_SHORTCUTS.renameTerminalTitle),
+    true,
+  );
+  assert.deepEqual(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"), {
+    version: SHORTCUT_STORAGE_VERSION,
+    overrides: {},
+  });
+});
+
+test("shortcut store preserves customized legacy values as overrides during migration", async () => {
+  installLocalStorage(
+    JSON.stringify({
+      ...LEGACY_DEFAULT_SHORTCUTS,
+      toggleSidebar: "alt+s",
+      nextTerminal: "alt+n",
+    }),
+  );
+
+  const { useShortcutStore } = await loadShortcutStoreModule("legacy-custom");
+  const state = useShortcutStore.getState();
+
+  assert.deepEqual(state.overrides, {
+    toggleSidebar: "alt+s",
+    nextTerminal: "alt+n",
+  });
+  assert.deepEqual(state.bindings.toggleSidebar, ["alt+s"]);
+  assert.deepEqual(state.bindings.nextTerminal, ["alt+n"]);
+});
+
+test("shortcut store resetAll clears overrides back to versioned defaults", async () => {
+  installLocalStorage();
+
+  const { useShortcutStore, SHORTCUT_STORAGE_VERSION } =
+    await loadShortcutStoreModule("reset-all");
+  useShortcutStore.getState().setShortcut("toggleSidebar", "alt+s");
+  useShortcutStore.getState().resetAll();
+
+  assert.deepEqual(useShortcutStore.getState().overrides, {});
+  assert.equal(
+    useShortcutStore.getState().shortcuts.toggleSidebar,
+    DEFAULT_SHORTCUTS.toggleSidebar,
+  );
+  assert.deepEqual(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"), {
+    version: SHORTCUT_STORAGE_VERSION,
+    overrides: {},
   });
 });
 

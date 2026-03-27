@@ -6,9 +6,13 @@ import {
   useShortcutStore,
   formatShortcut,
   eventToShortcut,
-  DEFAULT_SHORTCUTS,
-  type ShortcutMap,
 } from "../stores/shortcutStore";
+import {
+  APP_SHORTCUT_DEFINITIONS,
+  CONTEXT_SHORTCUT_DEFINITIONS,
+  findShortcutConflict,
+  type EditableShortcutId,
+} from "../shortcuts/catalog";
 import { useSettingsModalStore, type SettingsTab } from "../stores/settingsModalStore";
 import { useT } from "../i18n/useT";
 import { FONT_REGISTRY } from "../terminal/fontRegistry";
@@ -24,32 +28,20 @@ interface Props {
 
 type Tab = SettingsTab;
 
-const SHORTCUT_KEYS: { key: keyof ShortcutMap; labelKey: string }[] = [
-  { key: "addProject", labelKey: "shortcut_add_project" },
-  { key: "toggleSidebar", labelKey: "shortcut_toggle_sidebar" },
-  { key: "toggleRightPanel", labelKey: "shortcut_toggle_right_panel" },
-  { key: "newTerminal", labelKey: "shortcut_new_terminal" },
-  { key: "saveWorkspace", labelKey: "shortcut_save_workspace" },
-  { key: "saveWorkspaceAs", labelKey: "shortcut_save_workspace_as" },
-  { key: "renameTerminalTitle", labelKey: "shortcut_rename_terminal_title" },
-  { key: "closeFocused", labelKey: "shortcut_close_focused" },
-  { key: "toggleStarFocused", labelKey: "shortcut_toggle_star_focused" },
-  { key: "nextTerminal", labelKey: "shortcut_next_terminal" },
-  { key: "prevTerminal", labelKey: "shortcut_prev_terminal" },
-];
-
 function ShortcutRow({
   label,
   value,
   isRecording,
   onStartRecord,
   conflict,
+  readOnly = false,
 }: {
   label: string;
   value: string;
   isRecording: boolean;
-  onStartRecord: () => void;
+  onStartRecord?: () => void;
   conflict: boolean;
+  readOnly?: boolean;
 }) {
   const t = useT();
 
@@ -64,12 +56,15 @@ function ShortcutRow({
         )}
         <button
           className={`px-3 py-1 rounded-md text-[13px] min-w-[120px] text-center transition-colors duration-150 ${
-            isRecording
-              ? "bg-[var(--accent)] text-white"
-              : "bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]"
+            readOnly
+              ? "cursor-default bg-[var(--surface)] text-[var(--text-muted)]"
+              : isRecording
+                ? "bg-[var(--accent)] text-white"
+                : "bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]"
           }`}
           style={{ fontFamily: '"Geist Mono", monospace' }}
-          onClick={onStartRecord}
+          onClick={readOnly ? undefined : onStartRecord}
+          disabled={readOnly}
         >
           {isRecording ? t.shortcuts_press_hint : formatShortcut(value, isMac)}
         </button>
@@ -95,7 +90,7 @@ function AgentsTabContent() {
     for (const agent of AGENT_TYPES) {
       const command = cliCommands[agent]?.command ?? agent;
       setStatuses((prev) => ({ ...prev, [agent]: null }));
-      window.ominiterm.cli.validateCommand(command).then((result) => {
+      window.ominiterm.agents.validateCommand(command).then((result) => {
         setStatuses((prev) => ({ ...prev, [agent]: result }));
       });
     }
@@ -104,7 +99,7 @@ function AgentsTabContent() {
   const handleValidate = (agent: TerminalType) => {
     const command = drafts[agent]?.trim() || cliCommands[agent]?.command || agent;
     setStatuses((prev) => ({ ...prev, [agent]: null }));
-    window.ominiterm.cli.validateCommand(command).then((result) => {
+    window.ominiterm.agents.validateCommand(command).then((result) => {
       setStatuses((prev) => ({ ...prev, [agent]: result }));
     });
   };
@@ -198,24 +193,18 @@ export function SettingsModal({ onClose }: Props) {
     setMinimumContrastRatio,
   } = usePreferencesStore();
   const [fontSizeDraft, setFontSizeDraft] = useState(terminalFontSize);
-  const { shortcuts, setShortcut, resetAll } = useShortcutStore();
+  const { shortcuts, overrides, setShortcut, resetAll } = useShortcutStore();
   const [downloadedFonts, setDownloadedFonts] = useState<Set<string>>(new Set());
   const [downloadingFont, setDownloadingFont] = useState<string | null>(null);
   const t = useT();
   const initialTab = useSettingsModalStore((s) => s.initialTab);
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [recordingKey, setRecordingKey] = useState<keyof ShortcutMap | null>(
+  const [recordingKey, setRecordingKey] = useState<EditableShortcutId | null>(
     null,
   );
-  const [conflicts, setConflicts] = useState<Set<keyof ShortcutMap>>(new Set());
+  const [conflicts, setConflicts] = useState<Set<EditableShortcutId>>(new Set());
   const backdropRef = useRef<HTMLDivElement>(null);
-  const [cliRegistered, setCliRegistered] = useState<boolean | null>(null);
-  const [cliLoading, setCliLoading] = useState(false);
   const [appVersion, setAppVersion] = useState<string | null>(null);
-
-  useEffect(() => {
-    window.ominiterm?.cli.isRegistered().then(setCliRegistered);
-  }, []);
 
   useEffect(() => {
     window.ominiterm?.updater.getVersion().then(setAppVersion).catch(() => {
@@ -238,14 +227,9 @@ export function SettingsModal({ onClose }: Props) {
         const shortcut = eventToShortcut(e);
         if (!shortcut) return; // modifier-only press
 
-        // Check for conflicts
-        const conflicting = Object.entries(shortcuts).find(
-          ([k, v]) => k !== recordingKey && v === shortcut,
-        );
+        const conflicting = findShortcutConflict(recordingKey, shortcut, overrides);
         if (conflicting) {
-          setConflicts(
-            new Set([recordingKey, conflicting[0] as keyof ShortcutMap]),
-          );
+          setConflicts(new Set([recordingKey, conflicting]));
           setTimeout(() => setConflicts(new Set()), 2000);
           setRecordingKey(null);
           return;
@@ -260,7 +244,7 @@ export function SettingsModal({ onClose }: Props) {
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [recordingKey, shortcuts, setShortcut, onClose]);
+  }, [overrides, recordingKey, setShortcut, onClose]);
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
@@ -529,38 +513,6 @@ export function SettingsModal({ onClose }: Props) {
                 </div>
               </div>
 
-              {/* CLI registration */}
-              {cliRegistered !== null && (
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] text-[var(--text-secondary)]">
-                      {t.cli_label}
-                    </span>
-                    <span className="text-[11px] text-[var(--text-muted)]">
-                      ominiterm, hydra
-                    </span>
-                  </div>
-                  {cliRegistered ? (
-                    <span className={`${toggleBtn} bg-[var(--border)] text-[var(--text-muted)] cursor-default`}>
-                      {t.cli_registered}
-                    </span>
-                  ) : (
-                    <button
-                      className={inactiveBtn}
-                      disabled={cliLoading}
-                      onClick={async () => {
-                        setCliLoading(true);
-                        const ok = await window.ominiterm.cli.register();
-                        if (ok) setCliRegistered(true);
-                        setCliLoading(false);
-                      }}
-                    >
-                      {cliLoading ? t.cli_registering : t.cli_not_registered}
-                    </button>
-                  )}
-                </div>
-              )}
-
               <div className="mt-1 flex items-center justify-between border-t border-[var(--border)] pt-4">
                 <span className="text-[12px] text-[var(--text-muted)]">
                   {t.settings_version}
@@ -577,16 +529,33 @@ export function SettingsModal({ onClose }: Props) {
 
           {tab === "shortcuts" && (
             <div>
-              {SHORTCUT_KEYS.map(({ key, labelKey }) => (
+              <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                {t.shortcuts_app_section}
+              </div>
+              {APP_SHORTCUT_DEFINITIONS.map(({ id, labelKey }) => (
                 <ShortcutRow
-                  key={key}
+                  key={id}
                   label={(t as unknown as Record<string, string>)[labelKey]}
-                  value={shortcuts[key]}
-                  isRecording={recordingKey === key}
+                  value={shortcuts[id]}
+                  isRecording={recordingKey === id}
                   onStartRecord={() =>
-                    setRecordingKey(recordingKey === key ? null : key)
+                    setRecordingKey(recordingKey === id ? null : id)
                   }
-                  conflict={conflicts.has(key)}
+                  conflict={conflicts.has(id)}
+                />
+              ))}
+
+              <div className="mt-5 mb-2 text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                {t.shortcuts_context_section}
+              </div>
+              {CONTEXT_SHORTCUT_DEFINITIONS.map(({ id, labelKey, defaultBinding }) => (
+                <ShortcutRow
+                  key={id}
+                  label={(t as unknown as Record<string, string>)[labelKey]}
+                  value={defaultBinding}
+                  isRecording={false}
+                  conflict={false}
+                  readOnly
                 />
               ))}
 

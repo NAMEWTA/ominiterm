@@ -2,7 +2,6 @@ node_modules/
 pnpm-debug.log*
 dist/
 dist-electron/
-dist-cli/
 out/
 .vite/
 
@@ -18,10 +17,6 @@ Thumbs.db
 .claude/
 .worktrees/
 thirdparty/
-
-# Hydra temp files
-.hydra-result-*.md
-.hydra-task-*.md
 
 # Local workspace state
 .ominiterm/
