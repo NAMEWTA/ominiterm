@@ -211,6 +211,43 @@ export type InsightsGenerateResult =
       error: { code: string; message: string; detail?: string };
     };
 
+export type ToolConfigValue = string | number | boolean | object | null;
+export type ToolConfig = Record<string, ToolConfigValue>;
+
+export interface CommonAiConfig {
+  apiKey: string;
+  baseUrl?: string;
+  model?: string;
+}
+
+export interface AiCliConfig {
+  configId: string;
+  type: TerminalType;
+  name: string;
+  providerName: string;
+  displayName: string;
+  description?: string;
+  commonConfig: CommonAiConfig;
+  toolConfig: ToolConfig;
+  createdAt: number;
+  updatedAt: number;
+  isDefault?: boolean;
+}
+
+export type IpcResponse<T = void> =
+  | { ok: true; data?: T }
+  | { ok: false; error: string };
+
+export interface AiConfigAPI {
+  loadAll(): Promise<IpcResponse<AiCliConfig[]>>;
+  getByType(type: TerminalType): Promise<IpcResponse<AiCliConfig[]>>;
+  add(config: AiCliConfig): Promise<IpcResponse>;
+  update(configId: string, updates: Partial<AiCliConfig>): Promise<IpcResponse>;
+  delete(configId: string): Promise<IpcResponse>;
+  setDefault(configId: string): Promise<IpcResponse>;
+  generateId(type: TerminalType, baseName: string): Promise<IpcResponse<string>>;
+}
+
 // Preload API types
 export interface OminiTermAPI {
   terminal: {
@@ -299,6 +336,7 @@ export interface OminiTermAPI {
       | { ok: false; error: string }
     >;
   };
+  aiConfigApi: AiConfigAPI;
   composer: {
     submit: (request: ComposerSubmitRequest) => Promise<ComposerSubmitResult>;
   };
