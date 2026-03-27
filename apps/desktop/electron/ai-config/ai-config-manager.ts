@@ -19,11 +19,36 @@ export class AiConfigManager {
     this.db = AiConfigPersistence.load();
   }
 
+  private cloneConfig(config: AiCliConfig): AiCliConfig {
+    return JSON.parse(JSON.stringify(config)) as AiCliConfig;
+  }
+
+  private cloneConfigs(configs: Record<string, AiCliConfig>): Record<string, AiCliConfig> {
+    return JSON.parse(JSON.stringify(configs)) as Record<string, AiCliConfig>;
+  }
+
+  private clearDefaultForType(type: TerminalType, excludeConfigId?: string): void {
+    Object.values(this.db.configs).forEach((cfg) => {
+      if (cfg.type === type && cfg.configId !== excludeConfigId) {
+        cfg.isDefault = false;
+      }
+    });
+  }
+
+  private validateConfigIdAndType(configId: string, type: TerminalType): void {
+    const prefix = configId.split("-")[0];
+    if (prefix !== type) {
+      throw new Error(
+        `Config ID prefix '${prefix}' does not match type '${type}'. Config ID should start with '${type}-'`,
+      );
+    }
+  }
+
   /**
    * 获取所有配置
    */
   getAllConfigs(): AiCliConfig[] {
-    return Object.values(this.db.configs);
+    return Object.values(this.db.configs).map((cfg) => this.cloneConfig(cfg));
   }
 
   /**
@@ -37,7 +62,11 @@ export class AiConfigManager {
    * 按 ID 获取单个配置
    */
   getConfig(configId: string): AiCliConfig | null {
-    return this.db.configs[configId] || null;
+    const config = this.db.configs[configId];
+    if (!config) {
+      return null;
+    }
+    return this.cloneConfig(config);
   }
 
   /**
@@ -60,17 +89,35 @@ export class AiConfigManager {
    * 新增配置
    */
   addConfig(config: AiCliConfig): void {
+    this.validateConfigIdAndType(config.configId, config.type);
+
     if (this.hasConfig(config.configId)) {
       throw new Error(
         `Configuration with ID '${config.configId}' already exists`,
       );
     }
 
-    config.createdAt = Date.now();
-    config.updatedAt = Date.now();
+    const now = Date.now();
+    const configToStore = this.cloneConfig({
+      ...config,
+      createdAt: now,
+      updatedAt: now,
+    });
 
-    this.db.configs[config.configId] = config;
-    AiConfigPersistence.save(this.db);
+    const originalConfigs = this.cloneConfigs(this.db.configs);
+
+    if (configToStore.isDefault) {
+      this.clearDefaultForType(configToStore.type, configToStore.configId);
+    }
+
+    this.db.configs[config.configId] = configToStore;
+
+    try {
+      AiConfigPersistence.save(this.db);
+    } catch (err) {
+      this.db.configs = originalConfigs;
+      throw err;
+    }
 
     console.log(`[AiConfigManager] Config added: ${config.configId}`);
   }
@@ -79,21 +126,36 @@ export class AiConfigManager {
    * 更新配置
    */
   updateConfig(configId: string, updates: Partial<AiCliConfig>): void {
-    const config = this.getConfig(configId);
+    const config = this.db.configs[configId];
     if (!config) {
       throw new Error(`Configuration with ID '${configId}' not found`);
     }
 
-    const updated = {
+    const newType = updates.type ?? config.type;
+    this.validateConfigIdAndType(configId, newType);
+
+    const originalConfigs = this.cloneConfigs(this.db.configs);
+
+    const updated: AiCliConfig = this.cloneConfig({
       ...config,
       ...updates,
-      configId: config.configId,
+      configId,
       createdAt: config.createdAt,
       updatedAt: Date.now(),
-    };
+    });
+
+    if (updated.isDefault) {
+      this.clearDefaultForType(updated.type, configId);
+    }
 
     this.db.configs[configId] = updated;
-    AiConfigPersistence.save(this.db);
+
+    try {
+      AiConfigPersistence.save(this.db);
+    } catch (err) {
+      this.db.configs = originalConfigs;
+      throw err;
+    }
 
     console.log(`[AiConfigManager] Config updated: ${configId}`);
   }
@@ -106,8 +168,16 @@ export class AiConfigManager {
       throw new Error(`Configuration with ID '${configId}' not found`);
     }
 
+    const originalConfigs = this.cloneConfigs(this.db.configs);
+
     delete this.db.configs[configId];
-    AiConfigPersistence.save(this.db);
+
+    try {
+      AiConfigPersistence.save(this.db);
+    } catch (err) {
+      this.db.configs = originalConfigs;
+      throw err;
+    }
 
     console.log(`[AiConfigManager] Config deleted: ${configId}`);
   }
@@ -116,22 +186,25 @@ export class AiConfigManager {
    * 设置默认配置
    */
   setDefaultConfig(configId: string): void {
-    const config = this.getConfig(configId);
+    const config = this.db.configs[configId];
     if (!config) {
       throw new Error(`Configuration with ID '${configId}' not found`);
     }
 
+    const originalConfigs = this.cloneConfigs(this.db.configs);
     const type = config.type;
 
     // 清除同类型的其他默认标记
-    this.getConfigsByType(type).forEach((cfg) => {
-      if (cfg.configId !== configId) {
-        cfg.isDefault = false;
-      }
-    });
+    this.clearDefaultForType(type, configId);
 
     config.isDefault = true;
-    AiConfigPersistence.save(this.db);
+
+    try {
+      AiConfigPersistence.save(this.db);
+    } catch (err) {
+      this.db.configs = originalConfigs;
+      throw err;
+    }
 
     console.log(
       `[AiConfigManager] Default config set for ${type}: ${configId}`,
