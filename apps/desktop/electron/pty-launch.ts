@@ -1,6 +1,8 @@
 import { execFile } from "child_process";
 import fs from "fs";
 import path from "path";
+import { aiConfigManager } from "./ai-config/ai-config-manager.ts";
+import { AiConfigWriter } from "./ai-config/ai-config-writer.ts";
 
 export interface PtyLaunchOptions {
   cwd: string;
@@ -8,6 +10,7 @@ export interface PtyLaunchOptions {
   args?: string[];
   extraPathEntries?: string[];
   terminalId?: string;
+  configId?: string;
   theme?: "dark" | "light";
 }
 
@@ -402,6 +405,22 @@ export async function buildLaunchSpec(
 ): Promise<PtyResolvedLaunchSpec> {
   if (!deps.existsSync(options.cwd)) {
     throw new Error(`Directory does not exist: ${options.cwd}`);
+  }
+
+  if (options.configId) {
+    const config = aiConfigManager.getConfig(options.configId);
+    if (!config) {
+      console.warn(`[AiConfigWriter] Config not found: ${options.configId}`);
+    } else {
+      try {
+        AiConfigWriter.writeConfigToTool(config.type, config);
+      } catch (error) {
+        console.warn(
+          `[AiConfigWriter] Failed to write config ${options.configId}:`,
+          error,
+        );
+      }
+    }
   }
 
   const shellEnv = sanitizeEnv(await deps.getShellEnv(), deps);

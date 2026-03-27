@@ -19,7 +19,7 @@ export const aiConfigApi: AiConfigAPI = {
 
 contextBridge.exposeInMainWorld("ominiterm", {
   terminal: {
-    create: (options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; theme?: "dark" | "light" }) =>
+    create: (options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; configId?: string; theme?: "dark" | "light" }) =>
       ipcRenderer.invoke("terminal:create", options),
     destroy: (ptyId: number) => ipcRenderer.invoke("terminal:destroy", ptyId),
     getPid: (ptyId: number) =>
