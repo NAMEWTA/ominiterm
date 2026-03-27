@@ -1,3 +1,7 @@
+import type { AiCliConfig } from "./ai-config";
+
+export type { AiCliConfig, CommonAiConfig, TerminalTypeStr } from "./ai-config";
+
 export type TerminalType =
   | "shell"
   | "claude"
@@ -213,26 +217,6 @@ export type InsightsGenerateResult =
 
 export type ToolConfigValue = string | number | boolean | object | null;
 export type ToolConfig = Record<string, ToolConfigValue>;
-
-export interface CommonAiConfig {
-  apiKey: string;
-  baseUrl?: string;
-  model?: string;
-}
-
-export interface AiCliConfig {
-  configId: string;
-  type: TerminalType;
-  name: string;
-  providerName: string;
-  displayName: string;
-  description?: string;
-  commonConfig: CommonAiConfig;
-  toolConfig: ToolConfig;
-  createdAt: number;
-  updatedAt: number;
-  isDefault?: boolean;
-}
 
 export type IpcResponse<T = void> =
   | { ok: true; data?: T }
