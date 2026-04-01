@@ -10,7 +10,6 @@ export interface TerminalCreateRequest {
   shell?: string;
   args?: string[];
   terminalId?: string;
-  configId?: string;
   theme?: "dark" | "light";
 }
 
@@ -37,7 +36,6 @@ export function buildTerminalCreateRequest({
   const request: TerminalCreateRequest = {
     cwd: worktreePath,
     terminalId: terminal.id,
-    configId: terminal.configId,
     theme,
   };
 

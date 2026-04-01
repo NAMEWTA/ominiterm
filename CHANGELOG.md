@@ -4,14 +4,18 @@ This changelog tracks the active OminiTerm desktop product line.
 
 Historical notes from removed CLI, Hydra, eval, and older branch structures remain available through git history and GitHub Releases. The current working tree only documents the active desktop and website packages.
 
+## [1.2.0] - 2026-03-31
+
+### Removed
+
+- Removed AI CLI account selection and configuration management feature; AI CLI tools now use system-default configuration
+
 ## [1.1.0] - 2026-03-27
 
 ### Changed
 
-- Added a dedicated account launch flow so AI CLI accounts can be created, edited, selected, and started with clearer dialogs
-- Improved terminal and project command launch wiring for AI config driven startup behavior
 - Refined desktop keyboard shortcut handling and workspace entry/open flows for more consistent shell behavior
-- Expanded desktop coverage with new tests for account defaults, launch dialogs, file previews, terminal launch requests, and workspace open persistence
+- Expanded desktop coverage with new tests for terminal launch requests and workspace open persistence
 
 ## [1.0.0] - 2026-03-27
 

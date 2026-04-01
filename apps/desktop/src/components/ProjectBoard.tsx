@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ProjectData, TerminalType, WorktreeData } from "../types";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import type { ProjectData, TerminalType, WorktreeData, SplitDirection } from "../types";
 import { useT } from "../i18n/useT";
 import { createTerminalInWorktree } from "../projectCommands";
-import { useAiConfigStore } from "../stores/aiConfigStore";
 import { TerminalTile } from "../terminal/TerminalTile";
+import { SplitPane } from "./SplitPane";
+import { useSplitLayoutStore } from "../stores/splitLayoutStore";
 import {
   CREATABLE_TERMINAL_TYPES,
   DEFAULT_CREATABLE_TERMINAL_TYPE,
 } from "./projectBoardOptions";
-import { AccountLaunchDialog } from "./ai-config/AccountLaunchDialog";
-import { NewAccountDialog } from "./ai-config/NewAccountDialog";
-import { EditAccountDialog } from "./ai-config/EditAccountDialog";
+import { generateId, createTerminal } from "../stores/projectStore";
+import { useProjectStore } from "../stores/projectStore";
 
 interface Props {
   project: ProjectData | null;
@@ -42,28 +42,14 @@ export function ProjectBoard({
   onOpenDetail,
 }: Props) {
   const t = useT();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [selectedWorktreeId, setSelectedWorktreeId] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<TerminalType>(
     DEFAULT_CREATABLE_TERMINAL_TYPE,
   );
-  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
-  const [accountLaunchOpen, setAccountLaunchOpen] = useState(false);
-  const [newAccountOpen, setNewAccountOpen] = useState(false);
-  const [editAccountOpen, setEditAccountOpen] = useState(false);
-  const loadConfigs = useAiConfigStore((state) => state.loadConfigs);
-  const addConfig = useAiConfigStore((state) => state.addConfig);
-  const deleteConfig = useAiConfigStore((state) => state.deleteConfig);
-  const setDefaultConfig = useAiConfigStore((state) => state.setDefaultConfig);
 
-  const accountTypeSelected = selectedType !== "shell";
-
-  useEffect(() => {
-    if (!scrollRef.current) {
-      return;
-    }
-    scrollRef.current.scrollTop = boardScrollTop;
-  }, [boardScrollTop, project?.id]);
+  const { getLayout, syncWithTerminals, splitPane, updateRatio } = useSplitLayoutStore();
+  const { addTerminal: addTerminalToProject } = useProjectStore();
 
   useEffect(() => {
     if (!project) {
@@ -80,40 +66,84 @@ export function ProjectBoard({
     setSelectedWorktreeId(nextWorktreeId);
   }, [focusedWorktreeId, project]);
 
-  useEffect(() => {
-    if (!accountTypeSelected) {
-      setSelectedConfigId(null);
-      return;
-    }
-
-    let cancelled = false;
-    void (async () => {
-      await loadConfigs();
-      if (cancelled) {
-        return;
-      }
-
-      const store = useAiConfigStore.getState();
-      const allConfigs = store.getConfigsByType(selectedType);
-      const defaultConfig = store.getDefaultConfig(selectedType);
-      const fallbackConfigId = defaultConfig?.configId ?? allConfigs[0]?.configId ?? null;
-
-      setSelectedConfigId((previous) => {
-        if (previous && allConfigs.some((cfg) => cfg.configId === previous)) {
-          return previous;
-        }
-        return fallbackConfigId;
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accountTypeSelected, loadConfigs, selectedType]);
-
   const terminals = useMemo(
     () => (project ? flattenProjectTerminals(project) : []),
     [project],
+  );
+
+  // Create a map for quick terminal lookup
+  const terminalMap = useMemo(() => {
+    const map = new Map<string, BoardTerminalItem>();
+    for (const item of terminals) {
+      map.set(item.terminalId, item);
+    }
+    return map;
+  }, [terminals]);
+
+  // Sync layout with terminals when they change
+  useEffect(() => {
+    if (!project) return;
+    const terminalIds = terminals.map((t) => t.terminalId);
+    syncWithTerminals(project.id, terminalIds);
+  }, [project?.id, terminals, syncWithTerminals]);
+
+  const layout = project ? getLayout(project.id) : { root: null };
+
+  // Handle ratio update from divider drag
+  const handleUpdateRatio = useCallback(
+    (path: number[], ratio: number) => {
+      if (!project) return;
+      updateRatio(project.id, path, ratio);
+    },
+    [project, updateRatio],
+  );
+
+  // Handle split operation
+  const handleSplit = useCallback(
+    (terminalId: string, direction: SplitDirection, type: TerminalType) => {
+      if (!project) return;
+      
+      // Find the worktree for this terminal
+      const item = terminalMap.get(terminalId);
+      if (!item) return;
+      
+      // Create a new terminal with the selected type
+      const newTerminal = createTerminal(type);
+      
+      // Add the new terminal to the project store
+      addTerminalToProject(project.id, item.worktree.id, newTerminal);
+      
+      // Split the layout at the specified terminal
+      splitPane(project.id, terminalId, direction, newTerminal.id);
+    },
+    [project, terminalMap, addTerminalToProject, splitPane],
+  );
+
+  // Render a terminal by ID
+  const renderTerminal = useCallback(
+    (terminalId: string) => {
+      const item = terminalMap.get(terminalId);
+      if (!item) return null;
+      
+      const terminal = item.worktree.terminals.find((t) => t.id === terminalId);
+      if (!terminal) return null;
+      
+      return (
+        <TerminalTile
+          key={terminal.id}
+          projectId={project!.id}
+          worktreeId={item.worktree.id}
+          worktreeName={item.worktree.name}
+          worktreePath={item.worktree.path}
+          terminal={terminal}
+          mode="board"
+          onOpenDetail={() => onOpenDetail(terminal.id)}
+          onSplitHorizontal={(type) => handleSplit(terminal.id, "horizontal", type)}
+          onSplitVertical={(type) => handleSplit(terminal.id, "vertical", type)}
+        />
+      );
+    },
+    [project, terminalMap, onOpenDetail, handleSplit],
   );
 
   if (!project) {
@@ -136,31 +166,19 @@ export function ProjectBoard({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-[var(--border)] px-6 py-4">
-        <div className="flex flex-wrap items-start gap-4">
+      <div className="border-b border-[var(--border)] px-4 py-2">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
-            <div
-              className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]"
-              style={{ fontFamily: '"Geist Mono", monospace' }}
-            >
-              {t.project_label}
-            </div>
-            <div className="mt-1 text-[22px] font-semibold text-[var(--text-primary)]">
-              {project.name}
-            </div>
-            <div className="mt-1 text-[12px] text-[var(--text-muted)]">
-              {project.path}
-            </div>
-            <div
-              className="mt-2 flex gap-3 text-[11px] text-[var(--text-secondary)]"
-              style={{ fontFamily: '"Geist Mono", monospace' }}
-            >
-              <span>
-                {project.worktrees.length} {t.sidebar_worktrees}
-              </span>
-              <span>
-                {terminals.length} {t.sidebar_terminals}
-              </span>
+            <div className="flex items-baseline gap-2">
+              <div
+                className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]"
+                style={{ fontFamily: '"Geist Mono", monospace' }}
+              >
+                {t.project_label}
+              </div>
+              <div className="text-[16px] font-semibold text-[var(--text-primary)]">
+                {project.name}
+              </div>
             </div>
           </div>
 
@@ -189,13 +207,6 @@ export function ProjectBoard({
                 </option>
               ))}
             </select>
-            {accountTypeSelected ? (
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[12px] text-[var(--text-secondary)]">
-                {selectedConfigId
-                  ? `Account: ${useAiConfigStore.getState().getConfig(selectedConfigId)?.name ?? selectedConfigId}`
-                  : "Account: auto select"}
-              </div>
-            ) : null}
             <button
               className="rounded-lg bg-[var(--accent)] px-3 py-2 text-[12px] font-medium text-white transition-all duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={!selectedWorktree}
@@ -204,19 +215,10 @@ export function ProjectBoard({
                   return;
                 }
 
-                if (accountTypeSelected) {
-                  setAccountLaunchOpen(true);
-                  return;
-                }
-
                 createTerminalInWorktree(
                   project.id,
                   selectedWorktree.id,
                   selectedType,
-                  undefined,
-                  undefined,
-                  undefined,
-                  selectedConfigId ?? undefined,
                 );
               }}
             >
@@ -227,136 +229,25 @@ export function ProjectBoard({
       </div>
 
       <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto px-6 py-5"
-        onScroll={(event) => onBoardScroll(event.currentTarget.scrollTop)}
+        ref={containerRef}
+        className="min-h-0 flex-1 overflow-hidden p-1"
       >
         {terminals.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
-            {t.board_empty_state}
+          <div className="flex h-full items-center justify-center">
+            <div className="rounded-lg border border-dashed border-[var(--border)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
+              {t.board_empty_state}
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {terminals.map(({ terminalId, worktree }) => {
-              const terminal = worktree.terminals.find(
-                (candidate) => candidate.id === terminalId,
-              );
-              if (!terminal) {
-                return null;
-              }
-              return (
-                <TerminalTile
-                  key={terminal.id}
-                  projectId={project.id}
-                  worktreeId={worktree.id}
-                  worktreeName={worktree.name}
-                  worktreePath={worktree.path}
-                  terminal={terminal}
-                  mode="board"
-                  onOpenDetail={() => onOpenDetail(terminal.id)}
-                />
-              );
-            })}
+        ) : layout.root ? (
+          <div className="h-full w-full">
+            <SplitPane
+              node={layout.root}
+              onUpdateRatio={handleUpdateRatio}
+              renderTerminal={renderTerminal}
+            />
           </div>
-        )}
+        ) : null}
       </div>
-
-      <NewAccountDialog
-        type={selectedType}
-        open={newAccountOpen && accountTypeSelected}
-        onClose={() => setNewAccountOpen(false)}
-        onSubmit={async (config) => {
-          await addConfig(config);
-          setSelectedConfigId(config.configId);
-        }}
-      />
-
-      <EditAccountDialog
-        open={editAccountOpen && accountTypeSelected}
-        config={selectedConfigId ? useAiConfigStore.getState().getConfig(selectedConfigId) : null}
-        onClose={() => setEditAccountOpen(false)}
-        onSubmit={async (configId, updates) => {
-          await useAiConfigStore.getState().updateConfig(configId, updates);
-          setSelectedConfigId(configId);
-        }}
-      />
-
-      <AccountLaunchDialog
-        open={accountLaunchOpen && accountTypeSelected}
-        type={selectedType}
-        value={selectedConfigId}
-        onChange={setSelectedConfigId}
-        onClose={() => setAccountLaunchOpen(false)}
-        onCreate={() => {
-          if (!selectedWorktree || !selectedConfigId) {
-            return;
-          }
-
-          createTerminalInWorktree(
-            project.id,
-            selectedWorktree.id,
-            selectedType,
-            undefined,
-            undefined,
-            undefined,
-            selectedConfigId,
-          );
-          setAccountLaunchOpen(false);
-        }}
-        onCreateWithoutAccount={() => {
-          if (!selectedWorktree) {
-            return;
-          }
-
-          createTerminalInWorktree(
-            project.id,
-            selectedWorktree.id,
-            selectedType,
-          );
-          setAccountLaunchOpen(false);
-        }}
-        onNewAccount={() => setNewAccountOpen(true)}
-        onEditAccount={() => {
-          if (!selectedConfigId) {
-            return;
-          }
-          setEditAccountOpen(true);
-        }}
-        onDeleteAccount={() => {
-          if (!selectedConfigId) {
-            return;
-          }
-
-          const selected = useAiConfigStore.getState().getConfig(selectedConfigId);
-          const selectedName = selected?.displayName || selected?.name || selectedConfigId;
-          const confirmed = window.confirm(
-            `Delete account \"${selectedName}\"? This cannot be undone.`,
-          );
-          if (!confirmed) {
-            return;
-          }
-
-          void (async () => {
-            await deleteConfig(selectedConfigId);
-            const store = useAiConfigStore.getState();
-            const byType = store.getConfigsByType(selectedType);
-            const fallback = store.getDefaultConfig(selectedType)?.configId ?? byType[0]?.configId ?? null;
-            setSelectedConfigId(fallback);
-          })();
-        }}
-        onSetDefaultAccount={() => {
-          if (!selectedConfigId) {
-            return;
-          }
-          void setDefaultConfig(selectedConfigId);
-        }}
-        onUseSystemDefault={() => {
-          const store = useAiConfigStore.getState();
-          const byType = store.getConfigsByType(selectedType);
-          const fallback = store.getDefaultConfig(selectedType)?.configId ?? byType[0]?.configId ?? null;
-          setSelectedConfigId(fallback);
-        }}
-      />
     </div>
   );
 }

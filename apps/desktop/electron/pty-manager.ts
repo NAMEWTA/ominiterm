@@ -4,13 +4,22 @@ import { buildLaunchSpec, type PtyLaunchOptions } from "./pty-launch.ts";
 
 export type PtyCreateOptions = PtyLaunchOptions;
 
+export interface PtyCreateResult {
+  ptyId: number;
+  /** Set when requested shell was not found and we fell back to default shell */
+  fallback?: {
+    requestedShell: string;
+    actualShell: string;
+  };
+}
+
 export class PtyManager {
   private instances = new Map<number, pty.IPty>();
   private outputBuffers = new Map<number, string[]>();
   private readonly MAX_OUTPUT_LINES = 1000;
   private nextId = 1;
 
-  async create(options: PtyCreateOptions): Promise<number> {
+  async create(options: PtyCreateOptions): Promise<PtyCreateResult> {
     if (!fs.existsSync(options.cwd)) {
       throw new Error(`Directory does not exist: ${options.cwd}`);
     }
@@ -34,7 +43,11 @@ export class PtyManager {
 
     const id = this.nextId++;
     this.instances.set(id, ptyProcess);
-    return id;
+    
+    return {
+      ptyId: id,
+      fallback: launch.fallback,
+    };
   }
 
   getPid(id: number): number | undefined {

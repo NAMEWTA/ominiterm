@@ -100,7 +100,6 @@ export function createTerminalInWorktree(
   title?: string,
   initialPrompt?: string,
   autoApprove?: boolean,
-  configId?: string,
 ) {
   const terminal = createTerminal(
     type,
@@ -108,8 +107,6 @@ export function createTerminalInWorktree(
     initialPrompt,
     autoApprove,
     "user",
-    undefined,
-    configId,
   );
   useProjectStore.getState().addTerminal(projectId, worktreeId, terminal);
   useProjectStore.getState().setFocusedTerminal(terminal.id);

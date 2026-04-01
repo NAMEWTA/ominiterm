@@ -27,6 +27,71 @@ function joinPath(base: string, name: string) {
   return `${base}${separator}${name}`;
 }
 
+function FileIcon({
+  isDirectory,
+  expanded,
+  fileName,
+}: {
+  isDirectory: boolean;
+  expanded?: boolean;
+  fileName: string;
+}) {
+  if (isDirectory) {
+    return expanded ? (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path
+          d="M1.5 3.5c0-.6.4-1 1-1h3.2c.2 0 .5.1.7.3l1.1 1.1c.2.2.4.3.7.3H13.5c.6 0 1 .4 1 1V5.5H2.5l-1 7V3.5z"
+          fill="var(--text-faint)"
+          opacity="0.5"
+        />
+        <path
+          d="M2.5 5.5h12l-1.5 7.5H1L2.5 5.5z"
+          fill="var(--text-faint)"
+          opacity="0.7"
+        />
+      </svg>
+    ) : (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path
+          d="M1.5 3c0-.8.7-1.5 1.5-1.5h3.2c.4 0 .8.2 1 .4L8.3 3H13c.8 0 1.5.7 1.5 1.5v7c0 .8-.7 1.5-1.5 1.5H3c-.8 0-1.5-.7-1.5-1.5V3z"
+          fill="var(--text-faint)"
+          opacity="0.6"
+        />
+      </svg>
+    );
+  }
+
+  const ext = fileName.lastIndexOf(".") > 0
+    ? fileName.slice(fileName.lastIndexOf(".") + 1).toLowerCase()
+    : "";
+
+  if (ext === "md" || ext === "mdx") {
+    return (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="2" width="14" height="12" rx="1.5" stroke="var(--text-faint)" strokeWidth="1" />
+        <path
+          d="M3.5 10.5v-5l2 2.5 2-2.5v5M10 8.5l1.5-2 1.5 2M10 8.5v2M13 8.5v2"
+          stroke="var(--text-faint)"
+          strokeWidth="1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M4.5 1.5h5L13 5v9.5c0 .6-.4 1-1 1h-7c-.6 0-1-.4-1-1v-12c0-.6.4-1 1-1z"
+        stroke="var(--text-faint)"
+        strokeWidth="1"
+      />
+      <path d="M9.5 1.5V5H13" stroke="var(--text-faint)" strokeWidth="1" />
+    </svg>
+  );
+}
+
 export function WorktreeFilesPanel({ worktreePath }: Props) {
   const t = useT();
   const [entries, setEntries] = useState<Map<string, DirEntry[]>>(new Map());
@@ -148,8 +213,12 @@ export function WorktreeFilesPanel({ worktreePath }: Props) {
                   : void loadFile(fullPath, entry.name)
               }
             >
-              <span className="w-3 shrink-0 text-[var(--text-faint)]">
-                {entry.isDirectory ? (expanded ? "▾" : "▸") : "·"}
+              <span className="flex w-3.5 shrink-0 items-center justify-center">
+                <FileIcon
+                  isDirectory={entry.isDirectory}
+                  expanded={expanded}
+                  fileName={entry.name}
+                />
               </span>
               <span className="truncate">{entry.name}</span>
             </button>

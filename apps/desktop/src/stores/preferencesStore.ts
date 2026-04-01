@@ -28,6 +28,8 @@ interface PreferencesStore {
   minimumContrastRatio: number;
   /** Per-terminal-type CLI command overrides */
   cliCommands: Partial<Record<TerminalType, CliCommandConfig>>;
+  /** Board tile scale factor (0.5–2.0, default 1.0) */
+  boardTileScale: number;
   setAnimationBlur: (value: number) => void;
   setMinimumContrastRatio: (value: number) => void;
   setTerminalFontSize: (value: number) => void;
@@ -36,12 +38,13 @@ interface PreferencesStore {
   setDrawingEnabled: (value: boolean) => void;
   setBrowserEnabled: (value: boolean) => void;
   setCli: (type: TerminalType, config: CliCommandConfig | null) => void;
+  setBoardTileScale: (value: number) => void;
 }
 
 const STORAGE_KEY = "ominiterm-preferences";
 const LEGACY_STORAGE_KEY = "termcanvas-preferences";
 
-function loadPreferences(): { animationBlur: number; terminalFontSize: number; terminalFontFamily: string; composerEnabled: boolean; drawingEnabled: boolean; browserEnabled: boolean; minimumContrastRatio: number; cliCommands: Partial<Record<TerminalType, CliCommandConfig>> } {
+function loadPreferences(): { animationBlur: number; terminalFontSize: number; terminalFontFamily: string; composerEnabled: boolean; drawingEnabled: boolean; browserEnabled: boolean; minimumContrastRatio: number; cliCommands: Partial<Record<TerminalType, CliCommandConfig>>; boardTileScale: number } {
   try {
     const raw =
       localStorage.getItem(STORAGE_KEY) ??
@@ -91,15 +94,15 @@ function loadPreferences(): { animationBlur: number; terminalFontSize: number; t
         }
       }
 
-      return { animationBlur: blur, terminalFontSize: fontSize, terminalFontFamily: fontFamily, composerEnabled, drawingEnabled, browserEnabled, minimumContrastRatio, cliCommands };
+      return { animationBlur: blur, terminalFontSize: fontSize, terminalFontFamily: fontFamily, composerEnabled, drawingEnabled, browserEnabled, minimumContrastRatio, cliCommands, boardTileScale: typeof parsed.boardTileScale === "number" && parsed.boardTileScale >= 0.5 && parsed.boardTileScale <= 2.0 ? parsed.boardTileScale : 1.0 };
     }
   } catch {
     // ignore
   }
-  return { animationBlur: DEFAULT_BLUR, terminalFontSize: DEFAULT_FONT_SIZE, terminalFontFamily: "geist-mono", composerEnabled: false, drawingEnabled: false, browserEnabled: false, minimumContrastRatio: DEFAULT_MIN_CONTRAST, cliCommands: {} };
+  return { animationBlur: DEFAULT_BLUR, terminalFontSize: DEFAULT_FONT_SIZE, terminalFontFamily: "geist-mono", composerEnabled: false, drawingEnabled: false, browserEnabled: false, minimumContrastRatio: DEFAULT_MIN_CONTRAST, cliCommands: {}, boardTileScale: 1.0 };
 }
 
-function savePreferences(state: { animationBlur: number; terminalFontSize: number; terminalFontFamily: string; composerEnabled: boolean; drawingEnabled: boolean; browserEnabled: boolean; minimumContrastRatio: number; cliCommands: Partial<Record<TerminalType, CliCommandConfig>> }) {
+function savePreferences(state: { animationBlur: number; terminalFontSize: number; terminalFontFamily: string; composerEnabled: boolean; drawingEnabled: boolean; browserEnabled: boolean; minimumContrastRatio: number; cliCommands: Partial<Record<TerminalType, CliCommandConfig>>; boardTileScale: number }) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -114,6 +117,7 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
   browserEnabled: initialPrefs.browserEnabled,
   minimumContrastRatio: initialPrefs.minimumContrastRatio,
   cliCommands: initialPrefs.cliCommands,
+  boardTileScale: initialPrefs.boardTileScale,
   setAnimationBlur: (value) => {
     const clamped = Math.round(Math.max(0, Math.min(3, value)) * 10) / 10;
     set({ animationBlur: clamped });
@@ -154,6 +158,11 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
     }
     set({ cliCommands: current });
     savePreferences({ ...get(), cliCommands: current });
+  },
+  setBoardTileScale: (value) => {
+    const clamped = Math.round(Math.max(0.5, Math.min(2.0, value)) * 100) / 100;
+    set({ boardTileScale: clamped });
+    savePreferences({ ...get(), boardTileScale: clamped });
   },
 }));
 

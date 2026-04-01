@@ -1,4 +1,5 @@
 import { useProjectStore } from "./stores/projectStore";
+import { useSplitLayoutStore } from "./stores/splitLayoutStore";
 import { serializeAllTerminals } from "./terminal/terminalRegistry";
 import { logSlowRendererPath } from "./utils/devPerf";
 
@@ -10,8 +11,11 @@ export interface WorkspaceSnapshot {
 export function buildSnapshotState(): WorkspaceSnapshot {
   const startedAt = performance.now();
   const scrollbacks = serializeAllTerminals();
+  const layouts = useSplitLayoutStore.getState().layouts;
+
   const projects = useProjectStore.getState().projects.map((project) => ({
     ...project,
+    boardLayout: layouts[project.id],
     worktrees: project.worktrees.map((worktree) => ({
       ...worktree,
       terminals: worktree.terminals.map((terminal) => ({

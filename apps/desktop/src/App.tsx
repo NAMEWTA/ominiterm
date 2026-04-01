@@ -8,6 +8,7 @@ import { ShortcutHints } from "./components/ShortcutHints";
 import { RightRail } from "./components/RightRail";
 import { WelcomePopup } from "./components/WelcomePopup";
 import { useProjectStore } from "./stores/projectStore";
+import { useSplitLayoutStore } from "./stores/splitLayoutStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useT } from "./i18n/useT";
 import { loadAllDownloadedFonts } from "./terminal/fontLoader";
@@ -25,13 +26,24 @@ import { ProjectSidebar } from "./components/ProjectSidebar";
 import { ProjectBoard } from "./components/ProjectBoard";
 import { TerminalDetailView } from "./components/TerminalDetailView";
 import { migrateProjects } from "./projectStateMigration";
+import type { ProjectData } from "./types";
 
 function restoreFromData(data: Record<string, unknown>) {
   try {
     if (data.projects && Array.isArray(data.projects)) {
+      const projects = data.projects as ProjectData[];
       useProjectStore.setState(
-        normalizeProjectsFocus(migrateProjects(data.projects)),
+        normalizeProjectsFocus(migrateProjects(projects)),
       );
+
+      // Restore board layouts for each project
+      for (const project of projects) {
+        if (project.boardLayout) {
+          useSplitLayoutStore
+            .getState()
+            .setLayout(project.id, project.boardLayout);
+        }
+      }
     }
   } catch (err) {
     console.error("[restoreFromData] failed to restore state:", err);

@@ -3,7 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { ImageAddon } from "@xterm/addon-image";
-import type { TerminalData } from "../types";
+import type { TerminalData, TerminalType } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { useNotificationStore } from "../stores/notificationStore";
 import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
@@ -25,6 +25,9 @@ import {
   touch as touchWebGL,
 } from "./webglContextPool";
 import { buildTerminalCreateRequest } from "./terminalLaunchRequest";
+import {
+  CREATABLE_TERMINAL_TYPES,
+} from "../components/projectBoardOptions";
 
 type TerminalTileMode = "board" | "detail";
 
@@ -36,8 +39,11 @@ interface Props {
   terminal: TerminalData;
   mode: TerminalTileMode;
   className?: string;
+  boardMinHeight?: number;
   onOpenDetail?: () => void;
   onBack?: () => void;
+  onSplitHorizontal?: (type: TerminalType) => void;
+  onSplitVertical?: (type: TerminalType) => void;
 }
 
 const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
@@ -53,6 +59,78 @@ const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
 };
 
 const SESSION_CAPTURE_TYPES = new Set(["claude", "codex", "kimi"]);
+
+// Split menu button component with dropdown for terminal type selection
+function SplitMenuButton({
+  direction,
+  onSelect,
+}: {
+  direction: "horizontal" | "vertical";
+  onSelect?: (type: TerminalType) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const title = direction === "horizontal" ? "Split Right" : "Split Down";
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        className="rounded-md p-1 text-[var(--text-faint)] transition-colors duration-150 hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
+        title={title}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen(!open);
+        }}
+      >
+        {direction === "horizontal" ? (
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+            <rect x="1" y="1" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+            <rect x="7" y="1" width="4" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+          </svg>
+        ) : (
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+            <rect x="1" y="1" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+            <rect x="1" y="7" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+          </svg>
+        )}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 min-w-[100px] rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] py-1 shadow-lg">
+          {CREATABLE_TERMINAL_TYPES.map((type) => (
+            <button
+              key={type}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--border)]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onSelect?.(type);
+              }}
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: TYPE_CONFIG[type]?.color || "#888" }}
+              />
+              {TYPE_CONFIG[type]?.label || type}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 async function pollSessionId(
   ptyId: number,
@@ -117,8 +195,11 @@ export function TerminalTile({
   terminal,
   mode,
   className = "",
+  boardMinHeight,
   onOpenDetail,
   onBack,
+  onSplitHorizontal,
+  onSplitVertical,
 }: Props) {
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [isEditingCustomTitle, setIsEditingCustomTitle] = useState(false);
@@ -566,9 +647,19 @@ export function TerminalTile({
 
       void window.ominiterm.terminal
         .create(options)
-        .then((ptyId) => {
+        .then((result) => {
+          const { ptyId, fallback } = result;
           updateTerminalPtyId(projectId, worktreeId, terminal.id, ptyId);
           updateTerminalStatus(projectId, worktreeId, terminal.id, "running");
+          
+          // Notify user if we fell back to default shell
+          if (fallback) {
+            notify(
+              "warn",
+              `"${fallback.requestedShell}" not found, using ${fallback.actualShell}`,
+            );
+          }
+          
           attachPty(ptyId, {
             shouldCaptureSession:
               !initialSessionId && SESSION_CAPTURE_TYPES.has(initialTerminalType),
@@ -718,20 +809,22 @@ export function TerminalTile({
 
   return (
     <div
-      className={`terminal-tile relative flex min-h-0 flex-col overflow-hidden rounded-xl border bg-[var(--surface)] ${
-        mode === "detail" ? "h-full" : "min-h-[320px]"
+      className={`terminal-tile relative flex min-h-0 flex-col overflow-hidden border bg-[var(--surface)] ${
+        mode === "detail" ? "h-full rounded-xl" : "h-full rounded-sm"
       } ${
         terminal.focused
-          ? "border-[var(--accent)] shadow-[0_0_0_1px_rgba(91,158,245,0.32),0_12px_32px_rgba(0,0,0,0.24)]"
+          ? "border-[var(--accent)] shadow-[0_0_0_1px_rgba(91,158,245,0.32),0_8px_24px_rgba(0,0,0,0.2)]"
           : "border-[var(--border)] hover:border-[var(--border-hover)]"
       } ${className}`}
       onClick={(event) => {
         event.stopPropagation();
         handleFocus();
       }}
-      onWheel={(event) => event.stopPropagation()}
+      onWheel={(event) => {
+        if (!event.ctrlKey) event.stopPropagation();
+      }}
     >
-      <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2 select-none">
+      <div className={`flex items-center gap-1.5 border-b border-[var(--border)] select-none ${mode === "detail" ? "px-3 py-2" : "px-2 py-1"}`}>
         {mode === "detail" ? (
           <button
             className="rounded-md p-1 text-[var(--text-muted)] transition-colors duration-150 hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
@@ -839,26 +932,36 @@ export function TerminalTile({
         </div>
 
         {mode === "board" && (
-          <button
-            className="rounded-md p-1 text-[var(--text-faint)] transition-colors duration-150 hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
-            title="Open detail"
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              handleFocus();
-              onOpenDetail?.();
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-              <path
-                d="M4 2.5h5.5V8M9.5 2.5L2.5 9.5"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+          <>
+            <SplitMenuButton
+              direction="horizontal"
+              onSelect={onSplitHorizontal}
+            />
+            <SplitMenuButton
+              direction="vertical"
+              onSelect={onSplitVertical}
+            />
+            <button
+              className="rounded-md p-1 text-[var(--text-faint)] transition-colors duration-150 hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
+              title="Open detail"
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleFocus();
+                onOpenDetail?.();
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path
+                  d="M4 2.5h5.5V8M9.5 2.5L2.5 9.5"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </>
         )}
 
         <button
@@ -882,7 +985,7 @@ export function TerminalTile({
 
       <div
         ref={containerRef}
-        className={`min-h-0 flex-1 ${mode === "detail" ? "p-3" : "p-2"}`}
+        className={`min-h-0 flex-1 ${mode === "detail" ? "p-3" : "p-1"}`}
         onClick={() => {
           handleFocus();
           const adapter = getComposerAdapter(terminal.type);

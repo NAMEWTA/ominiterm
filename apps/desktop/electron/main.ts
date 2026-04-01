@@ -5,7 +5,7 @@ import fs from "fs";
 import AdmZip from "adm-zip";
 import os from "os";
 import { fileURLToPath } from "url";
-import { PtyManager, OutputBatcher } from "./pty-manager";
+import { PtyManager, OutputBatcher, type PtyCreateResult } from "./pty-manager";
 import { ProjectScanner } from "./project-scanner";
 import {
   StatePersistence,
@@ -28,7 +28,6 @@ import { queryCloudUsage, queryCloudHeatmap, backfillHistory, flushSyncQueue, sy
 import type { ComposerSubmitRequest } from "../src/types";
 import { getProjectDiff } from "./git-diff";
 import { validateAgentCommand } from "./agent-command.js";
-import { registerAiConfigIpc } from "./ai-config/ai-config-ipc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -222,20 +221,20 @@ function setupIpc() {
   // Terminal IPC
   ipcMain.handle(
     "terminal:create",
-    async (_event, options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; configId?: string; theme?: "dark" | "light" }) => {
+    async (_event, options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; theme?: "dark" | "light" }): Promise<PtyCreateResult> => {
       dbg(`terminal:create shell=${options.shell ?? "(default)"} args=${JSON.stringify(options.args)} cwd=${options.cwd}`);
-      const ptyId = await ptyManager.create(options);
-      const pid = ptyManager.getPid(ptyId);
-      dbg(`terminal:create => ptyId=${ptyId} pid=${pid ?? "null"}`);
-      ptyManager.onData(ptyId, (data: string) => {
-        ptyManager.captureOutput(ptyId, data);
-        outputBatcher.push(ptyId, data);
+      const result = await ptyManager.create(options);
+      const pid = ptyManager.getPid(result.ptyId);
+      dbg(`terminal:create => ptyId=${result.ptyId} pid=${pid ?? "null"} fallback=${result.fallback ? "yes" : "no"}`);
+      ptyManager.onData(result.ptyId, (data: string) => {
+        ptyManager.captureOutput(result.ptyId, data);
+        outputBatcher.push(result.ptyId, data);
       });
-      ptyManager.onExit(ptyId, (exitCode: number) => {
-        dbg(`terminal:exit ptyId=${ptyId} pid=${pid ?? "null"} exitCode=${exitCode}`);
-        sendToWindow(mainWindow, "terminal:exit", ptyId, exitCode);
+      ptyManager.onExit(result.ptyId, (exitCode: number) => {
+        dbg(`terminal:exit ptyId=${result.ptyId} pid=${pid ?? "null"} exitCode=${exitCode}`);
+        sendToWindow(mainWindow, "terminal:exit", result.ptyId, exitCode);
       });
-      return ptyId;
+      return result;
     },
   );
 
@@ -775,8 +774,6 @@ function setupIpc() {
     }
     app.quit();
   });
-
-  registerAiConfigIpc();
 }
 
 function dataUrlToPngBuffer(dataUrl: string): Buffer {

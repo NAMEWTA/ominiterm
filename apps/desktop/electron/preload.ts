@@ -1,26 +1,15 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AiCliConfig, AiConfigAPI, TerminalType } from "../src/types/index";
-
-export const aiConfigApi: AiConfigAPI = {
-  loadAll: async () => ipcRenderer.invoke("ai-config:load-all"),
-  getByType: async (type: TerminalType) =>
-    ipcRenderer.invoke("ai-config:get-by-type", type),
-  add: async (config: AiCliConfig) =>
-    ipcRenderer.invoke("ai-config:add", config),
-  update: async (configId: string, updates: Partial<AiCliConfig>) =>
-    ipcRenderer.invoke("ai-config:update", configId, updates),
-  delete: async (configId: string) =>
-    ipcRenderer.invoke("ai-config:delete", configId),
-  setDefault: async (configId: string) =>
-    ipcRenderer.invoke("ai-config:set-default", configId),
-  generateId: async (type: TerminalType, baseName: string) =>
-    ipcRenderer.invoke("ai-config:generate-id", type, baseName),
-};
 
 contextBridge.exposeInMainWorld("ominiterm", {
   terminal: {
-    create: (options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; configId?: string; theme?: "dark" | "light" }) =>
-      ipcRenderer.invoke("terminal:create", options),
+    create: (options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; theme?: "dark" | "light" }) =>
+      ipcRenderer.invoke("terminal:create", options) as Promise<{
+        ptyId: number;
+        fallback?: {
+          requestedShell: string;
+          actualShell: string;
+        };
+      }>,
     destroy: (ptyId: number) => ipcRenderer.invoke("terminal:destroy", ptyId),
     getPid: (ptyId: number) =>
       ipcRenderer.invoke("terminal:get-pid", ptyId) as Promise<number | null>,
@@ -142,7 +131,6 @@ contextBridge.exposeInMainWorld("ominiterm", {
         | { ok: false; error: string }
       >,
   },
-  aiConfigApi,
   fonts: {
     getPath: () =>
       ipcRenderer.invoke("font:get-path") as Promise<string>,

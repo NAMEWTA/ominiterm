@@ -16,10 +16,9 @@ function makeTerminal(overrides: Partial<TerminalData> = {}): TerminalData {
   };
 }
 
-test("buildTerminalCreateRequest includes configId and launch command", () => {
+test("buildTerminalCreateRequest includes launch command", () => {
   const terminal = makeTerminal({
     type: "claude",
-    configId: "claude-work",
     initialPrompt: "hello",
   });
 
@@ -31,7 +30,6 @@ test("buildTerminalCreateRequest includes configId and launch command", () => {
 
   assert.equal(request.cwd, "/repo");
   assert.equal(request.terminalId, "terminal-1");
-  assert.equal(request.configId, "claude-work");
   assert.equal(request.theme, "dark");
   assert.equal(request.shell, "claude");
   assert.deepEqual(request.args, ["hello"]);
@@ -42,7 +40,6 @@ test("buildTerminalCreateRequest omits prompt args when resuming session", () =>
     type: "codex",
     sessionId: "session-1",
     initialPrompt: "should-not-be-used",
-    configId: "codex-a",
   });
 
   const request = buildTerminalCreateRequest({
@@ -51,7 +48,6 @@ test("buildTerminalCreateRequest omits prompt args when resuming session", () =>
     theme: "light",
   });
 
-  assert.equal(request.configId, "codex-a");
   assert.equal(request.shell, "codex");
   assert.deepEqual(request.args, ["resume", "session-1"]);
 });

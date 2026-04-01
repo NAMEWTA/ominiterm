@@ -1,7 +1,3 @@
-import type { AiCliConfig } from "./ai-config";
-
-export type { AiCliConfig, CommonAiConfig, TerminalTypeStr } from "./ai-config";
-
 export type TerminalType =
   | "shell"
   | "claude"
@@ -99,7 +95,6 @@ export interface TerminalData {
   sessionId?: string;
   initialPrompt?: string;
   autoApprove?: boolean;
-  configId?: string;
 }
 
 export interface WorktreeData {
@@ -111,6 +106,28 @@ export interface WorktreeData {
   collapsed?: boolean;
 }
 
+// Split pane layout types
+export type SplitDirection = "horizontal" | "vertical";
+
+export interface SplitLeafNode {
+  type: "leaf";
+  terminalId: string;
+}
+
+export interface SplitBranchNode {
+  type: "split";
+  direction: SplitDirection;
+  ratio: number; // 0.0 to 1.0, position of divider
+  first: SplitNode;
+  second: SplitNode;
+}
+
+export type SplitNode = SplitLeafNode | SplitBranchNode;
+
+export interface BoardLayout {
+  root: SplitNode | null;
+}
+
 export interface ProjectData {
   id: string;
   name: string;
@@ -119,6 +136,7 @@ export interface ProjectData {
   position?: Position;
   collapsed?: boolean;
   zIndex?: number;
+  boardLayout?: BoardLayout;
 }
 
 export interface CanvasState {
@@ -216,21 +234,17 @@ export type InsightsGenerateResult =
       error: { code: string; message: string; detail?: string };
     };
 
-export type ToolConfigValue = string | number | boolean | object | null;
-export type ToolConfig = Record<string, ToolConfigValue>;
-
 export type IpcResponse<T = void> =
   | { ok: true; data?: T }
   | { ok: false; error: string };
 
-export interface AiConfigAPI {
-  loadAll(): Promise<IpcResponse<AiCliConfig[]>>;
-  getByType(type: TerminalType): Promise<IpcResponse<AiCliConfig[]>>;
-  add(config: AiCliConfig): Promise<IpcResponse>;
-  update(configId: string, updates: Partial<AiCliConfig>): Promise<IpcResponse>;
-  delete(configId: string): Promise<IpcResponse>;
-  setDefault(configId: string): Promise<IpcResponse>;
-  generateId(type: TerminalType, baseName: string): Promise<IpcResponse<string>>;
+export interface PtyCreateResult {
+  ptyId: number;
+  /** Set when requested shell was not found and we fell back to default shell */
+  fallback?: {
+    requestedShell: string;
+    actualShell: string;
+  };
 }
 
 // Preload API types
@@ -241,9 +255,8 @@ export interface OminiTermAPI {
       shell?: string;
       args?: string[];
       terminalId?: string;
-      configId?: string;
       theme?: "dark" | "light";
-    }) => Promise<number>;
+    }) => Promise<PtyCreateResult>;
     destroy: (ptyId: number) => Promise<void>;
     getPid: (ptyId: number) => Promise<number | null>;
     input: (ptyId: number, data: string) => void;
@@ -322,7 +335,6 @@ export interface OminiTermAPI {
       | { ok: false; error: string }
     >;
   };
-  aiConfigApi: AiConfigAPI;
   composer: {
     submit: (request: ComposerSubmitRequest) => Promise<ComposerSubmitResult>;
   };

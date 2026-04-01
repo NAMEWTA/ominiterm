@@ -1,16 +1,12 @@
 import { execFile } from "child_process";
 import fs from "fs";
 import path from "path";
-import { aiConfigManager } from "./ai-config/ai-config-manager.ts";
-import { AiConfigWriter } from "./ai-config/ai-config-writer.ts";
-
 export interface PtyLaunchOptions {
   cwd: string;
   shell?: string;
   args?: string[];
   extraPathEntries?: string[];
   terminalId?: string;
-  configId?: string;
   theme?: "dark" | "light";
 }
 
@@ -19,6 +15,11 @@ export interface PtyResolvedLaunchSpec {
   file: string;
   args: string[];
   env: Record<string, string>;
+  /** Set when requested shell was not found and we fell back to default shell */
+  fallback?: {
+    requestedShell: string;
+    actualShell: string;
+  };
 }
 
 function applyThemeHints(
@@ -399,53 +400,12 @@ export class PtyLaunchError extends Error {
   }
 }
 
-function validateRequiredAiConfig(config: { type: string; commonConfig: { model?: string } }): void {
-  if (config.type !== "claude" && config.type !== "codex") {
-    return;
-  }
-
-  const model = config.commonConfig.model;
-  if (typeof model !== "string" || model.trim().length === 0) {
-    throw new PtyLaunchError(
-      "ai-config-invalid",
-      `AI config for ${config.type} requires a non-empty model`,
-      config.type,
-    );
-  }
-}
-
 export async function buildLaunchSpec(
   options: PtyLaunchOptions,
   deps: LaunchResolverDeps = defaultDeps,
 ): Promise<PtyResolvedLaunchSpec> {
   if (!deps.existsSync(options.cwd)) {
     throw new Error(`Directory does not exist: ${options.cwd}`);
-  }
-
-  if (options.configId) {
-    const config = aiConfigManager.getConfig(options.configId);
-    if (!config) {
-      throw new PtyLaunchError(
-        "ai-config-not-found",
-        `AI config not found: ${options.configId}`,
-        options.configId,
-      );
-    } else {
-      try {
-        validateRequiredAiConfig(config);
-        AiConfigWriter.writeConfigToTool(config.type, config);
-      } catch (error) {
-        if (error instanceof PtyLaunchError) {
-          throw error;
-        }
-        const detail = error instanceof Error ? error.message : String(error);
-        throw new PtyLaunchError(
-          "ai-config-write-failed",
-          `Failed to write AI config ${options.configId}: ${detail}`,
-          config.type,
-        );
-      }
-    }
   }
 
   const shellEnv = sanitizeEnv(await deps.getShellEnv(), deps);
@@ -467,12 +427,20 @@ export async function buildLaunchSpec(
 
   if (options.shell) {
     const executable = resolveExecutable(options.shell, shellEnv, deps);
+    
+    // If executable not found, fall back to default shell instead of throwing
     if (!executable) {
-      throw new PtyLaunchError(
-        "executable-not-found",
-        `Executable not found: ${options.shell}`,
-        options.shell,
-      );
+      const fallbackShell = resolveUserShell(shellEnv, deps);
+      return {
+        cwd: options.cwd,
+        file: fallbackShell,
+        args: deps.platform === "win32" ? options.args ?? [] : ["-l", ...(options.args ?? [])],
+        env: shellEnv,
+        fallback: {
+          requestedShell: options.shell,
+          actualShell: fallbackShell,
+        },
+      };
     }
 
     if (deps.platform === "win32") {
