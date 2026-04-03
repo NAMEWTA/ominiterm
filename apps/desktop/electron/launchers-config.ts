@@ -7,6 +7,8 @@ const RUN_POLICY_ON_FAILURE = "stop" as const;
 const RUN_POLICY_RUN_ON_NEW_SESSION_ONLY = true as const;
 const MIN_TIMEOUT_MS = 1000;
 const MAX_TIMEOUT_MS = 600000;
+const ISO_UTC_STRING_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 export interface LauncherCommandStep {
   label: string;
@@ -204,7 +206,12 @@ function assertBoolean(value: unknown, fieldName: string): asserts value is bool
 }
 
 function assertIsoDateString(value: unknown, fieldName: string): void {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+  if (typeof value !== "string" || !ISO_UTC_STRING_PATTERN.test(value)) {
+    throw new Error(`${fieldName} must be an ISO date string`);
+  }
+
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp) || new Date(timestamp).toISOString() !== value) {
     throw new Error(`${fieldName} must be an ISO date string`);
   }
 }

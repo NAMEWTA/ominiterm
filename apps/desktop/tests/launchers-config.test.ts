@@ -43,117 +43,165 @@ function createValidConfig(): LaunchersConfigFile {
   };
 }
 
-test("ensureLaunchersFile creates empty config when file is missing", () => {
+function withTempRoot(run: (root: string) => void): void {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "ot-launchers-"));
-  const filePath = path.join(root, "nested", "launchers.json");
+  try {
+    run(root);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
 
-  ensureLaunchersFile(filePath);
+test("ensureLaunchersFile creates empty config when file is missing", () => {
+  withTempRoot((root) => {
+    const filePath = path.join(root, "nested", "launchers.json");
 
-  const json = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  assert.equal(json.version, 1);
-  assert.ok(typeof json.updatedAt === "string");
-  assert.deepEqual(json.launchers, []);
+    ensureLaunchersFile(filePath);
 
-  fs.rmSync(root, { recursive: true, force: true });
+    const json = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    assert.equal(json.version, 1);
+    assert.ok(typeof json.updatedAt === "string");
+    assert.deepEqual(json.launchers, []);
+  });
 });
 
 test("loadLaunchersConfig initializes file when missing", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ot-launchers-"));
-  const filePath = path.join(root, "launchers.json");
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
 
-  const config = loadLaunchersConfig(filePath);
+    const config = loadLaunchersConfig(filePath);
 
-  assert.equal(config.version, 1);
-  assert.deepEqual(config.launchers, []);
-  assert.equal(fs.existsSync(filePath), true);
+    assert.equal(config.version, 1);
+    assert.deepEqual(config.launchers, []);
+    assert.equal(fs.existsSync(filePath), true);
+  });
+});
 
-  fs.rmSync(root, { recursive: true, force: true });
+test("loadLaunchersConfig throws on invalid JSON", () => {
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
+    fs.writeFileSync(filePath, "{ invalid json", "utf-8");
+
+    assert.throws(
+      () => loadLaunchersConfig(filePath),
+      /failed to parse config file/i,
+    );
+  });
+});
+
+test("loadLaunchersConfig rejects unsupported version", () => {
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
+    const rawConfig = {
+      ...createValidConfig(),
+      version: 2,
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(rawConfig, null, 2), "utf-8");
+
+    assert.throws(
+      () => loadLaunchersConfig(filePath),
+      /config\.version must be 1/i,
+    );
+  });
+});
+
+test("loadLaunchersConfig rejects invalid launcher field", () => {
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
+    const rawConfig = JSON.parse(JSON.stringify(createValidConfig())) as {
+      launchers: Array<{ hostShell: string }>;
+    };
+    rawConfig.launchers[0].hostShell = "fish";
+
+    fs.writeFileSync(filePath, JSON.stringify(rawConfig, null, 2), "utf-8");
+
+    assert.throws(
+      () => loadLaunchersConfig(filePath),
+      /hostShell is invalid/i,
+    );
+  });
 });
 
 test("saveLaunchersConfig rejects duplicate launcher ids", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ot-launchers-"));
-  const filePath = path.join(root, "launchers.json");
-  const config = createValidConfig();
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
+    const config = createValidConfig();
 
-  config.launchers.push({
-    ...config.launchers[0],
-    name: "Codex Copy",
+    config.launchers.push({
+      ...config.launchers[0],
+      name: "Codex Copy",
+    });
+
+    assert.throws(
+      () => saveLaunchersConfig(filePath, config),
+      /duplicate launcher id/i,
+    );
   });
-
-  assert.throws(
-    () => saveLaunchersConfig(filePath, config),
-    /duplicate launcher id/i,
-  );
-
-  fs.rmSync(root, { recursive: true, force: true });
 });
 
 test("saveLaunchersConfig rejects timeoutMs outside allowed range", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ot-launchers-"));
-  const filePath = path.join(root, "launchers.json");
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
 
-  const tooSmall = createValidConfig();
-  tooSmall.launchers[0].startupCommands[0].timeoutMs = MIN_TIMEOUT_MS - 1;
+    const tooSmall = createValidConfig();
+    tooSmall.launchers[0].startupCommands[0].timeoutMs = MIN_TIMEOUT_MS - 1;
 
-  const tooLarge = createValidConfig();
-  tooLarge.launchers[0].startupCommands[0].timeoutMs = MAX_TIMEOUT_MS + 1;
+    const tooLarge = createValidConfig();
+    tooLarge.launchers[0].startupCommands[0].timeoutMs = MAX_TIMEOUT_MS + 1;
 
-  assert.throws(
-    () => saveLaunchersConfig(filePath, tooSmall),
-    /timeoutMs/i,
-  );
-  assert.throws(
-    () => saveLaunchersConfig(filePath, tooLarge),
-    /timeoutMs/i,
-  );
-
-  fs.rmSync(root, { recursive: true, force: true });
+    assert.throws(
+      () => saveLaunchersConfig(filePath, tooSmall),
+      /timeoutMs/i,
+    );
+    assert.throws(
+      () => saveLaunchersConfig(filePath, tooLarge),
+      /timeoutMs/i,
+    );
+  });
 });
 
 test("saveLaunchersConfig rejects non-fixed runPolicy", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ot-launchers-"));
-  const filePath = path.join(root, "launchers.json");
-  const config = createValidConfig();
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
+    const config = createValidConfig();
 
-  config.launchers[0].runPolicy = {
-    runOnNewSessionOnly: false,
-    onFailure: "stop",
-  } as LaunchersConfigFile["launchers"][number]["runPolicy"];
+    config.launchers[0].runPolicy = {
+      runOnNewSessionOnly: false,
+      onFailure: "stop",
+    } as LaunchersConfigFile["launchers"][number]["runPolicy"];
 
-  assert.throws(
-    () => saveLaunchersConfig(filePath, config),
-    /runPolicy/i,
-  );
-
-  fs.rmSync(root, { recursive: true, force: true });
+    assert.throws(
+      () => saveLaunchersConfig(filePath, config),
+      /runPolicy/i,
+    );
+  });
 });
 
 test("saveLaunchersConfig rejects missing required command field", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ot-launchers-"));
-  const filePath = path.join(root, "launchers.json");
-  const config = createValidConfig();
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
+    const config = createValidConfig();
 
-  config.launchers[0].mainCommand.command = "";
+    config.launchers[0].mainCommand.command = "";
 
-  assert.throws(
-    () => saveLaunchersConfig(filePath, config),
-    /mainCommand\.command/i,
-  );
-
-  fs.rmSync(root, { recursive: true, force: true });
+    assert.throws(
+      () => saveLaunchersConfig(filePath, config),
+      /mainCommand\.command/i,
+    );
+  });
 });
 
 test("saveLaunchersConfig persists config via tmp+rename", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ot-launchers-"));
-  const filePath = path.join(root, "launchers.json");
-  const tmpFilePath = `${filePath}.tmp`;
-  const config = createValidConfig();
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
+    const tmpFilePath = `${filePath}.tmp`;
+    const config = createValidConfig();
 
-  saveLaunchersConfig(filePath, config);
+    saveLaunchersConfig(filePath, config);
 
-  const loaded = loadLaunchersConfig(filePath);
-  assert.deepEqual(loaded, config);
-  assert.equal(fs.existsSync(tmpFilePath), false);
-
-  fs.rmSync(root, { recursive: true, force: true });
+    const loaded = loadLaunchersConfig(filePath);
+    assert.deepEqual(loaded, config);
+    assert.equal(fs.existsSync(tmpFilePath), false);
+  });
 });
