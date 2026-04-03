@@ -254,6 +254,30 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
       return false;
     }
 
+    const sourceId = get().selectedLauncherId;
+    const normalizedDraft: LauncherConfigItem = {
+      ...draft,
+      id: draft.id.trim(),
+      name: draft.name.trim(),
+      mainCommand: {
+        ...draft.mainCommand,
+        command: draft.mainCommand.command.trim(),
+        args: parseArgsFromText(get().mainCommandArgsText),
+      },
+    };
+
+    const hasIdCollision =
+      sourceId !== null &&
+      sourceId !== normalizedDraft.id &&
+      get().launchers.some((launcher) => launcher.id === normalizedDraft.id);
+    if (hasIdCollision) {
+      set({
+        error: "Launcher ID already exists.",
+        validationErrors: {},
+      });
+      return false;
+    }
+
     set({
       saving: true,
       error: null,
@@ -264,18 +288,6 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
       if (!window.ominiterm?.launchers) {
         throw new Error("Launchers API is unavailable.");
       }
-
-      const sourceId = get().selectedLauncherId;
-      const normalizedDraft: LauncherConfigItem = {
-        ...draft,
-        id: draft.id.trim(),
-        name: draft.name.trim(),
-        mainCommand: {
-          ...draft.mainCommand,
-          command: draft.mainCommand.command.trim(),
-          args: parseArgsFromText(get().mainCommandArgsText),
-        },
-      };
 
       let launchers = await window.ominiterm.launchers.save(normalizedDraft);
 
