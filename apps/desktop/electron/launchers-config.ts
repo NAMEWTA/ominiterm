@@ -1,5 +1,9 @@
 import fs from "fs";
 import path from "path";
+import type {
+  LauncherCommandStep,
+  LauncherConfigItem,
+} from "../src/types/index.ts";
 
 const SUPPORTED_VERSION = 1 as const;
 const HOST_SHELL_VALUES = new Set(["auto", "pwsh", "bash", "zsh", "cmd"]);
@@ -10,27 +14,7 @@ const MAX_TIMEOUT_MS = 600000;
 const ISO_UTC_STRING_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
-export interface LauncherCommandStep {
-  label: string;
-  command: string;
-  timeoutMs: number;
-}
-
-export interface LauncherConfigItem {
-  id: string;
-  name: string;
-  enabled: boolean;
-  hostShell: "auto" | "pwsh" | "bash" | "zsh" | "cmd";
-  mainCommand: {
-    command: string;
-    args: string[];
-  };
-  startupCommands: LauncherCommandStep[];
-  runPolicy: {
-    runOnNewSessionOnly: true;
-    onFailure: "stop";
-  };
-}
+export type { LauncherCommandStep, LauncherConfigItem };
 
 export interface LaunchersConfigFile {
   version: 1;

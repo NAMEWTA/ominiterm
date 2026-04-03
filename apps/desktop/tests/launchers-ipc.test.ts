@@ -77,6 +77,36 @@ test("launchers:get handler forwards string id and returns service result", asyn
   assert.equal(result, expected);
 });
 
+test("launchers:list handler forwards no args and returns service result", async () => {
+  const handlers = new Map<string, (...args: unknown[]) => unknown>();
+  let receivedArgs: unknown[] | null = null;
+  const expected = [createLauncher("alpha"), createLauncher("beta")];
+
+  const ipcMainMock = {
+    handle: (channel: string, listener: (...args: unknown[]) => unknown) => {
+      handlers.set(channel, listener);
+    },
+  };
+
+  registerLaunchersIpc(ipcMainMock, {
+    get: async (_id: string) => null,
+    list: async (...args: unknown[]) => {
+      receivedArgs = args;
+      return expected;
+    },
+    save: async (_launcher: LauncherConfigItem) => [] as LauncherConfigItem[],
+    remove: async (_id: string) => [] as LauncherConfigItem[],
+    reorder: async (_ids: string[]) => [] as LauncherConfigItem[],
+  });
+
+  const handler = handlers.get("launchers:list");
+  assert.ok(handler);
+
+  const result = await handler({}, "ignored");
+  assert.deepEqual(receivedArgs, []);
+  assert.equal(result, expected);
+});
+
 test("launchers:save handler forwards payload and returns service result", async () => {
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
   let receivedLauncher: LauncherConfigItem | null = null;
@@ -136,5 +166,35 @@ test("launchers:reorder handler forwards ids and returns service result", async 
   const payload = ["b", "a"];
   const result = await handler({}, payload);
   assert.equal(receivedIds, payload);
+  assert.equal(result, expected);
+});
+
+test("launchers:delete handler forwards string id and returns service result", async () => {
+  const handlers = new Map<string, (...args: unknown[]) => unknown>();
+  let receivedId: string | null = null;
+  const expected = [createLauncher("remaining")];
+
+  const ipcMainMock = {
+    handle: (channel: string, listener: (...args: unknown[]) => unknown) => {
+      handlers.set(channel, listener);
+    },
+  };
+
+  registerLaunchersIpc(ipcMainMock, {
+    get: async (_id: string) => null,
+    list: async () => [] as LauncherConfigItem[],
+    save: async (_launcher: LauncherConfigItem) => [] as LauncherConfigItem[],
+    remove: async (id: string) => {
+      receivedId = id;
+      return expected;
+    },
+    reorder: async (_ids: string[]) => [] as LauncherConfigItem[],
+  });
+
+  const handler = handlers.get("launchers:delete");
+  assert.ok(handler);
+
+  const result = await handler({}, 123);
+  assert.equal(receivedId, "123");
   assert.equal(result, expected);
 });
