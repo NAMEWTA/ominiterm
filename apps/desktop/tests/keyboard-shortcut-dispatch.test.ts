@@ -6,7 +6,10 @@ import {
   registerWindowKeydownListener,
   registerWindowKeyupListener,
 } from "../src/shortcuts/listeners.ts";
-import { getShortcutDefaultLauncherOption } from "../src/hooks/defaultLauncherOption.ts";
+import {
+  getShortcutDefaultLauncherOption,
+  resolveShortcutLauncherOption,
+} from "../src/hooks/defaultLauncherOption.ts";
 
 type KeyListener = (event: FakeKeyboardEvent) => void;
 
@@ -174,4 +177,31 @@ test("shortcut default launcher option returns null when no launcher is enabled"
   ]);
 
   assert.equal(option, null);
+});
+
+test("shortcut launcher resolution is pending while launchers are loading", () => {
+  const option = resolveShortcutLauncherOption([], true);
+
+  assert.equal(option, undefined);
+});
+
+test("shortcut launcher resolution falls back to shell only after launchers finish loading", () => {
+  const option = resolveShortcutLauncherOption(
+    [makeLauncher("disabled-1", { enabled: false })],
+    false,
+  );
+
+  assert.equal(option, null);
+});
+
+test("shortcut launcher resolution returns launcher option once loaded", () => {
+  const option = resolveShortcutLauncherOption(
+    [
+      makeLauncher("disabled", { enabled: false }),
+      makeLauncher("custom-launcher", { name: "Custom Launcher" }),
+    ],
+    false,
+  );
+
+  assert.equal(option?.launcherId, "custom-launcher");
 });

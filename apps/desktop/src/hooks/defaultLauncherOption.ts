@@ -9,3 +9,13 @@ export function getShortcutDefaultLauncherOption(
 ): LauncherOption | null {
   return createLauncherOptions(launchers)[0] ?? null;
 }
+
+export function resolveShortcutLauncherOption(
+  launchers: LauncherConfigItem[],
+  loading: boolean,
+): LauncherOption | null | undefined {
+  if (loading) {
+    return undefined;
+  }
+  return getShortcutDefaultLauncherOption(launchers);
+}

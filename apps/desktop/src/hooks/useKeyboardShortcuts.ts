@@ -18,7 +18,7 @@ import {
   openWorkspaceFromDialog,
 } from "../projectCommands";
 import { useLaunchersStore } from "../stores/launchersStore";
-import { getShortcutDefaultLauncherOption } from "./defaultLauncherOption";
+import { resolveShortcutLauncherOption } from "./defaultLauncherOption";
 
 export function useKeyboardShortcuts() {
   const shortcuts = useShortcutStore((state) => state.bindings);
@@ -78,9 +78,14 @@ export function useKeyboardShortcuts() {
         if (!worktree) {
           return;
         }
-        const launcherOption = getShortcutDefaultLauncherOption(
-          useLaunchersStore.getState().launchers,
+        const launchersState = useLaunchersStore.getState();
+        const launcherOption = resolveShortcutLauncherOption(
+          launchersState.launchers,
+          launchersState.loading,
         );
+        if (launcherOption === undefined) {
+          return;
+        }
         if (launcherOption) {
           createTerminalInWorktree(
             project.id,
