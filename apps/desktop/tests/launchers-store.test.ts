@@ -238,3 +238,51 @@ test("store exposes createDraftForNewLauncher for empty launcher list", () => {
   assert.equal(draft?.name, "Launcher 1");
   assert.equal(useLaunchersStore.getState().selectedLauncherId, null);
 });
+
+test("store exposes startup command editing actions", () => {
+  resetLaunchersStore();
+
+  const state = useLaunchersStore.getState();
+
+  assert.equal(typeof (state as any).addDraftStartupCommand, "function");
+  assert.equal(typeof (state as any).updateDraftStartupCommandLabel, "function");
+  assert.equal(typeof (state as any).updateDraftStartupCommandCommand, "function");
+  assert.equal(typeof (state as any).updateDraftStartupCommandTimeoutMs, "function");
+  assert.equal(typeof (state as any).moveDraftStartupCommand, "function");
+  assert.equal(typeof (state as any).removeDraftStartupCommand, "function");
+});
+
+test("startup command actions support add/update/move/remove", () => {
+  resetLaunchersStore();
+
+  useLaunchersStore.setState({
+    draft: createValidLauncherDraft(),
+  });
+
+  const store = useLaunchersStore.getState() as any;
+
+  store.addDraftStartupCommand();
+  store.addDraftStartupCommand();
+
+  let draft = useLaunchersStore.getState().draft;
+  assert.equal(draft?.startupCommands.length, 2);
+
+  store.updateDraftStartupCommandLabel(0, "Prepare");
+  store.updateDraftStartupCommandCommand(0, "echo prepare");
+  store.updateDraftStartupCommandTimeoutMs(0, 5000);
+
+  store.updateDraftStartupCommandLabel(1, "Launch");
+  store.updateDraftStartupCommandCommand(1, "echo launch");
+  store.updateDraftStartupCommandTimeoutMs(1, 9000);
+
+  store.moveDraftStartupCommand(1, -1);
+  draft = useLaunchersStore.getState().draft;
+  assert.equal(draft?.startupCommands[0].label, "Launch");
+  assert.equal(draft?.startupCommands[1].label, "Prepare");
+
+  store.removeDraftStartupCommand(1);
+  draft = useLaunchersStore.getState().draft;
+  assert.equal(draft?.startupCommands.length, 1);
+  assert.equal(draft?.startupCommands[0].command, "echo launch");
+  assert.equal(draft?.startupCommands[0].timeoutMs, 9000);
+});

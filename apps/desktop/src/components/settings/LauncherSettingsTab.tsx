@@ -11,6 +11,9 @@ const HOST_SHELL_OPTIONS: LauncherConfigItem["hostShell"][] = [
   "cmd",
 ];
 
+const MIN_STARTUP_TIMEOUT_MS = 1000;
+const MAX_STARTUP_TIMEOUT_MS = 600000;
+
 export function LauncherSettingsTab() {
   const t = useT();
   const launchers = useLaunchersStore((state) => state.launchers);
@@ -35,6 +38,24 @@ export function LauncherSettingsTab() {
   );
   const updateDraftHostShell = useLaunchersStore(
     (state) => state.updateDraftHostShell,
+  );
+  const addDraftStartupCommand = useLaunchersStore(
+    (state) => state.addDraftStartupCommand,
+  );
+  const updateDraftStartupCommandLabel = useLaunchersStore(
+    (state) => state.updateDraftStartupCommandLabel,
+  );
+  const updateDraftStartupCommandCommand = useLaunchersStore(
+    (state) => state.updateDraftStartupCommandCommand,
+  );
+  const updateDraftStartupCommandTimeoutMs = useLaunchersStore(
+    (state) => state.updateDraftStartupCommandTimeoutMs,
+  );
+  const moveDraftStartupCommand = useLaunchersStore(
+    (state) => state.moveDraftStartupCommand,
+  );
+  const removeDraftStartupCommand = useLaunchersStore(
+    (state) => state.removeDraftStartupCommand,
   );
   const updateDraftMainCommand = useLaunchersStore(
     (state) => state.updateDraftMainCommand,
@@ -211,6 +232,116 @@ export function LauncherSettingsTab() {
                 placeholder={t.launcher_main_args_hint}
               />
             </label>
+
+            <div className="flex min-w-0 flex-col gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] p-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-[var(--text-secondary)]">
+                  {t.launcher_startup_commands}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md bg-[var(--surface-hover)] px-2 py-1 text-[11px] text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)]"
+                  onClick={() => addDraftStartupCommand()}
+                >
+                  {t.launcher_add_startup_command}
+                </button>
+              </div>
+
+              {draft.startupCommands.length === 0 && (
+                <div className="rounded-md border border-dashed border-[var(--border)] px-2 py-2 text-[12px] text-[var(--text-muted)]">
+                  {t.launcher_startup_commands_empty}
+                </div>
+              )}
+
+              {draft.startupCommands.map((step, index) => (
+                <div
+                  key={`${index}-${step.label}`}
+                  className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-2"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-[var(--text-muted)]">
+                      {t.launcher_startup_step(index + 1)}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="rounded px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-50"
+                        onClick={() => moveDraftStartupCommand(index, -1)}
+                        disabled={index === 0}
+                        title={t.launcher_move_up}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-50"
+                        onClick={() => moveDraftStartupCommand(index, 1)}
+                        disabled={index >= draft.startupCommands.length - 1}
+                        title={t.launcher_move_down}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded px-1.5 py-0.5 text-[11px] text-[var(--red)] hover:bg-[var(--surface-hover)]"
+                        onClick={() => removeDraftStartupCommand(index)}
+                      >
+                        {t.launcher_remove}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-[1fr_2fr_140px] gap-2">
+                    <label className="flex min-w-0 flex-col gap-1">
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        {t.launcher_step_label}
+                      </span>
+                      <input
+                        type="text"
+                        value={step.label}
+                        onChange={(event) =>
+                          updateDraftStartupCommandLabel(index, event.target.value)
+                        }
+                        className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[12px] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+                      />
+                    </label>
+
+                    <label className="flex min-w-0 flex-col gap-1">
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        {t.launcher_step_command}
+                      </span>
+                      <input
+                        type="text"
+                        value={step.command}
+                        onChange={(event) =>
+                          updateDraftStartupCommandCommand(index, event.target.value)
+                        }
+                        className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[12px] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+                        placeholder={t.launcher_step_command_placeholder}
+                      />
+                    </label>
+
+                    <label className="flex min-w-0 flex-col gap-1">
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        {t.launcher_step_timeout_ms}
+                      </span>
+                      <input
+                        type="number"
+                        min={MIN_STARTUP_TIMEOUT_MS}
+                        max={MAX_STARTUP_TIMEOUT_MS}
+                        step={1000}
+                        value={step.timeoutMs}
+                        onChange={(event) => {
+                          const parsed = Number.parseInt(event.target.value, 10);
+                          updateDraftStartupCommandTimeoutMs(index, parsed);
+                        }}
+                        className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[12px] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             <div className="mt-1 flex justify-end">
               <button

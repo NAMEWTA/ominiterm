@@ -13,6 +13,10 @@ export interface LauncherDraftValidationResult {
   errors: LauncherDraftValidationErrors;
 }
 
+const DEFAULT_STARTUP_TIMEOUT_MS = 120000;
+const MIN_STARTUP_TIMEOUT_MS = 1000;
+const MAX_STARTUP_TIMEOUT_MS = 600000;
+
 function cloneLauncher(launcher: LauncherConfigItem): LauncherConfigItem {
   return {
     ...launcher,
@@ -105,6 +109,12 @@ interface LaunchersStore {
   updateDraftId: (id: string) => void;
   updateDraftEnabled: (enabled: boolean) => void;
   updateDraftHostShell: (hostShell: LauncherConfigItem["hostShell"]) => void;
+  addDraftStartupCommand: () => void;
+  updateDraftStartupCommandLabel: (index: number, label: string) => void;
+  updateDraftStartupCommandCommand: (index: number, command: string) => void;
+  updateDraftStartupCommandTimeoutMs: (index: number, timeoutMs: number) => void;
+  moveDraftStartupCommand: (index: number, offset: -1 | 1) => void;
+  removeDraftStartupCommand: (index: number) => void;
   updateDraftMainCommand: (command: string) => void;
   updateDraftMainCommandArgsText: (argsText: string) => void;
   saveDraft: () => Promise<boolean>;
@@ -252,6 +262,145 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
         draft: {
           ...state.draft,
           hostShell,
+        },
+        error: null,
+      };
+    });
+  },
+
+  addDraftStartupCommand: () => {
+    set((state) => {
+      if (!state.draft) {
+        return state;
+      }
+
+      const nextIndex = state.draft.startupCommands.length + 1;
+      return {
+        draft: {
+          ...state.draft,
+          startupCommands: [
+            ...state.draft.startupCommands,
+            {
+              label: `Step ${nextIndex}`,
+              command: "",
+              timeoutMs: DEFAULT_STARTUP_TIMEOUT_MS,
+            },
+          ],
+        },
+        error: null,
+      };
+    });
+  },
+
+  updateDraftStartupCommandLabel: (index, label) => {
+    set((state) => {
+      if (!state.draft || index < 0 || index >= state.draft.startupCommands.length) {
+        return state;
+      }
+
+      const startupCommands = state.draft.startupCommands.map((step, stepIndex) =>
+        stepIndex === index ? { ...step, label } : step,
+      );
+
+      return {
+        draft: {
+          ...state.draft,
+          startupCommands,
+        },
+        error: null,
+      };
+    });
+  },
+
+  updateDraftStartupCommandCommand: (index, command) => {
+    set((state) => {
+      if (!state.draft || index < 0 || index >= state.draft.startupCommands.length) {
+        return state;
+      }
+
+      const startupCommands = state.draft.startupCommands.map((step, stepIndex) =>
+        stepIndex === index ? { ...step, command } : step,
+      );
+
+      return {
+        draft: {
+          ...state.draft,
+          startupCommands,
+        },
+        error: null,
+      };
+    });
+  },
+
+  updateDraftStartupCommandTimeoutMs: (index, timeoutMs) => {
+    set((state) => {
+      if (!state.draft || index < 0 || index >= state.draft.startupCommands.length) {
+        return state;
+      }
+
+      const normalizedTimeout = Number.isFinite(timeoutMs)
+        ? Math.min(
+            MAX_STARTUP_TIMEOUT_MS,
+            Math.max(MIN_STARTUP_TIMEOUT_MS, Math.round(timeoutMs)),
+          )
+        : DEFAULT_STARTUP_TIMEOUT_MS;
+
+      const startupCommands = state.draft.startupCommands.map((step, stepIndex) =>
+        stepIndex === index ? { ...step, timeoutMs: normalizedTimeout } : step,
+      );
+
+      return {
+        draft: {
+          ...state.draft,
+          startupCommands,
+        },
+        error: null,
+      };
+    });
+  },
+
+  moveDraftStartupCommand: (index, offset) => {
+    set((state) => {
+      if (!state.draft) {
+        return state;
+      }
+
+      const targetIndex = index + offset;
+      if (
+        index < 0 ||
+        index >= state.draft.startupCommands.length ||
+        targetIndex < 0 ||
+        targetIndex >= state.draft.startupCommands.length
+      ) {
+        return state;
+      }
+
+      const startupCommands = [...state.draft.startupCommands];
+      const [step] = startupCommands.splice(index, 1);
+      startupCommands.splice(targetIndex, 0, step);
+
+      return {
+        draft: {
+          ...state.draft,
+          startupCommands,
+        },
+        error: null,
+      };
+    });
+  },
+
+  removeDraftStartupCommand: (index) => {
+    set((state) => {
+      if (!state.draft || index < 0 || index >= state.draft.startupCommands.length) {
+        return state;
+      }
+
+      return {
+        draft: {
+          ...state.draft,
+          startupCommands: state.draft.startupCommands.filter(
+            (_step, stepIndex) => stepIndex !== index,
+          ),
         },
         error: null,
       };
