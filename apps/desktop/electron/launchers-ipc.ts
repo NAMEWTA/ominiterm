@@ -53,7 +53,7 @@ function reorderLaunchers(
     launchers.map((launcher) => [launcher.id, launcher]),
   );
 
-  if (launchersById.size !== orderedIds.length) {
+  if (new Set(orderedIds).size !== orderedIds.length) {
     throw new Error("launchers:reorder ids contain duplicates");
   }
 
