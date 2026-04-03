@@ -194,6 +194,8 @@ export const zh = {
   launcher_enabled: "启用",
   launcher_host_shell: "宿主 Shell",
   launcher_main_command: "主命令",
+  launcher_main_command_optional_hint:
+    "可选：留空时仅执行命令组（最后一条命令会作为进入命令执行）。",
   launcher_main_args: "主命令参数",
   launcher_main_args_hint: "每行一个参数",
   launcher_startup_commands: "启动命令组",
@@ -208,7 +210,8 @@ export const zh = {
   launcher_move_down: "下移",
   launcher_remove: "删除",
   launcher_validation_name_required: "名称不能为空",
-  launcher_validation_main_command_required: "主命令不能为空",
+  launcher_validation_entry_command_required:
+    "至少需要配置一条命令：主命令或启动命令组中的命令。",
   launcher_saving: "保存中…",
   launcher_error_prefix: (detail: string) => `错误：${detail}`,
 

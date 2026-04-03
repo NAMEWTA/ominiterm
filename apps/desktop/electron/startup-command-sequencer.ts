@@ -316,6 +316,18 @@ export function runMainLauncherCommand({
   ptyManager.write(ptyId, `${commandLine}\r`);
 }
 
+function runRawLauncherCommand(
+  ptyManager: Pick<StartupPtyController, "write">,
+  ptyId: number,
+  command: string,
+): void {
+  const normalized = command.trim();
+  if (normalized.length === 0) {
+    return;
+  }
+  ptyManager.write(ptyId, `${normalized}\r`);
+}
+
 export async function runLauncherStartupFlow({
   ptyManager,
   ptyId,
@@ -328,6 +340,14 @@ export async function runLauncherStartupFlow({
   mainCommand,
   signal,
 }: RunLauncherStartupFlowParams): Promise<StartupSequenceResult> {
+  const normalizedMainCommand = mainCommand.command.trim();
+  const shouldUseCommandGroupOnlyMode =
+    normalizedMainCommand.length === 0 && startupCommands.length > 0;
+
+  const bootstrapCommands = shouldUseCommandGroupOnlyMode
+    ? startupCommands.slice(0, -1)
+    : startupCommands;
+
   const startupResult = await runStartupCommandSequence({
     ptyManager,
     ptyId,
@@ -335,20 +355,26 @@ export async function runLauncherStartupFlow({
     launcherId,
     hostShell,
     actualShell,
-    startupCommands,
+    startupCommands: bootstrapCommands,
     emit,
     signal,
   });
 
   if (startupResult.ok) {
-    runMainLauncherCommand({
-      ptyManager,
-      ptyId,
-      hostShell,
-      actualShell,
-      mainCommand,
-      signal,
-    });
+    if (shouldUseCommandGroupOnlyMode) {
+      throwIfStartupCancelled(signal);
+      const finalStep = startupCommands[startupCommands.length - 1];
+      runRawLauncherCommand(ptyManager, ptyId, finalStep.command);
+    } else {
+      runMainLauncherCommand({
+        ptyManager,
+        ptyId,
+        hostShell,
+        actualShell,
+        mainCommand,
+        signal,
+      });
+    }
   }
 
   return startupResult;

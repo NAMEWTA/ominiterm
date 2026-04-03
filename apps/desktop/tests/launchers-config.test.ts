@@ -178,17 +178,33 @@ test("saveLaunchersConfig rejects non-fixed runPolicy", () => {
   });
 });
 
-test("saveLaunchersConfig rejects missing required command field", () => {
+test("saveLaunchersConfig rejects empty main and empty startup commands", () => {
+  withTempRoot((root) => {
+    const filePath = path.join(root, "launchers.json");
+    const config = createValidConfig();
+
+    config.launchers[0].mainCommand.command = "";
+    config.launchers[0].startupCommands = [];
+
+    assert.throws(
+      () => saveLaunchersConfig(filePath, config),
+      /at least one command/i,
+    );
+  });
+});
+
+test("saveLaunchersConfig allows empty main command when startup commands exist", () => {
   withTempRoot((root) => {
     const filePath = path.join(root, "launchers.json");
     const config = createValidConfig();
 
     config.launchers[0].mainCommand.command = "";
 
-    assert.throws(
-      () => saveLaunchersConfig(filePath, config),
-      /mainCommand\.command/i,
-    );
+    saveLaunchersConfig(filePath, config);
+
+    const loaded = loadLaunchersConfig(filePath);
+    assert.equal(loaded.launchers[0].mainCommand.command, "");
+    assert.equal(loaded.launchers[0].startupCommands.length, 1);
   });
 });
 

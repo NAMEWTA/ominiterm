@@ -5,7 +5,7 @@ import { buildStartupStatusMessage } from "../terminal/startupStatus.ts";
 
 export interface LauncherDraftValidationErrors {
   name?: "required";
-  mainCommandCommand?: "required";
+  entryCommand?: "required";
 }
 
 export interface LauncherDraftValidationResult {
@@ -45,8 +45,8 @@ function createDefaultLauncherDraft(
     enabled: true,
     hostShell: "auto",
     mainCommand: {
-      command: "bash",
-      args: ["-l"],
+      command: "",
+      args: [],
     },
     startupCommands: [],
     runPolicy: {
@@ -81,8 +81,14 @@ export function validateDraft(
   const hasMainCommand =
     typeof draft?.mainCommand?.command === "string" &&
     draft.mainCommand.command.trim().length > 0;
-  if (!hasMainCommand) {
-    errors.mainCommandCommand = "required";
+  const hasStartupCommand =
+    Array.isArray(draft?.startupCommands) &&
+    draft.startupCommands.some(
+      (step) =>
+        typeof step.command === "string" && step.command.trim().length > 0,
+    );
+  if (!hasMainCommand && !hasStartupCommand) {
+    errors.entryCommand = "required";
   }
 
   return {

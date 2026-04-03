@@ -114,7 +114,7 @@ function validateLaunchersConfig(value: unknown): asserts value is LaunchersConf
     }
 
     assertObject(launcher.mainCommand, `${prefix}.mainCommand`);
-    assertNonEmptyString(
+    const mainCommand = assertString(
       launcher.mainCommand.command,
       `${prefix}.mainCommand.command`,
     );
@@ -122,6 +122,12 @@ function validateLaunchersConfig(value: unknown): asserts value is LaunchersConf
 
     if (!Array.isArray(launcher.startupCommands)) {
       throw new Error(`${prefix}.startupCommands must be an array`);
+    }
+
+    if (mainCommand.trim().length === 0 && launcher.startupCommands.length === 0) {
+      throw new Error(
+        `${prefix} requires at least one command in mainCommand or startupCommands`,
+      );
     }
 
     for (let stepIndex = 0; stepIndex < launcher.startupCommands.length; stepIndex += 1) {
@@ -170,6 +176,13 @@ function assertObject(
 function assertNonEmptyString(value: unknown, fieldName: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
+  }
+  return value;
+}
+
+function assertString(value: unknown, fieldName: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${fieldName} must be a string`);
   }
   return value;
 }

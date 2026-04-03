@@ -302,3 +302,40 @@ test("runMainLauncherCommand keeps explicit host shell behavior when no fallback
   assert.equal(ptyManager.writes.length, 1);
   assert.equal(ptyManager.writes[0], "'codex' '--fast'\r");
 });
+
+test("runLauncherStartupFlow uses command group only mode when main command is empty", async () => {
+  const ptyManager = new FakePtyManager([
+    { ok: true, timeout: false, exitCode: 0 },
+  ]);
+
+  const result = await runLauncherStartupFlow({
+    ptyManager,
+    ptyId: 18,
+    terminalId: "terminal-group-only",
+    launcherId: "custom-launcher",
+    hostShell: "pwsh",
+    startupCommands: [
+      {
+        label: "Prepare",
+        command: "echo prepare",
+        timeoutMs: 1000,
+      },
+      {
+        label: "Entry",
+        command: "claude",
+        timeoutMs: 120000,
+      },
+    ],
+    emit: () => {},
+    mainCommand: {
+      command: "   ",
+      args: [],
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(ptyManager.waitCalls.length, 1);
+  assert.equal(ptyManager.writes.length, 2);
+  assert.match(ptyManager.writes[0], /echo prepare/);
+  assert.equal(ptyManager.writes[1], "claude\r");
+});

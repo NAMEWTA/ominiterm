@@ -196,6 +196,8 @@ export const en = {
   launcher_enabled: "Enabled",
   launcher_host_shell: "Host shell",
   launcher_main_command: "Main command",
+  launcher_main_command_optional_hint:
+    "Optional: leave empty to run only the command sequence (the last command becomes the entry command).",
   launcher_main_args: "Main command args",
   launcher_main_args_hint: "One argument per line",
   launcher_startup_commands: "Startup command sequence",
@@ -210,7 +212,8 @@ export const en = {
   launcher_move_down: "Move down",
   launcher_remove: "Remove",
   launcher_validation_name_required: "Name is required",
-  launcher_validation_main_command_required: "Main command is required",
+  launcher_validation_entry_command_required:
+    "Configure at least one command: either a main command or a startup command.",
   launcher_saving: "Saving\u2026",
   launcher_error_prefix: (detail: string) => `Error: ${detail}`,
 

@@ -210,11 +210,9 @@ export function LauncherSettingsTab() {
                 onChange={(event) => updateDraftMainCommand(event.target.value)}
                 className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[13px] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
               />
-              {validationErrors.mainCommandCommand && (
-                <span className="text-[11px] text-[var(--red)]">
-                  {t.launcher_validation_main_command_required}
-                </span>
-              )}
+              <span className="text-[11px] text-[var(--text-muted)]">
+                {t.launcher_main_command_optional_hint}
+              </span>
             </label>
 
             <label className="flex min-w-0 flex-col gap-1">
@@ -250,6 +248,12 @@ export function LauncherSettingsTab() {
               {draft.startupCommands.length === 0 && (
                 <div className="rounded-md border border-dashed border-[var(--border)] px-2 py-2 text-[12px] text-[var(--text-muted)]">
                   {t.launcher_startup_commands_empty}
+                </div>
+              )}
+
+              {validationErrors.entryCommand && (
+                <div className="rounded-md border border-[var(--red)]/35 bg-[var(--red)]/10 px-2 py-2 text-[12px] text-[var(--red)]">
+                  {t.launcher_validation_entry_command_required}
                 </div>
               )}
 

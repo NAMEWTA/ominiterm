@@ -79,14 +79,32 @@ test("validateDraft fails when name is empty", () => {
   assert.equal(result.errors.name, "required");
 });
 
-test("validateDraft fails when main command is empty", () => {
+test("validateDraft allows empty main command when startup commands exist", () => {
   const draft = createValidLauncherDraft();
   draft.mainCommand.command = "   ";
+  draft.startupCommands = [
+    {
+      label: "Step 1",
+      command: "claude",
+      timeoutMs: 120000,
+    },
+  ];
+
+  const result = validateDraft(draft);
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.errors, {});
+});
+
+test("validateDraft fails when both main command and startup commands are empty", () => {
+  const draft = createValidLauncherDraft();
+  draft.mainCommand.command = "   ";
+  draft.startupCommands = [];
 
   const result = validateDraft(draft);
 
   assert.equal(result.ok, false);
-  assert.equal(result.errors.mainCommandCommand, "required");
+  assert.equal(result.errors.entryCommand, "required");
 });
 
 test("saveDraft blocks renaming when target launcher id already exists", async () => {
