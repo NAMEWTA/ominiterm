@@ -6,6 +6,7 @@ import { ImageAddon } from "@xterm/addon-image";
 import type { TerminalData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { useNotificationStore } from "../stores/notificationStore";
+import { useLaunchersStore } from "../stores/launchersStore";
 import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
 import { useThemeStore, XTERM_THEMES } from "../stores/themeStore";
 import { usePreferencesStore } from "../stores/preferencesStore";
@@ -25,6 +26,7 @@ import {
   touch as touchWebGL,
 } from "./webglContextPool";
 import { buildTerminalCreateRequest } from "./terminalLaunchRequest";
+import { buildStartupStatusMessage } from "./startupStatus";
 import type { LauncherOption } from "../launchers/launcherOption";
 
 type TerminalTileMode = "board" | "detail";
@@ -245,6 +247,7 @@ export function TerminalTile({
     setFocusedTerminal,
   } = useProjectStore();
   const { notify } = useNotificationStore();
+  const lastStartupEvent = useLaunchersStore((state) => state.lastStartupEvent);
   const composerEnabled = usePreferencesStore((state) => state.composerEnabled);
   const t = useT();
   const config = TYPE_CONFIG[terminal.type] ?? {
@@ -255,6 +258,11 @@ export function TerminalTile({
   useEffect(() => {
     displayTitleRef.current = getTerminalDisplayTitle(terminal);
   }, [terminal.title, terminal.customTitle]);
+
+  const startupStatusMessage =
+    lastStartupEvent && lastStartupEvent.terminalId === terminal.id
+      ? buildStartupStatusMessage(lastStartupEvent)
+      : null;
 
   useEffect(() => {
     if (!isEditingCustomTitle) {
@@ -882,6 +890,19 @@ export function TerminalTile({
         >
           {terminal.title}
         </span>
+        {startupStatusMessage && (
+          <span
+            className={`truncate text-[10px] ${
+              lastStartupEvent?.type === "step-failed"
+                ? "text-[var(--red)]"
+                : "text-[var(--text-faint)]"
+            }`}
+            style={{ fontFamily: '"Geist Mono", monospace' }}
+            title={startupStatusMessage}
+          >
+            {startupStatusMessage}
+          </span>
+        )}
 
         <div
           className={`h-6 min-w-0 flex-1 rounded-md border px-1.5 text-[11px] ${

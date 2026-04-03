@@ -17,6 +17,10 @@ import { SessionWatcher, type SessionType } from "./session-watcher";
 import { sendToWindow } from "./window-events";
 import { detectCli } from "./process-detector";
 import {
+  runMainLauncherCommand,
+  runStartupCommandSequence,
+} from "./startup-command-sequencer";
+import {
   createDefaultComposerSubmitDeps,
   submitComposerRequest,
 } from "./composer-submit";
@@ -27,6 +31,7 @@ import { toFileUrl } from "./file-url";
 import { queryCloudUsage, queryCloudHeatmap, backfillHistory, flushSyncQueue, syncRecentRecords } from "./usage-sync";
 import type {
   ComposerSubmitRequest,
+  LauncherStartupEvent,
   TerminalLauncherConfigSnapshot,
 } from "../src/types";
 import { getProjectDiff } from "./git-diff";
@@ -234,6 +239,7 @@ function setupIpc() {
       launcherId?: string;
       launcherName?: string;
       launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
+      isResume?: boolean;
     }): Promise<PtyCreateResult> => {
       dbg(`terminal:create shell=${options.shell ?? "(default)"} args=${JSON.stringify(options.args)} cwd=${options.cwd}`);
       const result = await ptyManager.create(options);
@@ -247,6 +253,53 @@ function setupIpc() {
         dbg(`terminal:exit ptyId=${result.ptyId} pid=${pid ?? "null"} exitCode=${exitCode}`);
         sendToWindow(mainWindow, "terminal:exit", result.ptyId, exitCode);
       });
+
+      const launcherSnapshot = options.launcherConfigSnapshot;
+      const shouldRunLauncherStartup =
+        launcherSnapshot !== undefined && options.isResume !== true;
+
+      if (shouldRunLauncherStartup) {
+        const terminalId = options.terminalId ?? `terminal-${result.ptyId}`;
+        const launcherId = options.launcherId ?? "launcher";
+        const emitStartupEvent = (event: LauncherStartupEvent) => {
+          sendToWindow(mainWindow, "launchers:startup-event", event);
+        };
+
+        const startupResult = await runStartupCommandSequence({
+          ptyManager,
+          ptyId: result.ptyId,
+          terminalId,
+          launcherId,
+          hostShell: launcherSnapshot.hostShell,
+          startupCommands: launcherSnapshot.startupCommands,
+          emit: emitStartupEvent,
+        });
+
+        if (startupResult.ok) {
+          runMainLauncherCommand({
+            ptyManager,
+            ptyId: result.ptyId,
+            hostShell: launcherSnapshot.hostShell,
+            mainCommand: launcherSnapshot.mainCommand,
+          });
+        } else {
+          result.startupFailure = {
+            failedStepIndex: startupResult.failedStepIndex,
+            stepLabel: startupResult.stepLabel,
+            command: startupResult.command,
+            ...(startupResult.exitCode !== undefined
+              ? { exitCode: startupResult.exitCode }
+              : {}),
+            ...(startupResult.timeoutMs !== undefined
+              ? { timeoutMs: startupResult.timeoutMs }
+              : {}),
+            ...(startupResult.stderrPreview
+              ? { stderrPreview: startupResult.stderrPreview }
+              : {}),
+          };
+        }
+      }
+
       return result;
     },
   );

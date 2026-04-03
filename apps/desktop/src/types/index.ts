@@ -263,6 +263,7 @@ export interface PtyCreateResult {
     requestedShell: string;
     actualShell: string;
   };
+  startupFailure?: LauncherStartupFailure;
 }
 
 export interface LauncherCommandStep {
@@ -301,6 +302,15 @@ export interface LauncherStartupEvent {
   timestamp: number;
 }
 
+export interface LauncherStartupFailure {
+  failedStepIndex: number;
+  stepLabel: string;
+  command: string;
+  exitCode?: number;
+  timeoutMs?: number;
+  stderrPreview?: string;
+}
+
 // Preload API types
 export interface OminiTermAPI {
   terminal: {
@@ -310,6 +320,7 @@ export interface OminiTermAPI {
       args?: string[];
       terminalId?: string;
       theme?: "dark" | "light";
+      isResume: boolean;
       launcherId?: string;
       launcherName?: string;
       launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;

@@ -37,6 +37,22 @@ function useLaunchersBootstrap() {
   }, [loadLaunchers]);
 }
 
+function useLaunchersStartupEvents() {
+  const consumeStartupEvent = useLaunchersStore(
+    (state) => state.consumeStartupEvent,
+  );
+
+  useEffect(() => {
+    if (!window.ominiterm?.launchers) {
+      return;
+    }
+
+    return window.ominiterm.launchers.onStartupEvent((event) => {
+      consumeStartupEvent(event);
+    });
+  }, [consumeStartupEvent]);
+}
+
 function restoreFromData(data: Record<string, unknown>) {
   try {
     if (data.projects && Array.isArray(data.projects)) {
@@ -367,6 +383,7 @@ export function App() {
   useAutoSave();
   useWorkspaceOpen();
   useLaunchersBootstrap();
+  useLaunchersStartupEvents();
   useKeyboardShortcuts();
 
   const composerEnabled = usePreferencesStore((state) => state.composerEnabled);

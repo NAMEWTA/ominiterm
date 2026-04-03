@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import type { LauncherConfigItem } from "../types";
+import type { LauncherConfigItem, LauncherStartupEvent } from "../types";
+import { useNotificationStore } from "./notificationStore.ts";
+import { buildStartupStatusMessage } from "../terminal/startupStatus.ts";
 
 export interface LauncherDraftValidationErrors {
   name?: "required";
@@ -64,11 +66,13 @@ interface LaunchersStore {
   launchers: LauncherConfigItem[];
   selectedLauncherId: string | null;
   draft: LauncherConfigItem | null;
+  lastStartupEvent: LauncherStartupEvent | null;
   mainCommandArgsText: string;
   loading: boolean;
   saving: boolean;
   error: string | null;
   validationErrors: LauncherDraftValidationErrors;
+  consumeStartupEvent: (event: LauncherStartupEvent) => void;
   load: () => Promise<void>;
   selectLauncher: (launcherId: string) => void;
   updateDraftName: (name: string) => void;
@@ -85,11 +89,21 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
   launchers: [],
   selectedLauncherId: null,
   draft: null,
+  lastStartupEvent: null,
   mainCommandArgsText: "",
-  loading: false,
+  loading: true,
   saving: false,
   error: null,
   validationErrors: {},
+
+  consumeStartupEvent: (event) => {
+    set({ lastStartupEvent: event });
+    if (event.type === "step-failed") {
+      useNotificationStore
+        .getState()
+        .notify("warn", buildStartupStatusMessage(event));
+    }
+  },
 
   load: async () => {
     set({ loading: true, error: null });

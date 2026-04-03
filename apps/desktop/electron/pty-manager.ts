@@ -4,6 +4,24 @@ import { buildLaunchSpec, type PtyLaunchOptions } from "./pty-launch.ts";
 
 export type PtyCreateOptions = PtyLaunchOptions;
 
+export const STARTUP_STEP_MARKER_PREFIX = "__OMINITERM_STARTUP_STEP__";
+
+export interface LauncherStartupFailure {
+  failedStepIndex: number;
+  stepLabel: string;
+  command: string;
+  exitCode?: number;
+  timeoutMs?: number;
+  stderrPreview?: string;
+}
+
+export interface PtyStepWaitResult {
+  ok: boolean;
+  timeout: boolean;
+  exitCode?: number;
+  stderrPreview?: string;
+}
+
 export interface PtyCreateResult {
   ptyId: number;
   /** Set when requested shell was not found and we fell back to default shell */
@@ -11,6 +29,28 @@ export interface PtyCreateResult {
     requestedShell: string;
     actualShell: string;
   };
+  startupFailure?: LauncherStartupFailure;
+}
+
+function stripAnsi(input: string): string {
+  return input.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildStderrPreview(lines: string[]): string | undefined {
+  const sanitized = lines
+    .map((line) => stripAnsi(line).replace(/\r/g, "").trim())
+    .filter((line) => line.length > 0 && !line.includes(STARTUP_STEP_MARKER_PREFIX));
+
+  if (sanitized.length === 0) {
+    return undefined;
+  }
+
+  const preview = sanitized.slice(-4).join("\n");
+  return preview.length > 320 ? `${preview.slice(0, 317)}...` : preview;
 }
 
 export class PtyManager {
@@ -85,6 +125,66 @@ export class PtyManager {
           resolve();
         }, settleMs);
       });
+    });
+  }
+
+  waitForStepResult(
+    id: number,
+    markerToken: string,
+    timeoutMs: number,
+  ): Promise<PtyStepWaitResult> {
+    const markerPrefix = `${STARTUP_STEP_MARKER_PREFIX}${markerToken}:`;
+    const markerRegExp = new RegExp(`${escapeRegExp(markerPrefix)}(-?\\d+)`);
+
+    return new Promise((resolve) => {
+      const startedAt = Date.now();
+
+      const poll = () => {
+        const output = this.getOutput(id, 240);
+
+        for (let index = output.length - 1; index >= 0; index -= 1) {
+          const line = stripAnsi(output[index]).replace(/\r/g, "");
+          const match = line.match(markerRegExp);
+          if (!match) {
+            continue;
+          }
+
+          const exitCode = Number.parseInt(match[1], 10);
+          const stderrPreview = buildStderrPreview(output.slice(0, index));
+
+          resolve({
+            ok: exitCode === 0,
+            timeout: false,
+            exitCode,
+            ...(stderrPreview ? { stderrPreview } : {}),
+          });
+          return;
+        }
+
+        if (!this.instances.has(id)) {
+          const stderrPreview = buildStderrPreview(output);
+          resolve({
+            ok: false,
+            timeout: false,
+            ...(stderrPreview ? { stderrPreview } : {}),
+          });
+          return;
+        }
+
+        if (Date.now() - startedAt >= timeoutMs) {
+          const stderrPreview = buildStderrPreview(output);
+          resolve({
+            ok: false,
+            timeout: true,
+            ...(stderrPreview ? { stderrPreview } : {}),
+          });
+          return;
+        }
+
+        setTimeout(poll, 30);
+      };
+
+      poll();
     });
   }
 

@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld("ominiterm", {
       args?: string[];
       terminalId?: string;
       theme?: "dark" | "light";
+      isResume: boolean;
       launcherId?: string;
       launcherName?: string;
       launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
@@ -22,6 +23,14 @@ contextBridge.exposeInMainWorld("ominiterm", {
         fallback?: {
           requestedShell: string;
           actualShell: string;
+        };
+        startupFailure?: {
+          failedStepIndex: number;
+          stepLabel: string;
+          command: string;
+          exitCode?: number;
+          timeoutMs?: number;
+          stderrPreview?: string;
         };
       }>,
     destroy: (ptyId: number) => ipcRenderer.invoke("terminal:destroy", ptyId),

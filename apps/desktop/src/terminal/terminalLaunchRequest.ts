@@ -14,9 +14,19 @@ export interface TerminalCreateRequest {
   args?: string[];
   terminalId?: string;
   theme?: "dark" | "light";
+  isResume: boolean;
   launcherId?: string;
   launcherName?: string;
   launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
+}
+
+function resolveHostShellCommand(
+  hostShell: TerminalLauncherConfigSnapshot["hostShell"],
+): string | undefined {
+  if (hostShell === "auto") {
+    return undefined;
+  }
+  return hostShell;
 }
 
 function cloneLauncherConfigSnapshot(
@@ -45,6 +55,8 @@ export function buildTerminalCreateRequest({
   theme,
   cliOverride,
 }: BuildRequestParams): TerminalCreateRequest {
+  const isResume = Boolean(terminal.sessionId);
+
   const launch = getTerminalLaunchOptions(
     terminal.type,
     terminal.sessionId,
@@ -56,6 +68,7 @@ export function buildTerminalCreateRequest({
     cwd: worktreePath,
     terminalId: terminal.id,
     theme,
+    isResume,
     ...(terminal.launcherId ? { launcherId: terminal.launcherId } : {}),
     ...(terminal.launcherName ? { launcherName: terminal.launcherName } : {}),
     ...(terminal.launcherConfigSnapshot
@@ -66,6 +79,14 @@ export function buildTerminalCreateRequest({
         }
       : {}),
   };
+
+  if (terminal.launcherConfigSnapshot && !isResume) {
+    request.shell = resolveHostShellCommand(
+      terminal.launcherConfigSnapshot.hostShell,
+    );
+    request.args = [];
+    return request;
+  }
 
   if (!launch) {
     return request;

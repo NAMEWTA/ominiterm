@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { useLaunchersStore, validateDraft } from "../src/stores/launchersStore.ts";
-import type { LauncherConfigItem } from "../src/types/index.ts";
+import { useNotificationStore } from "../src/stores/notificationStore.ts";
+import type {
+  LauncherConfigItem,
+  LauncherStartupEvent,
+} from "../src/types/index.ts";
 
 function createValidLauncherDraft(): LauncherConfigItem {
   return {
@@ -27,6 +31,7 @@ function resetLaunchersStore() {
     launchers: [],
     selectedLauncherId: null,
     draft: null,
+    lastStartupEvent: null,
     mainCommandArgsText: "",
     loading: false,
     saving: false,
@@ -131,4 +136,49 @@ test("saveDraft blocks renaming when target launcher id already exists", async (
       assert.deepEqual(deleteCalls, []);
     },
   );
+});
+
+test("consumeStartupEvent stores failed event and triggers warning notification", () => {
+  resetLaunchersStore();
+
+  const originalNotify = useNotificationStore.getState().notify;
+  const originalDismiss = useNotificationStore.getState().dismiss;
+  let notifiedType: string | null = null;
+  let notifiedMessage = "";
+
+  useNotificationStore.setState({
+    notifications: [],
+    notify: (type, message) => {
+      notifiedType = type;
+      notifiedMessage = message;
+    },
+    dismiss: originalDismiss,
+  });
+
+  try {
+    const event: LauncherStartupEvent = {
+      type: "step-failed",
+      terminalId: "terminal-1",
+      launcherId: "custom-launcher",
+      stepIndex: 0,
+      totalSteps: 2,
+      stepLabel: "Install deps",
+      command: "pnpm install",
+      exitCode: 1,
+      stderrPreview: "ENOENT",
+      timestamp: Date.now(),
+    };
+
+    useLaunchersStore.getState().consumeStartupEvent(event);
+
+    assert.equal(useLaunchersStore.getState().lastStartupEvent?.type, "step-failed");
+    assert.equal(notifiedType, "warn");
+    assert.match(notifiedMessage, /Install deps/);
+  } finally {
+    useNotificationStore.setState({
+      notifications: [],
+      notify: originalNotify,
+      dismiss: originalDismiss,
+    });
+  }
 });
