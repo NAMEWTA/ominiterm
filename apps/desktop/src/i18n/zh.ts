@@ -185,6 +185,22 @@ export const zh = {
     `${command} CLI 未配置或无法启动。`,
   cli_launch_error_action: "打开设置",
 
+  // Launcher Settings
+  settings_launchers: "启动方式",
+  launcher_empty: "未找到可配置的启动方式",
+  launcher_no_selection: "请先从左侧列表选择一个启动方式。",
+  launcher_name: "名称",
+  launcher_id: "ID",
+  launcher_enabled: "启用",
+  launcher_host_shell: "宿主 Shell",
+  launcher_main_command: "主命令",
+  launcher_main_args: "主命令参数",
+  launcher_main_args_hint: "每行一个参数",
+  launcher_validation_name_required: "名称不能为空",
+  launcher_validation_main_command_required: "主命令不能为空",
+  launcher_saving: "保存中…",
+  launcher_error_prefix: (detail: string) => `错误：${detail}`,
+
   // Composer
   composer_label: "Composer",
   composer_target_label: "目标",

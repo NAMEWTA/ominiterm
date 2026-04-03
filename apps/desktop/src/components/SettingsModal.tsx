@@ -18,6 +18,7 @@ import { useT } from "../i18n/useT";
 import { FONT_REGISTRY } from "../terminal/fontRegistry";
 import { loadFont } from "../terminal/fontLoader";
 import { useNotificationStore } from "../stores/notificationStore";
+import { LauncherSettingsTab } from "./settings/LauncherSettingsTab";
 
 const platform = window.ominiterm?.app.platform ?? "darwin";
 const isMac = platform === "darwin";
@@ -264,6 +265,7 @@ export function SettingsModal({ onClose }: Props) {
         ? "text-[var(--text-primary)] border-[var(--accent)]"
         : "text-[var(--text-muted)] border-transparent hover:text-[var(--text-secondary)]"
     }`;
+  const modalWidthClass = tab === "launchers" ? "max-w-4xl" : "max-w-lg";
 
   return (
     <div
@@ -271,7 +273,9 @@ export function SettingsModal({ onClose }: Props) {
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60"
       onClick={handleBackdropClick}
     >
-      <div className="bg-[var(--bg)] border border-[var(--border)] rounded-lg w-full max-w-lg mx-4 overflow-hidden">
+      <div
+        className={`bg-[var(--bg)] border border-[var(--border)] rounded-lg w-full ${modalWidthClass} mx-4 overflow-hidden`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-0">
           <h2 className="text-[17px] font-medium text-[var(--text-primary)]">
@@ -311,6 +315,12 @@ export function SettingsModal({ onClose }: Props) {
             onClick={() => setTab("agents")}
           >
             {t.settings_agents}
+          </button>
+          <button
+            className={tabBtn(tab === "launchers")}
+            onClick={() => setTab("launchers")}
+          >
+            {t.settings_launchers}
           </button>
         </div>
 
@@ -574,6 +584,8 @@ export function SettingsModal({ onClose }: Props) {
           )}
 
           {tab === "agents" && <AgentsTabContent />}
+
+          {tab === "launchers" && <LauncherSettingsTab />}
         </div>
       </div>
     </div>

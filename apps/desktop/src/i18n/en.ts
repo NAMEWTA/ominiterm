@@ -187,6 +187,22 @@ export const en = {
     `${command} CLI is not configured or cannot be launched.`,
   cli_launch_error_action: "Open Settings",
 
+  // Launcher Settings
+  settings_launchers: "Launchers",
+  launcher_empty: "No launchers found",
+  launcher_no_selection: "Select a launcher from the left list.",
+  launcher_name: "Name",
+  launcher_id: "ID",
+  launcher_enabled: "Enabled",
+  launcher_host_shell: "Host shell",
+  launcher_main_command: "Main command",
+  launcher_main_args: "Main command args",
+  launcher_main_args_hint: "One argument per line",
+  launcher_validation_name_required: "Name is required",
+  launcher_validation_main_command_required: "Main command is required",
+  launcher_saving: "Saving\u2026",
+  launcher_error_prefix: (detail: string) => `Error: ${detail}`,
+
   // Composer
   composer_label: "Composer",
   composer_target_label: "Target",

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type SettingsTab = "general" | "shortcuts" | "agents";
+type SettingsTab = "general" | "shortcuts" | "agents" | "launchers";
 
 interface SettingsModalStore {
   open: boolean;
