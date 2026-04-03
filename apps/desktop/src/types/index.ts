@@ -326,6 +326,7 @@ export interface OminiTermAPI {
       launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
     }) => Promise<PtyCreateResult>;
     destroy: (ptyId: number) => Promise<void>;
+    cancelCreate: (terminalId: string) => void;
     getPid: (ptyId: number) => Promise<number | null>;
     input: (ptyId: number, data: string) => void;
     resize: (ptyId: number, cols: number, rows: number) => void;

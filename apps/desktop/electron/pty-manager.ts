@@ -18,6 +18,7 @@ export interface LauncherStartupFailure {
 export interface PtyStepWaitResult {
   ok: boolean;
   timeout: boolean;
+  cancelled?: boolean;
   exitCode?: number;
   stderrPreview?: string;
 }
@@ -135,14 +136,60 @@ export class PtyManager {
     id: number,
     markerToken: string,
     timeoutMs: number,
+    signal?: AbortSignal,
   ): Promise<PtyStepWaitResult> {
     const markerPrefix = `${STARTUP_STEP_MARKER_PREFIX}${markerToken}:`;
     const markerRegExp = new RegExp(`${escapeRegExp(markerPrefix)}(-?\\d+)`);
 
     return new Promise((resolve) => {
       const startedAt = Date.now();
+      let pollTimer: ReturnType<typeof setTimeout> | null = null;
+      let settled = false;
+
+      const cleanup = () => {
+        if (pollTimer) {
+          clearTimeout(pollTimer);
+          pollTimer = null;
+        }
+        if (signal) {
+          signal.removeEventListener("abort", onAbort);
+        }
+      };
+
+      const finish = (result: PtyStepWaitResult) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        resolve(result);
+      };
+
+      const onAbort = () => {
+        finish({
+          ok: false,
+          timeout: false,
+          cancelled: true,
+        });
+      };
+
+      if (signal?.aborted) {
+        onAbort();
+        return;
+      }
+
+      signal?.addEventListener("abort", onAbort, { once: true });
 
       const poll = () => {
+        if (settled) {
+          return;
+        }
+
+        if (signal?.aborted) {
+          onAbort();
+          return;
+        }
+
         const output = this.getOutput(id, 240);
 
         for (let index = output.length - 1; index >= 0; index -= 1) {
@@ -155,7 +202,7 @@ export class PtyManager {
           const exitCode = Number.parseInt(match[1], 10);
           const stderrPreview = buildStderrPreview(output.slice(0, index));
 
-          resolve({
+          finish({
             ok: exitCode === 0,
             timeout: false,
             exitCode,
@@ -166,7 +213,7 @@ export class PtyManager {
 
         if (!this.instances.has(id)) {
           const stderrPreview = buildStderrPreview(output);
-          resolve({
+          finish({
             ok: false,
             timeout: false,
             ...(stderrPreview ? { stderrPreview } : {}),
@@ -176,7 +223,7 @@ export class PtyManager {
 
         if (Date.now() - startedAt >= timeoutMs) {
           const stderrPreview = buildStderrPreview(output);
-          resolve({
+          finish({
             ok: false,
             timeout: true,
             ...(stderrPreview ? { stderrPreview } : {}),
@@ -184,7 +231,7 @@ export class PtyManager {
           return;
         }
 
-        setTimeout(poll, 30);
+        pollTimer = setTimeout(poll, 30);
       };
 
       poll();

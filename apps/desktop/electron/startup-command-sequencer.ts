@@ -16,6 +16,7 @@ interface StartupPtyController {
     ptyId: number,
     markerToken: string,
     timeoutMs: number,
+    signal?: AbortSignal,
   ) => Promise<PtyStepWaitResult>;
 }
 
@@ -37,6 +38,13 @@ export type StartupSequenceResult =
   | { ok: true }
   | ({ ok: false } & StartupStepFailure);
 
+export class LauncherStartupCancelledError extends Error {
+  constructor() {
+    super("Launcher startup cancelled");
+    this.name = "LauncherStartupCancelledError";
+  }
+}
+
 interface StartupSequenceParams {
   ptyManager: StartupPtyController;
   ptyId: number;
@@ -46,6 +54,7 @@ interface StartupSequenceParams {
   actualShell?: string;
   startupCommands: LauncherCommandStep[];
   emit: (event: LauncherStartupEvent) => void;
+  signal?: AbortSignal;
 }
 
 interface RunMainLauncherCommandParams {
@@ -54,10 +63,17 @@ interface RunMainLauncherCommandParams {
   hostShell: StartupHostShell;
   actualShell?: string;
   mainCommand: LauncherMainCommand;
+  signal?: AbortSignal;
 }
 
 interface RunLauncherStartupFlowParams extends StartupSequenceParams {
   mainCommand: LauncherMainCommand;
+}
+
+function throwIfStartupCancelled(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new LauncherStartupCancelledError();
+  }
 }
 
 type ShellFamily = "cmd" | "pwsh" | "posix";
@@ -192,15 +208,20 @@ export async function runStartupCommandSequence({
   actualShell,
   startupCommands,
   emit,
+  signal,
 }: StartupSequenceParams): Promise<StartupSequenceResult> {
   const totalSteps = startupCommands.length;
   if (totalSteps === 0) {
     return { ok: true };
   }
 
+  throwIfStartupCancelled(signal);
+
   const shellFamily = resolveShellFamily(hostShell, actualShell);
 
   for (let stepIndex = 0; stepIndex < totalSteps; stepIndex += 1) {
+    throwIfStartupCancelled(signal);
+
     const step = startupCommands[stepIndex];
     const stepLabel = normalizeStepLabel(step, stepIndex);
     const markerToken = `${Date.now().toString(36)}-${stepIndex}-${Math.random().toString(36).slice(2, 8)}`;
@@ -222,7 +243,12 @@ export async function runStartupCommandSequence({
       ptyId,
       markerToken,
       step.timeoutMs,
+      signal,
     );
+
+    if (stepResult.cancelled) {
+      throw new LauncherStartupCancelledError();
+    }
 
     if (stepResult.ok) {
       emitStartupEvent(emit, {
@@ -276,7 +302,10 @@ export function runMainLauncherCommand({
   hostShell,
   actualShell,
   mainCommand,
+  signal,
 }: RunMainLauncherCommandParams): void {
+  throwIfStartupCancelled(signal);
+
   const command = mainCommand.command.trim();
   if (command.length === 0) {
     return;
@@ -297,6 +326,7 @@ export async function runLauncherStartupFlow({
   startupCommands,
   emit,
   mainCommand,
+  signal,
 }: RunLauncherStartupFlowParams): Promise<StartupSequenceResult> {
   const startupResult = await runStartupCommandSequence({
     ptyManager,
@@ -307,6 +337,7 @@ export async function runLauncherStartupFlow({
     actualShell,
     startupCommands,
     emit,
+    signal,
   });
 
   if (startupResult.ok) {
@@ -316,6 +347,7 @@ export async function runLauncherStartupFlow({
       hostShell,
       actualShell,
       mainCommand,
+      signal,
     });
   }
 

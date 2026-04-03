@@ -17,6 +17,7 @@ import { SessionWatcher, type SessionType } from "./session-watcher";
 import { sendToWindow } from "./window-events";
 import { detectCli } from "./process-detector";
 import {
+  LauncherStartupCancelledError,
   runLauncherStartupFlow,
 } from "./startup-command-sequencer";
 import {
@@ -76,6 +77,7 @@ let mainWindow: BrowserWindow | null = null;
 let forceClose = false;
 let pendingCloseFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 const ptyManager = new PtyManager();
+const terminalCreateAbortControllers = new Map<string, AbortController>();
 const outputBatcher = new OutputBatcher((ptyId, data) => {
   sendToWindow(mainWindow, "terminal:output", ptyId, data);
 });
@@ -83,6 +85,24 @@ const projectScanner = new ProjectScanner();
 const statePersistence = new StatePersistence();
 const gitWatcher = new GitFileWatcher();
 const sessionWatcher = new SessionWatcher();
+
+class TerminalCreateCancelledError extends Error {
+  constructor() {
+    super("Terminal creation cancelled");
+    this.name = "TerminalCreateCancelledError";
+  }
+}
+
+function createTerminalCancelledError(): TerminalCreateCancelledError {
+  return new TerminalCreateCancelledError();
+}
+
+function isTerminalCreateCancelledError(error: unknown): boolean {
+  return (
+    error instanceof TerminalCreateCancelledError ||
+    error instanceof LauncherStartupCancelledError
+  );
+}
 
 function createWindow() {
   forceClose = false;
@@ -241,70 +261,119 @@ function setupIpc() {
       isResume: boolean;
     }): Promise<PtyCreateResult> => {
       dbg(`terminal:create shell=${options.shell ?? "(default)"} args=${JSON.stringify(options.args)} cwd=${options.cwd}`);
-      const result = await ptyManager.create(options);
-      const pid = ptyManager.getPid(result.ptyId);
-      dbg(`terminal:create => ptyId=${result.ptyId} pid=${pid ?? "null"} fallback=${result.fallback ? "yes" : "no"}`);
-      ptyManager.onData(result.ptyId, (data: string) => {
-        ptyManager.captureOutput(result.ptyId, data);
-        outputBatcher.push(result.ptyId, data);
-      });
-      ptyManager.onExit(result.ptyId, (exitCode: number) => {
-        dbg(`terminal:exit ptyId=${result.ptyId} pid=${pid ?? "null"} exitCode=${exitCode}`);
-        sendToWindow(mainWindow, "terminal:exit", result.ptyId, exitCode);
-      });
+      const createController = options.terminalId
+        ? (() => {
+            terminalCreateAbortControllers.get(options.terminalId!)?.abort();
+            const controller = new AbortController();
+            terminalCreateAbortControllers.set(options.terminalId!, controller);
+            return controller;
+          })()
+        : null;
+      const createSignal = createController?.signal;
 
-      const launcherSnapshot = options.launcherConfigSnapshot;
-      const shouldRunLauncherStartup =
-        launcherSnapshot !== undefined && options.isResume !== true;
+      const throwIfCreateCancelled = () => {
+        if (createSignal?.aborted) {
+          throw createTerminalCancelledError();
+        }
+      };
 
-      const startupShell =
-        result.fallback?.actualShell ??
-        (launcherSnapshot?.hostShell === "auto" ? result.resolvedShell : undefined);
+      let createdPtyId: number | null = null;
+      try {
+        throwIfCreateCancelled();
 
-      if (shouldRunLauncherStartup) {
-        const terminalId = options.terminalId ?? `terminal-${result.ptyId}`;
-        const launcherId = options.launcherId ?? "launcher";
-        const emitStartupEvent = (event: LauncherStartupEvent) => {
-          sendToWindow(mainWindow, "launchers:startup-event", event);
-        };
+        const result = await ptyManager.create(options);
+        createdPtyId = result.ptyId;
+        throwIfCreateCancelled();
 
-        const startupResult = await runLauncherStartupFlow({
-          ptyManager,
-          ptyId: result.ptyId,
-          terminalId,
-          launcherId,
-          hostShell: launcherSnapshot.hostShell,
-          actualShell: startupShell,
-          startupCommands: launcherSnapshot.startupCommands,
-          emit: emitStartupEvent,
-          mainCommand: launcherSnapshot.mainCommand,
+        const pid = ptyManager.getPid(result.ptyId);
+        dbg(`terminal:create => ptyId=${result.ptyId} pid=${pid ?? "null"} fallback=${result.fallback ? "yes" : "no"}`);
+        ptyManager.onData(result.ptyId, (data: string) => {
+          ptyManager.captureOutput(result.ptyId, data);
+          outputBatcher.push(result.ptyId, data);
+        });
+        ptyManager.onExit(result.ptyId, (exitCode: number) => {
+          dbg(`terminal:exit ptyId=${result.ptyId} pid=${pid ?? "null"} exitCode=${exitCode}`);
+          sendToWindow(mainWindow, "terminal:exit", result.ptyId, exitCode);
         });
 
-        if (!startupResult.ok) {
-          result.startupFailure = {
-            failedStepIndex: startupResult.failedStepIndex,
-            stepLabel: startupResult.stepLabel,
-            command: startupResult.command,
-            ...(startupResult.exitCode !== undefined
-              ? { exitCode: startupResult.exitCode }
-              : {}),
-            ...(startupResult.timeoutMs !== undefined
-              ? { timeoutMs: startupResult.timeoutMs }
-              : {}),
-            ...(startupResult.stderrPreview
-              ? { stderrPreview: startupResult.stderrPreview }
-              : {}),
+        const launcherSnapshot = options.launcherConfigSnapshot;
+        const shouldRunLauncherStartup =
+          launcherSnapshot !== undefined && options.isResume !== true;
+
+        const startupShell =
+          result.fallback?.actualShell ??
+          (launcherSnapshot?.hostShell === "auto" ? result.resolvedShell : undefined);
+
+        if (shouldRunLauncherStartup) {
+          const terminalId = options.terminalId ?? `terminal-${result.ptyId}`;
+          const launcherId = options.launcherId ?? "launcher";
+          const emitStartupEvent = (event: LauncherStartupEvent) => {
+            sendToWindow(mainWindow, "launchers:startup-event", event);
           };
+
+          const startupResult = await runLauncherStartupFlow({
+            ptyManager,
+            ptyId: result.ptyId,
+            terminalId,
+            launcherId,
+            hostShell: launcherSnapshot.hostShell,
+            actualShell: startupShell,
+            startupCommands: launcherSnapshot.startupCommands,
+            emit: emitStartupEvent,
+            mainCommand: launcherSnapshot.mainCommand,
+            signal: createSignal,
+          });
+
+          if (!startupResult.ok) {
+            result.startupFailure = {
+              failedStepIndex: startupResult.failedStepIndex,
+              stepLabel: startupResult.stepLabel,
+              command: startupResult.command,
+              ...(startupResult.exitCode !== undefined
+                ? { exitCode: startupResult.exitCode }
+                : {}),
+              ...(startupResult.timeoutMs !== undefined
+                ? { timeoutMs: startupResult.timeoutMs }
+                : {}),
+              ...(startupResult.stderrPreview
+                ? { stderrPreview: startupResult.stderrPreview }
+                : {}),
+            };
+          }
+        }
+
+        throwIfCreateCancelled();
+
+        return {
+          ptyId: result.ptyId,
+          ...(result.fallback ? { fallback: result.fallback } : {}),
+          ...(result.startupFailure ? { startupFailure: result.startupFailure } : {}),
+        };
+      } catch (error) {
+        if (isTerminalCreateCancelledError(error)) {
+          if (createdPtyId !== null) {
+            await ptyManager.destroy(createdPtyId);
+          }
+        }
+        throw error;
+      } finally {
+        if (
+          options.terminalId &&
+          createController &&
+          terminalCreateAbortControllers.get(options.terminalId) === createController
+        ) {
+          terminalCreateAbortControllers.delete(options.terminalId);
         }
       }
-
-      return {
-        ptyId: result.ptyId,
-        ...(result.fallback ? { fallback: result.fallback } : {}),
-        ...(result.startupFailure ? { startupFailure: result.startupFailure } : {}),
-      };
     },
   );
+
+  ipcMain.on("terminal:create-cancel", (_event, terminalId: string) => {
+    if (typeof terminalId !== "string" || terminalId.trim().length === 0) {
+      return;
+    }
+    terminalCreateAbortControllers.get(terminalId)?.abort();
+  });
 
   ipcMain.on("terminal:input", (_event, ptyId: number, data: string) => {
     ptyManager.write(ptyId, data);

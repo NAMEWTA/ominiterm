@@ -520,6 +520,7 @@ export function TerminalTile({
     let turnCompleteCleanup: (() => void) | null = null;
     let waitingTimer: ReturnType<typeof setTimeout> | null = null;
     let currentStatus = terminal.status;
+    let createRequestInFlight = false;
 
     const attachWatch = (sessionId: string | undefined) => {
       if (
@@ -708,7 +709,11 @@ export function TerminalTile({
           const message = err instanceof Error ? err.message : String(err);
           notify("error", t.failed_create_pty(displayTitleRef.current, message));
           updateTerminalStatus(projectId, worktreeId, terminal.id, "error");
+        })
+        .finally(() => {
+          createRequestInFlight = false;
         });
+      createRequestInFlight = true;
     }
 
     cleanupRef.current = () => {
@@ -748,6 +753,9 @@ export function TerminalTile({
 
     return () => {
       disposed = true;
+      if (createRequestInFlight) {
+        window.ominiterm.terminal.cancelCreate(terminal.id);
+      }
       cleanupRef.current?.();
       cleanupRef.current = null;
     };

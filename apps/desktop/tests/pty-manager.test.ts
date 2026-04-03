@@ -38,3 +38,20 @@ test("notifyThemeChanged ignores unknown PTYs", () => {
   manager.notifyThemeChanged(999);
   assert.ok(true);
 });
+
+test("waitForStepResult resolves cancelled when abort signal is triggered", async () => {
+  const manager = new PtyManager() as PtyManager & {
+    instances: Map<number, { pid?: number }>;
+  };
+  manager.instances.set(7, { pid: 4321 });
+
+  const controller = new AbortController();
+  const waitPromise = manager.waitForStepResult(7, "cancel-token", 5000, controller.signal);
+
+  controller.abort();
+  const result = await waitPromise;
+
+  assert.equal(result.ok, false);
+  assert.equal(result.timeout, false);
+  assert.equal(result.cancelled, true);
+});

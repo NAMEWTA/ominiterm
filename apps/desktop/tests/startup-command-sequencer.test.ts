@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  LauncherStartupCancelledError,
   runLauncherStartupFlow,
   runMainLauncherCommand,
   runStartupCommandSequence,
@@ -26,6 +27,7 @@ class FakePtyManager {
     ptyId: number,
     markerToken: string,
     timeoutMs: number,
+    _signal?: AbortSignal,
   ): Promise<PtyStepWaitResult> {
     this.waitCalls.push({ ptyId, markerToken, timeoutMs });
     const next = this.results.shift();
@@ -152,6 +154,54 @@ test("runLauncherStartupFlow runs main launcher command only after startup succe
     successManager.writes.some((write) => write.includes("codex")),
     true,
   );
+});
+
+test("runStartupCommandSequence throws cancellation error when step wait is cancelled", async () => {
+  const ptyManager = new FakePtyManager([
+    { ok: false, timeout: false, cancelled: true },
+  ]);
+
+  await assert.rejects(
+    () =>
+      runStartupCommandSequence({
+        ptyManager,
+        ptyId: 16,
+        terminalId: "terminal-cancelled",
+        launcherId: "custom-launcher",
+        hostShell: "bash",
+        startupCommands: [STARTUP_STEPS[0]],
+        emit: () => {},
+      }),
+    (error: unknown) => error instanceof LauncherStartupCancelledError,
+  );
+});
+
+test("runLauncherStartupFlow exits early when signal is already aborted", async () => {
+  const ptyManager = new FakePtyManager([
+    { ok: true, timeout: false, exitCode: 0 },
+  ]);
+  const controller = new AbortController();
+  controller.abort();
+
+  await assert.rejects(
+    () =>
+      runLauncherStartupFlow({
+        ptyManager,
+        ptyId: 17,
+        terminalId: "terminal-aborted",
+        launcherId: "custom-launcher",
+        hostShell: "pwsh",
+        startupCommands: [STARTUP_STEPS[0]],
+        emit: () => {},
+        mainCommand: {
+          command: "codex",
+          args: ["--fast"],
+        },
+        signal: controller.signal,
+      }),
+    (error: unknown) => error instanceof LauncherStartupCancelledError,
+  );
+  assert.equal(ptyManager.writes.length, 0);
 });
 
 test("runStartupCommandSequence uses fallback actual shell family for wrapped steps", async () => {

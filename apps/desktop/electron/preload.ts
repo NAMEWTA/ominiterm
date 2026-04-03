@@ -34,6 +34,8 @@ contextBridge.exposeInMainWorld("ominiterm", {
         };
       }>,
     destroy: (ptyId: number) => ipcRenderer.invoke("terminal:destroy", ptyId),
+    cancelCreate: (terminalId: string) =>
+      ipcRenderer.send("terminal:create-cancel", terminalId),
     getPid: (ptyId: number) =>
       ipcRenderer.invoke("terminal:get-pid", ptyId) as Promise<number | null>,
     input: (ptyId: number, data: string) =>
