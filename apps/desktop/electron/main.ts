@@ -25,7 +25,10 @@ import { setupAutoUpdater, stopAutoUpdater } from "./auto-updater";
 import { initAuth, login, logout, getAuthUser, getDeviceId, handleAuthCallback, onAuthStateChange, isLoggedIn } from "./auth";
 import { toFileUrl } from "./file-url";
 import { queryCloudUsage, queryCloudHeatmap, backfillHistory, flushSyncQueue, syncRecentRecords } from "./usage-sync";
-import type { ComposerSubmitRequest } from "../src/types";
+import type {
+  ComposerSubmitRequest,
+  TerminalLauncherConfigSnapshot,
+} from "../src/types";
 import { getProjectDiff } from "./git-diff";
 import { validateAgentCommand } from "./agent-command.js";
 import { registerLaunchersIpc } from "./launchers-ipc";
@@ -222,7 +225,16 @@ function setupIpc() {
   // Terminal IPC
   ipcMain.handle(
     "terminal:create",
-    async (_event, options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; theme?: "dark" | "light" }): Promise<PtyCreateResult> => {
+    async (_event, options: {
+      cwd: string;
+      shell?: string;
+      args?: string[];
+      terminalId?: string;
+      theme?: "dark" | "light";
+      launcherId?: string;
+      launcherName?: string;
+      launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
+    }): Promise<PtyCreateResult> => {
       dbg(`terminal:create shell=${options.shell ?? "(default)"} args=${JSON.stringify(options.args)} cwd=${options.cwd}`);
       const result = await ptyManager.create(options);
       const pid = ptyManager.getPid(result.ptyId);

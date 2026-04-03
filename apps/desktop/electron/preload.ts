@@ -1,9 +1,22 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { LauncherConfigItem, LauncherStartupEvent } from "../src/types";
+import type {
+  LauncherConfigItem,
+  LauncherStartupEvent,
+  TerminalLauncherConfigSnapshot,
+} from "../src/types";
 
 contextBridge.exposeInMainWorld("ominiterm", {
   terminal: {
-    create: (options: { cwd: string; shell?: string; args?: string[]; terminalId?: string; theme?: "dark" | "light" }) =>
+    create: (options: {
+      cwd: string;
+      shell?: string;
+      args?: string[];
+      terminalId?: string;
+      theme?: "dark" | "light";
+      launcherId?: string;
+      launcherName?: string;
+      launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
+    }) =>
       ipcRenderer.invoke("terminal:create", options) as Promise<{
         ptyId: number;
         fallback?: {

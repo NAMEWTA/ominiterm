@@ -237,6 +237,21 @@ test("syncWorktrees repairs corrupted duplicate worktrees after a bad rescan", (
 });
 
 test("migrateProjects normalizes a restored git/modules main worktree path", () => {
+  const launcherConfigSnapshot = {
+    hostShell: "pwsh" as const,
+    mainCommand: {
+      command: "custom-cli",
+      args: ["--resume"],
+    },
+    startupCommands: [
+      {
+        label: "Prepare",
+        command: "echo prepare",
+        timeoutMs: 3000,
+      },
+    ],
+  };
+
   const [project] = migrateProjects([
     {
       id: "project-1",
@@ -255,6 +270,9 @@ test("migrateProjects normalizes a restored git/modules main worktree path", () 
               focused: false,
               ptyId: 123,
               status: "running",
+              launcherId: "custom-launcher",
+              launcherName: "Custom Launcher",
+              launcherConfigSnapshot,
             },
           ],
         },
@@ -262,9 +280,23 @@ test("migrateProjects normalizes a restored git/modules main worktree path", () 
     },
   ]);
 
+  const migratedTerminal = project.worktrees[0].terminals[0];
+
   assert.equal(project.worktrees[0].path, "C:/repo/cde-base");
-  assert.equal(project.worktrees[0].terminals[0].ptyId, null);
-  assert.equal(project.worktrees[0].terminals[0].status, "idle");
+  assert.equal(migratedTerminal.ptyId, null);
+  assert.equal(migratedTerminal.status, "idle");
+  assert.equal(migratedTerminal.launcherId, "custom-launcher");
+  assert.equal(migratedTerminal.launcherName, "Custom Launcher");
+  assert.deepEqual(migratedTerminal.launcherConfigSnapshot, launcherConfigSnapshot);
+  assert.notEqual(migratedTerminal.launcherConfigSnapshot, launcherConfigSnapshot);
+  assert.notEqual(
+    migratedTerminal.launcherConfigSnapshot?.mainCommand.args,
+    launcherConfigSnapshot.mainCommand.args,
+  );
+  assert.notEqual(
+    migratedTerminal.launcherConfigSnapshot?.startupCommands,
+    launcherConfigSnapshot.startupCommands,
+  );
 });
 
 test("removeTerminal keeps an empty focused worktree expanded after deleting its last terminal", () => {

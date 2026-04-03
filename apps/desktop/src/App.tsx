@@ -26,7 +26,16 @@ import { ProjectSidebar } from "./components/ProjectSidebar";
 import { ProjectBoard } from "./components/ProjectBoard";
 import { TerminalDetailView } from "./components/TerminalDetailView";
 import { migrateProjects } from "./projectStateMigration";
+import { useLaunchersStore } from "./stores/launchersStore";
 import type { ProjectData } from "./types";
+
+function useLaunchersBootstrap() {
+  const loadLaunchers = useLaunchersStore((state) => state.load);
+
+  useEffect(() => {
+    void loadLaunchers();
+  }, [loadLaunchers]);
+}
 
 function restoreFromData(data: Record<string, unknown>) {
   try {
@@ -357,6 +366,7 @@ export function App() {
   useStatePersistence();
   useAutoSave();
   useWorkspaceOpen();
+  useLaunchersBootstrap();
   useKeyboardShortcuts();
 
   const composerEnabled = usePreferencesStore((state) => state.composerEnabled);
