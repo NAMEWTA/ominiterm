@@ -29,6 +29,8 @@ export interface PtyCreateResult {
     requestedShell: string;
     actualShell: string;
   };
+  /** Resolved host shell executable used to spawn the PTY (main-process internal). */
+  resolvedShell?: string;
   startupFailure?: LauncherStartupFailure;
 }
 
@@ -87,6 +89,7 @@ export class PtyManager {
     return {
       ptyId: id,
       fallback: launch.fallback,
+      resolvedShell: launch.file,
     };
   }
 

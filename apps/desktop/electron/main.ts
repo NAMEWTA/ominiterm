@@ -17,8 +17,7 @@ import { SessionWatcher, type SessionType } from "./session-watcher";
 import { sendToWindow } from "./window-events";
 import { detectCli } from "./process-detector";
 import {
-  runMainLauncherCommand,
-  runStartupCommandSequence,
+  runLauncherStartupFlow,
 } from "./startup-command-sequencer";
 import {
   createDefaultComposerSubmitDeps,
@@ -239,7 +238,7 @@ function setupIpc() {
       launcherId?: string;
       launcherName?: string;
       launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
-      isResume?: boolean;
+      isResume: boolean;
     }): Promise<PtyCreateResult> => {
       dbg(`terminal:create shell=${options.shell ?? "(default)"} args=${JSON.stringify(options.args)} cwd=${options.cwd}`);
       const result = await ptyManager.create(options);
@@ -258,6 +257,10 @@ function setupIpc() {
       const shouldRunLauncherStartup =
         launcherSnapshot !== undefined && options.isResume !== true;
 
+      const startupShell =
+        result.fallback?.actualShell ??
+        (launcherSnapshot?.hostShell === "auto" ? result.resolvedShell : undefined);
+
       if (shouldRunLauncherStartup) {
         const terminalId = options.terminalId ?? `terminal-${result.ptyId}`;
         const launcherId = options.launcherId ?? "launcher";
@@ -265,24 +268,19 @@ function setupIpc() {
           sendToWindow(mainWindow, "launchers:startup-event", event);
         };
 
-        const startupResult = await runStartupCommandSequence({
+        const startupResult = await runLauncherStartupFlow({
           ptyManager,
           ptyId: result.ptyId,
           terminalId,
           launcherId,
           hostShell: launcherSnapshot.hostShell,
+          actualShell: startupShell,
           startupCommands: launcherSnapshot.startupCommands,
           emit: emitStartupEvent,
+          mainCommand: launcherSnapshot.mainCommand,
         });
 
-        if (startupResult.ok) {
-          runMainLauncherCommand({
-            ptyManager,
-            ptyId: result.ptyId,
-            hostShell: launcherSnapshot.hostShell,
-            mainCommand: launcherSnapshot.mainCommand,
-          });
-        } else {
+        if (!startupResult.ok) {
           result.startupFailure = {
             failedStepIndex: startupResult.failedStepIndex,
             stepLabel: startupResult.stepLabel,
@@ -300,7 +298,11 @@ function setupIpc() {
         }
       }
 
-      return result;
+      return {
+        ptyId: result.ptyId,
+        ...(result.fallback ? { fallback: result.fallback } : {}),
+        ...(result.startupFailure ? { startupFailure: result.startupFailure } : {}),
+      };
     },
   );
 

@@ -309,6 +309,8 @@ export function TerminalTile({
       return;
     }
 
+    let disposed = false;
+
     const initialTerminalType = terminal.type;
     const initialSessionId = terminal.sessionId;
     const initialPtyId = terminal.ptyId;
@@ -673,6 +675,13 @@ export function TerminalTile({
       void window.ominiterm.terminal
         .create(options)
         .then((result) => {
+          if (disposed) {
+            void window.ominiterm.terminal.destroy(result.ptyId).catch(() => {
+              // ignore cleanup errors after component unmount
+            });
+            return;
+          }
+
           const { ptyId, fallback } = result;
           updateTerminalPtyId(projectId, worktreeId, terminal.id, ptyId);
           updateTerminalStatus(projectId, worktreeId, terminal.id, "running");
@@ -692,6 +701,10 @@ export function TerminalTile({
           });
         })
         .catch((err) => {
+          if (disposed) {
+            return;
+          }
+
           const message = err instanceof Error ? err.message : String(err);
           notify("error", t.failed_create_pty(displayTitleRef.current, message));
           updateTerminalStatus(projectId, worktreeId, terminal.id, "error");
@@ -734,6 +747,7 @@ export function TerminalTile({
     };
 
     return () => {
+      disposed = true;
       cleanupRef.current?.();
       cleanupRef.current = null;
     };

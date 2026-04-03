@@ -43,6 +43,7 @@ interface StartupSequenceParams {
   terminalId: string;
   launcherId: string;
   hostShell: StartupHostShell;
+  actualShell?: string;
   startupCommands: LauncherCommandStep[];
   emit: (event: LauncherStartupEvent) => void;
 }
@@ -51,12 +52,56 @@ interface RunMainLauncherCommandParams {
   ptyManager: Pick<StartupPtyController, "write">;
   ptyId: number;
   hostShell: StartupHostShell;
+  actualShell?: string;
+  mainCommand: LauncherMainCommand;
+}
+
+interface RunLauncherStartupFlowParams extends StartupSequenceParams {
   mainCommand: LauncherMainCommand;
 }
 
 type ShellFamily = "cmd" | "pwsh" | "posix";
 
-function resolveShellFamily(hostShell: StartupHostShell): ShellFamily {
+function resolveShellFamilyFromExecutable(shellPath: string): ShellFamily | null {
+  const normalized = shellPath.replace(/\\/g, "/").toLowerCase();
+  const fileName = normalized.split("/").pop() ?? normalized;
+
+  if (fileName === "cmd" || fileName === "cmd.exe") {
+    return "cmd";
+  }
+
+  if (
+    fileName === "pwsh" ||
+    fileName === "pwsh.exe" ||
+    fileName === "powershell" ||
+    fileName === "powershell.exe"
+  ) {
+    return "pwsh";
+  }
+
+  if (
+    fileName.includes("bash") ||
+    fileName.includes("zsh") ||
+    fileName === "sh" ||
+    fileName.endsWith(".sh")
+  ) {
+    return "posix";
+  }
+
+  return null;
+}
+
+function resolveShellFamily(
+  hostShell: StartupHostShell,
+  actualShell?: string,
+): ShellFamily {
+  if (actualShell) {
+    const inferred = resolveShellFamilyFromExecutable(actualShell);
+    if (inferred) {
+      return inferred;
+    }
+  }
+
   if (hostShell === "cmd") {
     return "cmd";
   }
@@ -122,7 +167,7 @@ function wrapStepCommand(
   }
 
   if (shellFamily === "pwsh") {
-    return `${command}; $ominitermExit = $LASTEXITCODE; if ($null -eq $ominitermExit) { $ominitermExit = 0 }; Write-Output \"${marker}$ominitermExit\"`;
+    return `$global:LASTEXITCODE = 0; ${command}; $ominitermSuccess = $?; if ($ominitermSuccess) { $ominitermExit = $LASTEXITCODE; if ($null -eq $ominitermExit) { $ominitermExit = 0 } } else { $ominitermExit = $LASTEXITCODE; if ($null -eq $ominitermExit -or $ominitermExit -eq 0) { $ominitermExit = 1 } }; Write-Output \"${marker}$ominitermExit\"`;
   }
 
   return `${command}; __ominitermExit=$?; printf '${marker}%s\\n' \"$__ominitermExit\"`;
@@ -144,6 +189,7 @@ export async function runStartupCommandSequence({
   terminalId,
   launcherId,
   hostShell,
+  actualShell,
   startupCommands,
   emit,
 }: StartupSequenceParams): Promise<StartupSequenceResult> {
@@ -152,7 +198,7 @@ export async function runStartupCommandSequence({
     return { ok: true };
   }
 
-  const shellFamily = resolveShellFamily(hostShell);
+  const shellFamily = resolveShellFamily(hostShell, actualShell);
 
   for (let stepIndex = 0; stepIndex < totalSteps; stepIndex += 1) {
     const step = startupCommands[stepIndex];
@@ -228,6 +274,7 @@ export function runMainLauncherCommand({
   ptyManager,
   ptyId,
   hostShell,
+  actualShell,
   mainCommand,
 }: RunMainLauncherCommandParams): void {
   const command = mainCommand.command.trim();
@@ -235,7 +282,42 @@ export function runMainLauncherCommand({
     return;
   }
 
-  const shellFamily = resolveShellFamily(hostShell);
+  const shellFamily = resolveShellFamily(hostShell, actualShell);
   const commandLine = buildCommandLine(command, mainCommand.args, shellFamily);
   ptyManager.write(ptyId, `${commandLine}\r`);
+}
+
+export async function runLauncherStartupFlow({
+  ptyManager,
+  ptyId,
+  terminalId,
+  launcherId,
+  hostShell,
+  actualShell,
+  startupCommands,
+  emit,
+  mainCommand,
+}: RunLauncherStartupFlowParams): Promise<StartupSequenceResult> {
+  const startupResult = await runStartupCommandSequence({
+    ptyManager,
+    ptyId,
+    terminalId,
+    launcherId,
+    hostShell,
+    actualShell,
+    startupCommands,
+    emit,
+  });
+
+  if (startupResult.ok) {
+    runMainLauncherCommand({
+      ptyManager,
+      ptyId,
+      hostShell,
+      actualShell,
+      mainCommand,
+    });
+  }
+
+  return startupResult;
 }

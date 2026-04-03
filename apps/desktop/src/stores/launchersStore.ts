@@ -91,7 +91,7 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
   draft: null,
   lastStartupEvent: null,
   mainCommandArgsText: "",
-  loading: true,
+  loading: false,
   saving: false,
   error: null,
   validationErrors: {},
