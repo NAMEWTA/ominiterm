@@ -28,6 +28,7 @@ import { queryCloudUsage, queryCloudHeatmap, backfillHistory, flushSyncQueue, sy
 import type { ComposerSubmitRequest } from "../src/types";
 import { getProjectDiff } from "./git-diff";
 import { validateAgentCommand } from "./agent-command.js";
+import { registerLaunchersIpc } from "./launchers-ipc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -373,6 +374,8 @@ function setupIpc() {
   ipcMain.handle("project:rescan-worktrees", async (_event, dirPath: string) => {
     return await projectScanner.listWorktreesAsync(dirPath);
   });
+
+  registerLaunchersIpc(ipcMain);
 
   // Git file watcher IPC (Layer 1 of DiffCard refresh)
   ipcMain.handle("git:watch", (_event, worktreePath: string) => {

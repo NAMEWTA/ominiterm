@@ -247,6 +247,42 @@ export interface PtyCreateResult {
   };
 }
 
+export interface LauncherCommandStep {
+  label: string;
+  command: string;
+  timeoutMs: number;
+}
+
+export interface LauncherConfigItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+  hostShell: "auto" | "pwsh" | "bash" | "zsh" | "cmd";
+  mainCommand: {
+    command: string;
+    args: string[];
+  };
+  startupCommands: LauncherCommandStep[];
+  runPolicy: {
+    runOnNewSessionOnly: true;
+    onFailure: "stop";
+  };
+}
+
+export interface LauncherStartupEvent {
+  type: "step-start" | "step-success" | "step-failed";
+  terminalId: string;
+  launcherId: string;
+  stepIndex: number;
+  totalSteps: number;
+  stepLabel: string;
+  command: string;
+  exitCode?: number;
+  timeoutMs?: number;
+  stderrPreview?: string;
+  timestamp: number;
+}
+
 // Preload API types
 export interface OminiTermAPI {
   terminal: {
@@ -265,6 +301,14 @@ export interface OminiTermAPI {
     onOutput: (callback: (ptyId: number, data: string) => void) => () => void;
     onExit: (callback: (ptyId: number, exitCode: number) => void) => () => void;
     detectCli: (ptyId: number) => Promise<{ cliType: TerminalType; pid?: number; sessionName?: string } | null>;
+  };
+  launchers: {
+    get: (id: string) => Promise<LauncherConfigItem | null>;
+    list: () => Promise<LauncherConfigItem[]>;
+    save: (launcher: LauncherConfigItem) => Promise<LauncherConfigItem[]>;
+    delete: (id: string) => Promise<LauncherConfigItem[]>;
+    reorder: (ids: string[]) => Promise<LauncherConfigItem[]>;
+    onStartupEvent: (callback: (event: LauncherStartupEvent) => void) => () => void;
   };
   session: {
     getCodexLatest: () => Promise<string | null>;

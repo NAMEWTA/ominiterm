@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { LauncherConfigItem, LauncherStartupEvent } from "../src/types";
 
 contextBridge.exposeInMainWorld("ominiterm", {
   terminal: {
@@ -39,6 +40,27 @@ contextBridge.exposeInMainWorld("ominiterm", {
     },
     detectCli: (ptyId: number) =>
       ipcRenderer.invoke("terminal:detect-cli", ptyId),
+  },
+  launchers: {
+    get: (id: string) =>
+      ipcRenderer.invoke("launchers:get", id) as Promise<LauncherConfigItem | null>,
+    list: () =>
+      ipcRenderer.invoke("launchers:list") as Promise<LauncherConfigItem[]>,
+    save: (launcher: LauncherConfigItem) =>
+      ipcRenderer.invoke("launchers:save", launcher) as Promise<LauncherConfigItem[]>,
+    delete: (id: string) =>
+      ipcRenderer.invoke("launchers:delete", id) as Promise<LauncherConfigItem[]>,
+    reorder: (ids: string[]) =>
+      ipcRenderer.invoke("launchers:reorder", ids) as Promise<LauncherConfigItem[]>,
+    onStartupEvent: (callback: (event: LauncherStartupEvent) => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        event: LauncherStartupEvent,
+      ) => callback(event);
+      ipcRenderer.on("launchers:startup-event", listener);
+      return () =>
+        ipcRenderer.removeListener("launchers:startup-event", listener);
+    },
   },
   session: {
     getCodexLatest: () =>
