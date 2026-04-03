@@ -1,4 +1,7 @@
-import type { TerminalData } from "../types/index.ts";
+import type {
+  TerminalData,
+  TerminalLauncherConfigSnapshot,
+} from "../types/index.ts";
 import type { CliCommandConfig } from "../stores/preferencesStore.ts";
 import {
   getTerminalLaunchOptions,
@@ -11,6 +14,22 @@ export interface TerminalCreateRequest {
   args?: string[];
   terminalId?: string;
   theme?: "dark" | "light";
+  launcherId?: string;
+  launcherName?: string;
+  launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
+}
+
+function cloneLauncherConfigSnapshot(
+  snapshot: TerminalLauncherConfigSnapshot,
+): TerminalLauncherConfigSnapshot {
+  return {
+    hostShell: snapshot.hostShell,
+    mainCommand: {
+      command: snapshot.mainCommand.command,
+      args: [...snapshot.mainCommand.args],
+    },
+    startupCommands: snapshot.startupCommands.map((step) => ({ ...step })),
+  };
 }
 
 interface BuildRequestParams {
@@ -37,6 +56,15 @@ export function buildTerminalCreateRequest({
     cwd: worktreePath,
     terminalId: terminal.id,
     theme,
+    ...(terminal.launcherId ? { launcherId: terminal.launcherId } : {}),
+    ...(terminal.launcherName ? { launcherName: terminal.launcherName } : {}),
+    ...(terminal.launcherConfigSnapshot
+      ? {
+          launcherConfigSnapshot: cloneLauncherConfigSnapshot(
+            terminal.launcherConfigSnapshot,
+          ),
+        }
+      : {}),
   };
 
   if (!launch) {

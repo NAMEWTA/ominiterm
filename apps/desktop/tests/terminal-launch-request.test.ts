@@ -51,3 +51,40 @@ test("buildTerminalCreateRequest omits prompt args when resuming session", () =>
   assert.equal(request.shell, "codex");
   assert.deepEqual(request.args, ["resume", "session-1"]);
 });
+
+test("buildTerminalCreateRequest keeps launcher metadata in request", () => {
+  const terminal = makeTerminal({
+    type: "shell",
+    launcherId: "custom-launcher",
+    launcherName: "Custom Launcher",
+    launcherConfigSnapshot: {
+      hostShell: "pwsh",
+      mainCommand: {
+        command: "custom-cli",
+        args: ["--fast"],
+      },
+      startupCommands: [
+        {
+          label: "Prepare",
+          command: "echo prepare",
+          timeoutMs: 5000,
+        },
+      ],
+    },
+  });
+
+  const request = buildTerminalCreateRequest({
+    terminal,
+    worktreePath: "/repo",
+    theme: "dark",
+  });
+
+  assert.equal(request.launcherId, "custom-launcher");
+  assert.equal(request.launcherName, "Custom Launcher");
+  assert.equal(request.launcherConfigSnapshot?.hostShell, "pwsh");
+  assert.equal(
+    request.launcherConfigSnapshot?.mainCommand.command,
+    "custom-cli",
+  );
+  assert.deepEqual(request.launcherConfigSnapshot?.mainCommand.args, ["--fast"]);
+});

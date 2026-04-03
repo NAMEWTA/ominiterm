@@ -1,11 +1,13 @@
-import type { TerminalType } from "../types";
+import {
+  createLauncherOptions,
+  type LauncherOption,
+} from "../launchers/launcherOption.ts";
+import type { LauncherConfigItem } from "../types";
 
-export const CREATABLE_TERMINAL_TYPES: TerminalType[] = [
-  "shell",
-  "claude",
-  "codex",
-  "opencode",
-  "copilot",
-];
+export type ProjectBoardLauncherOption = LauncherOption;
 
-export const DEFAULT_CREATABLE_TERMINAL_TYPE: TerminalType = "shell";
+export function getProjectBoardLauncherOptions(
+  launchers: LauncherConfigItem[],
+): ProjectBoardLauncherOption[] {
+  return createLauncherOptions(launchers);
+}

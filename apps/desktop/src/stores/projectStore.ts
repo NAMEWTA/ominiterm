@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {
   ProjectData,
   TerminalData,
+  TerminalLauncherMeta,
   TerminalOrigin,
   TerminalStatus,
   TerminalType,
@@ -110,6 +111,21 @@ export function generateId(): string {
   return `${Date.now()}-${++idCounter}`;
 }
 
+function cloneLauncherConfigSnapshot(
+  meta: TerminalLauncherMeta,
+): TerminalLauncherMeta["launcherConfigSnapshot"] {
+  return {
+    hostShell: meta.launcherConfigSnapshot.hostShell,
+    mainCommand: {
+      command: meta.launcherConfigSnapshot.mainCommand.command,
+      args: [...meta.launcherConfigSnapshot.mainCommand.args],
+    },
+    startupCommands: meta.launcherConfigSnapshot.startupCommands.map((step) => ({
+      ...step,
+    })),
+  };
+}
+
 export function createTerminal(
   type: TerminalType = "shell",
   title?: string,
@@ -117,6 +133,7 @@ export function createTerminal(
   autoApprove?: boolean,
   origin: TerminalOrigin = "user",
   parentTerminalId?: string,
+  launcherMeta?: TerminalLauncherMeta,
 ): TerminalData {
   return {
     id: generateId(),
@@ -130,6 +147,13 @@ export function createTerminal(
     ...(initialPrompt ? { initialPrompt } : {}),
     ...(autoApprove ? { autoApprove } : {}),
     ...(parentTerminalId ? { parentTerminalId } : {}),
+    ...(launcherMeta
+      ? {
+          launcherId: launcherMeta.launcherId,
+          launcherName: launcherMeta.launcherName,
+          launcherConfigSnapshot: cloneLauncherConfigSnapshot(launcherMeta),
+        }
+      : {}),
   };
 }
 

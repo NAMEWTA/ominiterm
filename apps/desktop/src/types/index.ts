@@ -78,6 +78,21 @@ export interface ComposerSubmitResult {
 
 export type TerminalOrigin = "user" | "agent";
 
+export interface TerminalLauncherConfigSnapshot {
+  hostShell: LauncherConfigItem["hostShell"];
+  mainCommand: {
+    command: string;
+    args: string[];
+  };
+  startupCommands: LauncherCommandStep[];
+}
+
+export interface TerminalLauncherMeta {
+  launcherId: string;
+  launcherName: string;
+  launcherConfigSnapshot: TerminalLauncherConfigSnapshot;
+}
+
 export interface TerminalData {
   id: string;
   title: string;
@@ -95,6 +110,9 @@ export interface TerminalData {
   sessionId?: string;
   initialPrompt?: string;
   autoApprove?: boolean;
+  launcherId?: string;
+  launcherName?: string;
+  launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
 }
 
 export interface WorktreeData {
@@ -292,6 +310,9 @@ export interface OminiTermAPI {
       args?: string[];
       terminalId?: string;
       theme?: "dark" | "light";
+      launcherId?: string;
+      launcherName?: string;
+      launcherConfigSnapshot?: TerminalLauncherConfigSnapshot;
     }) => Promise<PtyCreateResult>;
     destroy: (ptyId: number) => Promise<void>;
     getPid: (ptyId: number) => Promise<number | null>;

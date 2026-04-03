@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import type { ProjectData, TerminalType, WorktreeData, SplitDirection } from "../types";
+import type {
+  ProjectData,
+  SplitDirection,
+  WorktreeData,
+} from "../types";
 import { useT } from "../i18n/useT";
 import { createTerminalInWorktree } from "../projectCommands";
 import { TerminalTile } from "../terminal/TerminalTile";
 import { SplitPane } from "./SplitPane";
 import { useSplitLayoutStore } from "../stores/splitLayoutStore";
 import {
-  CREATABLE_TERMINAL_TYPES,
-  DEFAULT_CREATABLE_TERMINAL_TYPE,
+  getProjectBoardLauncherOptions,
+  type ProjectBoardLauncherOption,
 } from "./projectBoardOptions";
-import { generateId, createTerminal } from "../stores/projectStore";
+import { createTerminal } from "../stores/projectStore";
 import { useProjectStore } from "../stores/projectStore";
+import { useLaunchersStore } from "../stores/launchersStore";
 
 interface Props {
   project: ProjectData | null;
@@ -44,12 +49,38 @@ export function ProjectBoard({
   const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedWorktreeId, setSelectedWorktreeId] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<TerminalType>(
-    DEFAULT_CREATABLE_TERMINAL_TYPE,
-  );
+  const [selectedLauncherId, setSelectedLauncherId] = useState<string | null>(null);
 
   const { getLayout, syncWithTerminals, splitPane, updateRatio } = useSplitLayoutStore();
   const { addTerminal: addTerminalToProject } = useProjectStore();
+  const launchers = useLaunchersStore((state) => state.launchers);
+  const loadLaunchers = useLaunchersStore((state) => state.load);
+
+  useEffect(() => {
+    void loadLaunchers();
+  }, [loadLaunchers]);
+
+  const launcherOptions = useMemo(
+    () => getProjectBoardLauncherOptions(launchers),
+    [launchers],
+  );
+
+  useEffect(() => {
+    if (launcherOptions.length === 0) {
+      setSelectedLauncherId(null);
+      return;
+    }
+
+    setSelectedLauncherId((current) => {
+      if (
+        current &&
+        launcherOptions.some((option) => option.launcherId === current)
+      ) {
+        return current;
+      }
+      return launcherOptions[0].launcherId;
+    });
+  }, [launcherOptions]);
 
   useEffect(() => {
     if (!project) {
@@ -100,19 +131,31 @@ export function ProjectBoard({
 
   // Handle split operation
   const handleSplit = useCallback(
-    (terminalId: string, direction: SplitDirection, type: TerminalType) => {
+    (
+      terminalId: string,
+      direction: SplitDirection,
+      launcherOption: ProjectBoardLauncherOption,
+    ) => {
       if (!project) return;
-      
+
       // Find the worktree for this terminal
       const item = terminalMap.get(terminalId);
       if (!item) return;
-      
+
       // Create a new terminal with the selected type
-      const newTerminal = createTerminal(type);
-      
+      const newTerminal = createTerminal(
+        launcherOption.terminalType,
+        undefined,
+        undefined,
+        undefined,
+        "user",
+        undefined,
+        launcherOption.launcherMeta,
+      );
+
       // Add the new terminal to the project store
       addTerminalToProject(project.id, item.worktree.id, newTerminal);
-      
+
       // Split the layout at the specified terminal
       splitPane(project.id, terminalId, direction, newTerminal.id);
     },
@@ -124,10 +167,10 @@ export function ProjectBoard({
     (terminalId: string) => {
       const item = terminalMap.get(terminalId);
       if (!item) return null;
-      
+
       const terminal = item.worktree.terminals.find((t) => t.id === terminalId);
       if (!terminal) return null;
-      
+
       return (
         <TerminalTile
           key={terminal.id}
@@ -137,13 +180,18 @@ export function ProjectBoard({
           worktreePath={item.worktree.path}
           terminal={terminal}
           mode="board"
+          launcherOptions={launcherOptions}
           onOpenDetail={() => onOpenDetail(terminal.id)}
-          onSplitHorizontal={(type) => handleSplit(terminal.id, "horizontal", type)}
-          onSplitVertical={(type) => handleSplit(terminal.id, "vertical", type)}
+          onSplitHorizontal={(launcherOption) =>
+            handleSplit(terminal.id, "horizontal", launcherOption)
+          }
+          onSplitVertical={(launcherOption) =>
+            handleSplit(terminal.id, "vertical", launcherOption)
+          }
         />
       );
     },
-    [project, terminalMap, onOpenDetail, handleSplit],
+    [project, terminalMap, launcherOptions, onOpenDetail, handleSplit],
   );
 
   if (!project) {
@@ -163,6 +211,8 @@ export function ProjectBoard({
 
   const selectedWorktree =
     project.worktrees.find((worktree) => worktree.id === selectedWorktreeId) ?? null;
+  const selectedLauncher =
+    launcherOptions.find((option) => option.launcherId === selectedLauncherId) ?? null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -196,34 +246,50 @@ export function ProjectBoard({
             </select>
             <select
               className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[12px] text-[var(--text-primary)] outline-none"
-              value={selectedType}
+              value={selectedLauncherId ?? ""}
+              disabled={launcherOptions.length === 0}
               onChange={(event) => {
-                setSelectedType(event.target.value as TerminalType);
+                setSelectedLauncherId(event.target.value);
               }}
             >
-              {CREATABLE_TERMINAL_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
+              {launcherOptions.length === 0 ? (
+                <option value="" disabled>
+                  {t.launcher_empty}
                 </option>
-              ))}
+              ) : (
+                launcherOptions.map((option) => (
+                  <option key={option.launcherId} value={option.launcherId}>
+                    {option.label}
+                  </option>
+                ))
+              )}
             </select>
             <button
               className="rounded-lg bg-[var(--accent)] px-3 py-2 text-[12px] font-medium text-white transition-all duration-150 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!selectedWorktree}
+              disabled={!selectedWorktree || !selectedLauncher}
               onClick={() => {
-                if (!selectedWorktree) {
+                if (!selectedWorktree || !selectedLauncher) {
                   return;
                 }
 
                 createTerminalInWorktree(
                   project.id,
                   selectedWorktree.id,
-                  selectedType,
+                  selectedLauncher.terminalType,
+                  undefined,
+                  undefined,
+                  undefined,
+                  selectedLauncher.launcherMeta,
                 );
               }}
             >
               {t.new_terminal}
             </button>
+            {launcherOptions.length === 0 && (
+              <span className="text-[11px] text-[var(--text-muted)]">
+                {t.launcher_empty}
+              </span>
+            )}
           </div>
         </div>
       </div>

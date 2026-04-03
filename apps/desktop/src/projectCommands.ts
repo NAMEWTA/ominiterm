@@ -1,4 +1,9 @@
-import type { ProjectData, TerminalType, WorktreeData } from "./types/index.ts";
+import type {
+  ProjectData,
+  TerminalLauncherMeta,
+  TerminalType,
+  WorktreeData,
+} from "./types/index.ts";
 import type { useT } from "./i18n/useT.ts";
 import { createTerminal, generateId, useProjectStore } from "./stores/projectStore.ts";
 import { useNotificationStore } from "./stores/notificationStore.ts";
@@ -100,6 +105,7 @@ export function createTerminalInWorktree(
   title?: string,
   initialPrompt?: string,
   autoApprove?: boolean,
+  launcherMeta?: TerminalLauncherMeta,
 ) {
   const terminal = createTerminal(
     type,
@@ -107,6 +113,8 @@ export function createTerminalInWorktree(
     initialPrompt,
     autoApprove,
     "user",
+    undefined,
+    launcherMeta,
   );
   useProjectStore.getState().addTerminal(projectId, worktreeId, terminal);
   useProjectStore.getState().setFocusedTerminal(terminal.id);

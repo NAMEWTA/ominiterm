@@ -3,7 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { ImageAddon } from "@xterm/addon-image";
-import type { TerminalData, TerminalType } from "../types";
+import type { TerminalData } from "../types";
 import { useProjectStore } from "../stores/projectStore";
 import { useNotificationStore } from "../stores/notificationStore";
 import { registerTerminal, unregisterTerminal } from "./terminalRegistry";
@@ -25,9 +25,7 @@ import {
   touch as touchWebGL,
 } from "./webglContextPool";
 import { buildTerminalCreateRequest } from "./terminalLaunchRequest";
-import {
-  CREATABLE_TERMINAL_TYPES,
-} from "../components/projectBoardOptions";
+import type { LauncherOption } from "../launchers/launcherOption";
 
 type TerminalTileMode = "board" | "detail";
 
@@ -42,8 +40,9 @@ interface Props {
   boardMinHeight?: number;
   onOpenDetail?: () => void;
   onBack?: () => void;
-  onSplitHorizontal?: (type: TerminalType) => void;
-  onSplitVertical?: (type: TerminalType) => void;
+  launcherOptions?: LauncherOption[];
+  onSplitHorizontal?: (option: LauncherOption) => void;
+  onSplitVertical?: (option: LauncherOption) => void;
 }
 
 const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
@@ -63,10 +62,14 @@ const SESSION_CAPTURE_TYPES = new Set(["claude", "codex", "kimi"]);
 // Split menu button component with dropdown for terminal type selection
 function SplitMenuButton({
   direction,
+  launcherOptions,
+  emptyLabel,
   onSelect,
 }: {
   direction: "horizontal" | "vertical";
-  onSelect?: (type: TerminalType) => void;
+  launcherOptions: LauncherOption[];
+  emptyLabel: string;
+  onSelect?: (option: LauncherOption) => void;
 }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -109,23 +112,36 @@ function SplitMenuButton({
       </button>
       {open && (
         <div className="absolute right-0 top-full z-50 mt-1 min-w-[100px] rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] py-1 shadow-lg">
-          {CREATABLE_TERMINAL_TYPES.map((type) => (
-            <button
-              key={type}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--border)]"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpen(false);
-                onSelect?.(type);
-              }}
-            >
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: TYPE_CONFIG[type]?.color || "#888" }}
-              />
-              {TYPE_CONFIG[type]?.label || type}
-            </button>
-          ))}
+          {launcherOptions.length === 0 ? (
+            <div className="px-3 py-1.5 text-sm text-[var(--text-muted)]">
+              {emptyLabel}
+            </div>
+          ) : (
+            launcherOptions.map((option) => {
+              const config = TYPE_CONFIG[option.terminalType] ?? {
+                color: "#888",
+                label: option.label,
+              };
+
+              return (
+                <button
+                  key={option.launcherId}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--border)]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    onSelect?.(option);
+                  }}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: config.color }}
+                  />
+                  {option.label || config.label}
+                </button>
+              );
+            })
+          )}
         </div>
       )}
     </div>
@@ -198,6 +214,7 @@ export function TerminalTile({
   boardMinHeight,
   onOpenDetail,
   onBack,
+  launcherOptions = [],
   onSplitHorizontal,
   onSplitVertical,
 }: Props) {
@@ -935,10 +952,14 @@ export function TerminalTile({
           <>
             <SplitMenuButton
               direction="horizontal"
+              launcherOptions={launcherOptions}
+              emptyLabel={t.launcher_empty}
               onSelect={onSplitHorizontal}
             />
             <SplitMenuButton
               direction="vertical"
+              launcherOptions={launcherOptions}
+              emptyLabel={t.launcher_empty}
               onSelect={onSplitVertical}
             />
             <button
