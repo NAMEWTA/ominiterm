@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { LauncherConfigItem } from "../src/types/index.ts";
 
 import {
   registerWindowKeydownListener,
   registerWindowKeyupListener,
 } from "../src/shortcuts/listeners.ts";
+import { getShortcutDefaultLauncherOption } from "../src/hooks/defaultLauncherOption.ts";
 
 type KeyListener = (event: FakeKeyboardEvent) => void;
 
@@ -66,6 +68,27 @@ class FakeWindowTarget {
   }
 }
 
+function makeLauncher(
+  id: string,
+  overrides: Partial<LauncherConfigItem> = {},
+): LauncherConfigItem {
+  return {
+    id,
+    name: overrides.name ?? id,
+    enabled: overrides.enabled ?? true,
+    hostShell: overrides.hostShell ?? "auto",
+    mainCommand: overrides.mainCommand ?? {
+      command: id,
+      args: [],
+    },
+    startupCommands: overrides.startupCommands ?? [],
+    runPolicy: overrides.runPolicy ?? {
+      runOnNewSessionOnly: true,
+      onFailure: "stop",
+    },
+  };
+}
+
 test("keydown shortcut listeners run before terminal bubble handlers stop propagation", () => {
   const fakeWindow = new FakeWindowTarget();
   const calls: string[] = [];
@@ -106,4 +129,49 @@ test("keyup shortcut listeners also register in capture phase", () => {
   dispose();
 
   assert.deepEqual(calls, ["app", "terminal"]);
+});
+
+test("shortcut default launcher option picks the first enabled launcher", () => {
+  const option = getShortcutDefaultLauncherOption([
+    makeLauncher("disabled", { enabled: false }),
+    makeLauncher("custom-launcher", {
+      name: "Custom Launcher",
+      hostShell: "pwsh",
+      mainCommand: {
+        command: "custom-cli",
+        args: ["--fast"],
+      },
+      startupCommands: [
+        {
+          label: "Prepare",
+          command: "echo prepare",
+          timeoutMs: 5000,
+        },
+      ],
+    }),
+    makeLauncher("claude"),
+  ]);
+
+  assert.equal(option?.launcherId, "custom-launcher");
+  assert.equal(option?.terminalType, "shell");
+  assert.equal(option?.launcherMeta.launcherId, "custom-launcher");
+  assert.equal(option?.launcherMeta.launcherName, "Custom Launcher");
+  assert.equal(option?.launcherMeta.launcherConfigSnapshot.hostShell, "pwsh");
+  assert.equal(
+    option?.launcherMeta.launcherConfigSnapshot.mainCommand.command,
+    "custom-cli",
+  );
+  assert.deepEqual(
+    option?.launcherMeta.launcherConfigSnapshot.mainCommand.args,
+    ["--fast"],
+  );
+});
+
+test("shortcut default launcher option returns null when no launcher is enabled", () => {
+  const option = getShortcutDefaultLauncherOption([
+    makeLauncher("disabled-1", { enabled: false }),
+    makeLauncher("disabled-2", { enabled: false }),
+  ]);
+
+  assert.equal(option, null);
 });

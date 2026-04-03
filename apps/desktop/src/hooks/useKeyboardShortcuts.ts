@@ -17,6 +17,8 @@ import {
   createTerminalInWorktree,
   openWorkspaceFromDialog,
 } from "../projectCommands";
+import { useLaunchersStore } from "../stores/launchersStore";
+import { getShortcutDefaultLauncherOption } from "./defaultLauncherOption";
 
 export function useKeyboardShortcuts() {
   const shortcuts = useShortcutStore((state) => state.bindings);
@@ -74,6 +76,21 @@ export function useKeyboardShortcuts() {
         }
         const worktree = chooseDefaultWorktree(project, focusedWorktreeId);
         if (!worktree) {
+          return;
+        }
+        const launcherOption = getShortcutDefaultLauncherOption(
+          useLaunchersStore.getState().launchers,
+        );
+        if (launcherOption) {
+          createTerminalInWorktree(
+            project.id,
+            worktree.id,
+            launcherOption.terminalType,
+            undefined,
+            undefined,
+            undefined,
+            launcherOption.launcherMeta,
+          );
           return;
         }
         createTerminalInWorktree(project.id, worktree.id, "shell");
