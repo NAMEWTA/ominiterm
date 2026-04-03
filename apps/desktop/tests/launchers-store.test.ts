@@ -138,6 +138,45 @@ test("saveDraft blocks renaming when target launcher id already exists", async (
   );
 });
 
+test("saveDraft blocks creating a new launcher when id already exists", async () => {
+  resetLaunchersStore();
+
+  const alpha = createValidLauncherDraft();
+  alpha.id = "alpha";
+  alpha.name = "Alpha";
+
+  const saveCalls: LauncherConfigItem[] = [];
+
+  await withLaunchersApi(
+    {
+      save: async (launcher) => {
+        saveCalls.push(launcher);
+        return [launcher];
+      },
+    },
+    async () => {
+      useLaunchersStore.setState({
+        launchers: [alpha],
+        selectedLauncherId: null,
+        draft: {
+          ...alpha,
+          id: " alpha ",
+        },
+        mainCommandArgsText: "-l",
+        error: null,
+        validationErrors: {},
+      });
+
+      const ok = await useLaunchersStore.getState().saveDraft();
+
+      assert.equal(ok, false);
+      assert.match(useLaunchersStore.getState().error ?? "", /already exists/i);
+      assert.equal(useLaunchersStore.getState().saving, false);
+      assert.deepEqual(saveCalls, []);
+    },
+  );
+});
+
 test("consumeStartupEvent stores failed event and triggers warning notification", () => {
   resetLaunchersStore();
 
@@ -181,4 +220,21 @@ test("consumeStartupEvent stores failed event and triggers warning notification"
       dismiss: originalDismiss,
     });
   }
+});
+
+test("store exposes createDraftForNewLauncher for empty launcher list", () => {
+  resetLaunchersStore();
+
+  const store = useLaunchersStore.getState() as unknown as {
+    createDraftForNewLauncher?: () => void;
+  };
+
+  assert.equal(typeof store.createDraftForNewLauncher, "function");
+  store.createDraftForNewLauncher?.();
+
+  const draft = useLaunchersStore.getState().draft;
+  assert.notEqual(draft, null);
+  assert.equal(draft?.id, "launcher-1");
+  assert.equal(draft?.name, "Launcher 1");
+  assert.equal(useLaunchersStore.getState().selectedLauncherId, null);
 });

@@ -24,6 +24,9 @@ export function LauncherSettingsTab() {
   const error = useLaunchersStore((state) => state.error);
   const validationErrors = useLaunchersStore((state) => state.validationErrors);
   const load = useLaunchersStore((state) => state.load);
+  const createDraftForNewLauncher = useLaunchersStore(
+    (state) => state.createDraftForNewLauncher,
+  );
   const selectLauncher = useLaunchersStore((state) => state.selectLauncher);
   const updateDraftName = useLaunchersStore((state) => state.updateDraftName);
   const updateDraftId = useLaunchersStore((state) => state.updateDraftId);
@@ -48,8 +51,17 @@ export function LauncherSettingsTab() {
   return (
     <div className="flex gap-4 min-h-[320px]">
       <div className="w-52 shrink-0 rounded-md border border-[var(--border)] bg-[var(--surface)] p-1">
-        <div className="px-2 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">
-          {t.settings_launchers}
+        <div className="flex items-center justify-between gap-2 px-2 py-1">
+          <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">
+            {t.settings_launchers}
+          </div>
+          <button
+            className="rounded-md bg-[var(--surface-hover)] px-2 py-0.5 text-[11px] text-[var(--text-secondary)] transition-colors duration-150 hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => createDraftForNewLauncher()}
+            disabled={loading || saving}
+          >
+            {t.add}
+          </button>
         </div>
         <div className="max-h-[360px] overflow-y-auto">
           {loading && (

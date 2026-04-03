@@ -27,6 +27,31 @@ function cloneLauncher(launcher: LauncherConfigItem): LauncherConfigItem {
   };
 }
 
+function createDefaultLauncherDraft(
+  existingLaunchers: LauncherConfigItem[],
+): LauncherConfigItem {
+  let suffix = 1;
+  while (existingLaunchers.some((launcher) => launcher.id === `launcher-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return {
+    id: `launcher-${suffix}`,
+    name: `Launcher ${suffix}`,
+    enabled: true,
+    hostShell: "auto",
+    mainCommand: {
+      command: "bash",
+      args: ["-l"],
+    },
+    startupCommands: [],
+    runPolicy: {
+      runOnNewSessionOnly: true,
+      onFailure: "stop",
+    },
+  };
+}
+
 export function formatArgsForText(args: string[]): string {
   return args.join("\n");
 }
@@ -74,6 +99,7 @@ interface LaunchersStore {
   validationErrors: LauncherDraftValidationErrors;
   consumeStartupEvent: (event: LauncherStartupEvent) => void;
   load: () => Promise<void>;
+  createDraftForNewLauncher: () => void;
   selectLauncher: (launcherId: string) => void;
   updateDraftName: (name: string) => void;
   updateDraftId: (id: string) => void;
@@ -140,6 +166,17 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
         error: error instanceof Error ? error.message : String(error),
       });
     }
+  },
+
+  createDraftForNewLauncher: () => {
+    const defaultDraft = createDefaultLauncherDraft(get().launchers);
+    set({
+      selectedLauncherId: null,
+      draft: defaultDraft,
+      mainCommandArgsText: formatArgsForText(defaultDraft.mainCommand.args),
+      validationErrors: {},
+      error: null,
+    });
   },
 
   selectLauncher: (launcherId) => {
@@ -280,10 +317,11 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
       },
     };
 
-    const hasIdCollision =
-      sourceId !== null &&
-      sourceId !== normalizedDraft.id &&
-      get().launchers.some((launcher) => launcher.id === normalizedDraft.id);
+    const hasIdCollision = get().launchers.some(
+      (launcher) =>
+        launcher.id === normalizedDraft.id &&
+        (sourceId === null || launcher.id !== sourceId),
+    );
     if (hasIdCollision) {
       set({
         error: "Launcher ID already exists.",
