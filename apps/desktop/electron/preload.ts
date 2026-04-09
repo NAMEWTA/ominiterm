@@ -150,15 +150,6 @@ contextBridge.exposeInMainWorld("ominiterm", {
     load: () => ipcRenderer.invoke("state:load"),
     save: (state: unknown) => ipcRenderer.invoke("state:save", state),
   },
-  workspace: {
-    save: (data: string) =>
-      ipcRenderer.invoke("workspace:save", data) as Promise<string | null>,
-    open: () => ipcRenderer.invoke("workspace:open") as Promise<string | null>,
-    saveToPath: (filePath: string, data: string) =>
-      ipcRenderer.invoke("workspace:save-to-path", filePath, data) as Promise<void>,
-    setTitle: (title: string) =>
-      ipcRenderer.invoke("workspace:set-title", title) as Promise<void>,
-  },
   fs: {
     listDir: (dirPath: string) =>
       ipcRenderer.invoke("fs:list-dir", dirPath) as Promise<
@@ -246,6 +237,8 @@ contextBridge.exposeInMainWorld("ominiterm", {
   },
   app: {
     platform: process.platform as "darwin" | "win32" | "linux",
+    setTitle: (title: string) =>
+      ipcRenderer.invoke("app:set-title", title) as Promise<void>,
     onBeforeClose: (callback: () => void) => {
       const listener = () => callback();
       ipcRenderer.on("app:before-close", listener);

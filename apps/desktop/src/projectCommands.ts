@@ -57,32 +57,6 @@ export async function addProjectFromDialog(t: T) {
   notify("info", t.info_added_project(info.name, info.worktrees.length));
 }
 
-export async function openWorkspaceFromDialog(t: T) {
-  if (!window.ominiterm) {
-    return;
-  }
-
-  const { notify } = useNotificationStore.getState();
-
-  let workspaceRaw: string | null;
-  try {
-    workspaceRaw = await window.ominiterm.workspace.open();
-  } catch (err) {
-    notify("error", t.open_workspace_error(err));
-    return;
-  }
-
-  if (!workspaceRaw) {
-    return;
-  }
-
-  window.dispatchEvent(
-    new CustomEvent<string>("ominiterm:open-workspace", {
-      detail: workspaceRaw,
-    }),
-  );
-}
-
 export function chooseDefaultWorktree(
   project: ProjectData,
   focusedWorktreeId: string | null,

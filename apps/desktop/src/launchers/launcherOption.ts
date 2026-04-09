@@ -35,10 +35,6 @@ export function createLauncherConfigSnapshot(
 ): TerminalLauncherConfigSnapshot {
   return {
     hostShell: launcher.hostShell,
-    mainCommand: {
-      command: launcher.mainCommand.command,
-      args: [...launcher.mainCommand.args],
-    },
     startupCommands: launcher.startupCommands.map((step) => ({ ...step })),
   };
 }

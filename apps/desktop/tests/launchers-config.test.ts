@@ -23,10 +23,6 @@ function createValidConfig(): LaunchersConfigFile {
         name: "Codex",
         enabled: true,
         hostShell: "auto",
-        mainCommand: {
-          command: "codex",
-          args: [],
-        },
         startupCommands: [
           {
             label: "sync deps",
@@ -178,33 +174,38 @@ test("saveLaunchersConfig rejects non-fixed runPolicy", () => {
   });
 });
 
-test("saveLaunchersConfig rejects empty main and empty startup commands", () => {
+test("saveLaunchersConfig rejects empty startup commands", () => {
   withTempRoot((root) => {
     const filePath = path.join(root, "launchers.json");
     const config = createValidConfig();
 
-    config.launchers[0].mainCommand.command = "";
     config.launchers[0].startupCommands = [];
 
     assert.throws(
       () => saveLaunchersConfig(filePath, config),
-      /at least one command/i,
+      /at least one startup command/i,
     );
   });
 });
 
-test("saveLaunchersConfig allows empty main command when startup commands exist", () => {
+test("loadLaunchersConfig migrates legacy mainCommand into startupCommands", () => {
   withTempRoot((root) => {
     const filePath = path.join(root, "launchers.json");
-    const config = createValidConfig();
+    const config = createValidConfig() as unknown as {
+      launchers: Array<Record<string, unknown>>;
+    };
 
-    config.launchers[0].mainCommand.command = "";
+    config.launchers[0].startupCommands = [];
+    config.launchers[0].mainCommand = {
+      command: "codex",
+      args: ["--fast"],
+    };
 
-    saveLaunchersConfig(filePath, config);
+    fs.writeFileSync(filePath, JSON.stringify(config, null, 2), "utf-8");
 
     const loaded = loadLaunchersConfig(filePath);
-    assert.equal(loaded.launchers[0].mainCommand.command, "");
     assert.equal(loaded.launchers[0].startupCommands.length, 1);
+    assert.match(loaded.launchers[0].startupCommands[0].command, /codex/i);
   });
 });
 

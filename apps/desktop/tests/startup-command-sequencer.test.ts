@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import {
   LauncherStartupCancelledError,
   runLauncherStartupFlow,
-  runMainLauncherCommand,
   runStartupCommandSequence,
 } from "../electron/startup-command-sequencer.ts";
 import type { LauncherStartupEvent } from "../src/types/index.ts";
@@ -108,7 +107,7 @@ test("runStartupCommandSequence emits ordered startup events", async () => {
   assert.equal(events[3].timeoutMs, 2000);
 });
 
-test("runLauncherStartupFlow runs main launcher command only after startup success", async () => {
+test("runLauncherStartupFlow runs final command only after startup success", async () => {
   const failureManager = new FakePtyManager([
     { ok: false, timeout: false, exitCode: 2 },
   ]);
@@ -118,19 +117,16 @@ test("runLauncherStartupFlow runs main launcher command only after startup succe
     terminalId: "terminal-failure",
     launcherId: "custom-launcher",
     hostShell: "bash",
-    startupCommands: [STARTUP_STEPS[0]],
+    startupCommands: [STARTUP_STEPS[0], STARTUP_STEPS[1]],
     emit: () => {},
-    mainCommand: {
-      command: "codex",
-      args: ["--fast"],
-    },
   });
 
   assert.equal(failureResult.ok, false);
   assert.equal(
-    failureManager.writes.some((write) => write.includes("codex")),
+    failureManager.writes.some((write) => write === `${STARTUP_STEPS[1].command}\r`),
     false,
   );
+  assert.equal(failureManager.writes.length, 1);
 
   const successManager = new FakePtyManager([
     { ok: true, timeout: false, exitCode: 0 },
@@ -141,19 +137,17 @@ test("runLauncherStartupFlow runs main launcher command only after startup succe
     terminalId: "terminal-success",
     launcherId: "custom-launcher",
     hostShell: "pwsh",
-    startupCommands: [STARTUP_STEPS[0]],
+    startupCommands: [STARTUP_STEPS[0], STARTUP_STEPS[1]],
     emit: () => {},
-    mainCommand: {
-      command: "codex",
-      args: ["--fast"],
-    },
   });
 
   assert.equal(successResult.ok, true);
   assert.equal(
-    successManager.writes.some((write) => write.includes("codex")),
+    successManager.writes.some((write) => write.includes("echo prepare")),
     true,
   );
+  assert.equal(successManager.writes.length, 2);
+  assert.equal(successManager.writes[1], `${STARTUP_STEPS[1].command}\r`);
 });
 
 test("runStartupCommandSequence throws cancellation error when step wait is cancelled", async () => {
@@ -193,10 +187,6 @@ test("runLauncherStartupFlow exits early when signal is already aborted", async 
         hostShell: "pwsh",
         startupCommands: [STARTUP_STEPS[0]],
         emit: () => {},
-        mainCommand: {
-          command: "codex",
-          args: ["--fast"],
-        },
         signal: controller.signal,
       }),
     (error: unknown) => error instanceof LauncherStartupCancelledError,
@@ -225,24 +215,6 @@ test("runStartupCommandSequence uses fallback actual shell family for wrapped st
   assert.equal(ptyManager.writes[0].includes("__ominitermExit"), false);
 });
 
-test("runMainLauncherCommand uses fallback actual shell family", () => {
-  const ptyManager = new FakePtyManager([]);
-
-  runMainLauncherCommand({
-    ptyManager,
-    ptyId: 12,
-    hostShell: "bash",
-    actualShell: "C:\\Windows\\System32\\cmd.exe",
-    mainCommand: {
-      command: "echo",
-      args: ["hello world"],
-    },
-  });
-
-  assert.equal(ptyManager.writes.length, 1);
-  assert.equal(ptyManager.writes[0], 'echo "hello world"\r');
-});
-
 test("runStartupCommandSequence PowerShell wrapper handles null LASTEXITCODE", async () => {
   const ptyManager = new FakePtyManager([
     { ok: true, timeout: false, exitCode: 0 },
@@ -268,42 +240,7 @@ test("runStartupCommandSequence PowerShell wrapper handles null LASTEXITCODE", a
   );
 });
 
-test("runMainLauncherCommand uses resolved shell when host shell is auto", () => {
-  const ptyManager = new FakePtyManager([]);
-
-  runMainLauncherCommand({
-    ptyManager,
-    ptyId: 15,
-    hostShell: "auto",
-    actualShell: "C:\\Windows\\System32\\cmd.exe",
-    mainCommand: {
-      command: "echo",
-      args: ["auto shell"],
-    },
-  });
-
-  assert.equal(ptyManager.writes.length, 1);
-  assert.equal(ptyManager.writes[0], 'echo "auto shell"\r');
-});
-
-test("runMainLauncherCommand keeps explicit host shell behavior when no fallback is present", () => {
-  const ptyManager = new FakePtyManager([]);
-
-  runMainLauncherCommand({
-    ptyManager,
-    ptyId: 14,
-    hostShell: "bash",
-    mainCommand: {
-      command: "codex",
-      args: ["--fast"],
-    },
-  });
-
-  assert.equal(ptyManager.writes.length, 1);
-  assert.equal(ptyManager.writes[0], "'codex' '--fast'\r");
-});
-
-test("runLauncherStartupFlow uses command group only mode when main command is empty", async () => {
+test("runLauncherStartupFlow runs command group in order", async () => {
   const ptyManager = new FakePtyManager([
     { ok: true, timeout: false, exitCode: 0 },
   ]);
@@ -327,10 +264,6 @@ test("runLauncherStartupFlow uses command group only mode when main command is e
       },
     ],
     emit: () => {},
-    mainCommand: {
-      command: "   ",
-      args: [],
-    },
   });
 
   assert.equal(result.ok, true);

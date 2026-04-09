@@ -14,11 +14,13 @@ function createValidLauncherDraft(): LauncherConfigItem {
     name: "Shell",
     enabled: true,
     hostShell: "auto",
-    mainCommand: {
-      command: "bash",
-      args: ["-l"],
-    },
-    startupCommands: [],
+    startupCommands: [
+      {
+        label: "Entry",
+        command: "bash -l",
+        timeoutMs: 120000,
+      },
+    ],
     runPolicy: {
       runOnNewSessionOnly: true,
       onFailure: "stop",
@@ -32,7 +34,6 @@ function resetLaunchersStore() {
     selectedLauncherId: null,
     draft: null,
     lastStartupEvent: null,
-    mainCommandArgsText: "",
     loading: false,
     saving: false,
     error: null,
@@ -79,9 +80,8 @@ test("validateDraft fails when name is empty", () => {
   assert.equal(result.errors.name, "required");
 });
 
-test("validateDraft allows empty main command when startup commands exist", () => {
+test("validateDraft succeeds when startup commands exist", () => {
   const draft = createValidLauncherDraft();
-  draft.mainCommand.command = "   ";
   draft.startupCommands = [
     {
       label: "Step 1",
@@ -96,9 +96,8 @@ test("validateDraft allows empty main command when startup commands exist", () =
   assert.deepEqual(result.errors, {});
 });
 
-test("validateDraft fails when both main command and startup commands are empty", () => {
+test("validateDraft fails when startup commands are empty", () => {
   const draft = createValidLauncherDraft();
-  draft.mainCommand.command = "   ";
   draft.startupCommands = [];
 
   const result = validateDraft(draft);
@@ -140,7 +139,6 @@ test("saveDraft blocks renaming when target launcher id already exists", async (
           ...alpha,
           id: " beta ",
         },
-        mainCommandArgsText: "-l",
         error: null,
         validationErrors: {},
       });
@@ -180,7 +178,6 @@ test("saveDraft blocks creating a new launcher when id already exists", async ()
           ...alpha,
           id: " alpha ",
         },
-        mainCommandArgsText: "-l",
         error: null,
         validationErrors: {},
       });
@@ -274,7 +271,10 @@ test("startup command actions support add/update/move/remove", () => {
   resetLaunchersStore();
 
   useLaunchersStore.setState({
-    draft: createValidLauncherDraft(),
+    draft: {
+      ...createValidLauncherDraft(),
+      startupCommands: [],
+    },
   });
 
   const store = useLaunchersStore.getState() as any;

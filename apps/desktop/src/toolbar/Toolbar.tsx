@@ -7,7 +7,6 @@ import { useUiShellStore } from "../stores/uiShellStore";
 import { SettingsModal } from "../components/SettingsModal";
 import { UpdateModal } from "../components/UpdateModal";
 import { useT } from "../i18n/useT";
-import { getWorkspaceBaseName } from "../titleHelper";
 
 const noDrag = { WebkitAppRegion: "no-drag" } as React.CSSProperties;
 const platform = window.ominiterm?.app.platform ?? "darwin";
@@ -21,7 +20,6 @@ const controlGroup =
 
 export function Toolbar({ onShowTutorial }: { onShowTutorial: () => void }) {
   const { theme, toggleTheme } = useThemeStore();
-  const workspacePath = useWorkspaceStore((state) => state.workspacePath);
   const dirty = useWorkspaceStore((state) => state.dirty);
   const rightRailCollapsed = useUiShellStore((state) => state.rightRailCollapsed);
   const setRightRailCollapsed = useUiShellStore(
@@ -34,8 +32,7 @@ export function Toolbar({ onShowTutorial }: { onShowTutorial: () => void }) {
   const [showUpdate, setShowUpdate] = useState(false);
   const t = useT();
 
-  const workspaceName =
-    getWorkspaceBaseName(workspacePath) ?? t.toolbar_untitled_workspace;
+  const workspaceName = t.toolbar_workspace;
 
   return (
     <>

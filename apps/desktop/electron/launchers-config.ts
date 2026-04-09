@@ -11,8 +11,12 @@ const RUN_POLICY_ON_FAILURE = "stop" as const;
 const RUN_POLICY_RUN_ON_NEW_SESSION_ONLY = true as const;
 const MIN_TIMEOUT_MS = 1000;
 const MAX_TIMEOUT_MS = 600000;
+const DEFAULT_STARTUP_TIMEOUT_MS = 120000;
 const ISO_UTC_STRING_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+type StartupHostShell = LauncherConfigItem["hostShell"];
+type ShellFamily = "cmd" | "pwsh" | "posix";
 
 export type { LauncherCommandStep, LauncherConfigItem };
 
@@ -113,21 +117,25 @@ function validateLaunchersConfig(value: unknown): asserts value is LaunchersConf
       throw new Error(`${prefix}.hostShell is invalid`);
     }
 
-    assertObject(launcher.mainCommand, `${prefix}.mainCommand`);
-    const mainCommand = assertString(
-      launcher.mainCommand.command,
-      `${prefix}.mainCommand.command`,
-    );
-    assertStringArray(launcher.mainCommand.args, `${prefix}.mainCommand.args`);
-
     if (!Array.isArray(launcher.startupCommands)) {
       throw new Error(`${prefix}.startupCommands must be an array`);
     }
 
-    if (mainCommand.trim().length === 0 && launcher.startupCommands.length === 0) {
-      throw new Error(
-        `${prefix} requires at least one command in mainCommand or startupCommands`,
+    if (launcher.startupCommands.length === 0) {
+      const legacyCommand = buildLegacyMainCommandLine(
+        launcher.mainCommand,
+        launcher.hostShell as StartupHostShell,
       );
+      if (legacyCommand.length === 0) {
+        throw new Error(
+          `${prefix} requires at least one startup command`,
+        );
+      }
+      launcher.startupCommands.push({
+        label: "Entry",
+        command: legacyCommand,
+        timeoutMs: DEFAULT_STARTUP_TIMEOUT_MS,
+      });
     }
 
     for (let stepIndex = 0; stepIndex < launcher.startupCommands.length; stepIndex += 1) {
@@ -180,22 +188,6 @@ function assertNonEmptyString(value: unknown, fieldName: string): string {
   return value;
 }
 
-function assertString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string") {
-    throw new Error(`${fieldName} must be a string`);
-  }
-  return value;
-}
-
-function assertStringArray(
-  value: unknown,
-  fieldName: string,
-): asserts value is string[] {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    throw new Error(`${fieldName} must be a string array`);
-  }
-}
-
 function assertBoolean(value: unknown, fieldName: string): asserts value is boolean {
   if (typeof value !== "boolean") {
     throw new Error(`${fieldName} must be boolean`);
@@ -211,4 +203,68 @@ function assertIsoDateString(value: unknown, fieldName: string): void {
   if (Number.isNaN(timestamp) || new Date(timestamp).toISOString() !== value) {
     throw new Error(`${fieldName} must be an ISO date string`);
   }
+}
+
+function resolveShellFamily(hostShell: StartupHostShell): ShellFamily {
+  if (hostShell === "cmd") {
+    return "cmd";
+  }
+  if (hostShell === "pwsh") {
+    return "pwsh";
+  }
+  if (hostShell === "bash" || hostShell === "zsh") {
+    return "posix";
+  }
+  return process.platform === "win32" ? "pwsh" : "posix";
+}
+
+function quoteForCmd(value: string): string {
+  if (!/[\s"]/u.test(value)) {
+    return value;
+  }
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function quoteForPowerShell(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function quoteForPosix(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function buildLegacyMainCommandLine(
+  value: unknown,
+  hostShell: StartupHostShell,
+): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "";
+  }
+
+  const mainCommand = value as {
+    command?: unknown;
+    args?: unknown;
+  };
+  if (typeof mainCommand.command !== "string") {
+    return "";
+  }
+
+  const normalizedCommand = mainCommand.command.trim();
+  if (normalizedCommand.length === 0) {
+    return "";
+  }
+
+  const args = Array.isArray(mainCommand.args)
+    ? mainCommand.args.filter((arg): arg is string => typeof arg === "string")
+    : [];
+
+  const parts = [normalizedCommand, ...args];
+  const shellFamily = resolveShellFamily(hostShell);
+  if (shellFamily === "cmd") {
+    return parts.map(quoteForCmd).join(" ");
+  }
+  if (shellFamily === "pwsh") {
+    return `& ${parts.map(quoteForPowerShell).join(" ")}`;
+  }
+  return parts.map(quoteForPosix).join(" ");
 }

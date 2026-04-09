@@ -2,12 +2,9 @@ export type ShortcutCategory = "app" | "context";
 
 export type EditableShortcutId =
   | "addProject"
-  | "openWorkspace"
   | "toggleSidebar"
   | "toggleRightPanel"
   | "newTerminal"
-  | "saveWorkspace"
-  | "saveWorkspaceAs"
   | "renameTerminalTitle"
   | "closeFocused"
   | "toggleStarFocused"
@@ -42,12 +39,9 @@ export type ShortcutBindingsMap = Record<EditableShortcutId, readonly string[]>;
 
 export const LEGACY_DEFAULT_SHORTCUTS: ResolvedShortcutMap = {
   addProject: "mod+o",
-  openWorkspace: "mod+shift+o",
   toggleSidebar: "mod+\\",
   toggleRightPanel: "mod+/",
   newTerminal: "mod+t",
-  saveWorkspace: "mod+s",
-  saveWorkspaceAs: "mod+shift+s",
   renameTerminalTitle: "mod+;",
   closeFocused: "mod+d",
   toggleStarFocused: "mod+f",
@@ -62,15 +56,6 @@ export const APP_SHORTCUT_DEFINITIONS = [
     editable: true,
     category: "app",
     defaultBinding: "mod+o",
-    legacyBindings: [],
-    showInHints: true,
-  },
-  {
-    id: "openWorkspace",
-    labelKey: "shortcut_open_workspace",
-    editable: true,
-    category: "app",
-    defaultBinding: "mod+shift+o",
     legacyBindings: [],
     showInHints: true,
   },
@@ -98,24 +83,6 @@ export const APP_SHORTCUT_DEFINITIONS = [
     editable: true,
     category: "app",
     defaultBinding: "mod+t",
-    legacyBindings: [],
-    showInHints: true,
-  },
-  {
-    id: "saveWorkspace",
-    labelKey: "shortcut_save_workspace",
-    editable: true,
-    category: "app",
-    defaultBinding: "mod+s",
-    legacyBindings: [],
-    showInHints: true,
-  },
-  {
-    id: "saveWorkspaceAs",
-    labelKey: "shortcut_save_workspace_as",
-    editable: true,
-    category: "app",
-    defaultBinding: "mod+shift+s",
     legacyBindings: [],
     showInHints: true,
   },

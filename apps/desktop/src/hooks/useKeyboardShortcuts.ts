@@ -5,17 +5,13 @@ import { registerWindowKeydownListener } from "../shortcuts/listeners";
 import { useNotificationStore } from "../stores/notificationStore";
 import { useComposerStore } from "../stores/composerStore";
 import { usePreferencesStore } from "../stores/preferencesStore";
-import { useWorkspaceStore } from "../stores/workspaceStore";
 import { useUiShellStore } from "../stores/uiShellStore";
 import { shouldIgnoreShortcutTarget } from "./shortcutTarget";
-import { snapshotState } from "../snapshotState";
-import { updateWindowTitle } from "../titleHelper";
 import { useT } from "../i18n/useT";
 import {
   addProjectFromDialog,
   chooseDefaultWorktree,
   createTerminalInWorktree,
-  openWorkspaceFromDialog,
 } from "../projectCommands";
 import { useLaunchersStore } from "../stores/launchersStore";
 import { resolveShortcutLauncherOption } from "./defaultLauncherOption";
@@ -42,12 +38,6 @@ export function useKeyboardShortcuts() {
       if (matchesShortcut(event, shortcuts.addProject)) {
         event.preventDefault();
         void addProjectFromDialog(t);
-        return;
-      }
-
-      if (matchesShortcut(event, shortcuts.openWorkspace)) {
-        event.preventDefault();
-        void openWorkspaceFromDialog(t);
         return;
       }
 
@@ -99,66 +89,6 @@ export function useKeyboardShortcuts() {
           return;
         }
         createTerminalInWorktree(project.id, worktree.id, "shell");
-        return;
-      }
-
-      if (matchesShortcut(event, shortcuts.saveWorkspace)) {
-        event.preventDefault();
-        const snap = snapshotState();
-        const { workspacePath } = useWorkspaceStore.getState();
-        if (workspacePath) {
-          void window.ominiterm.workspace
-            .saveToPath(workspacePath, snap)
-            .then(async () => {
-              await window.ominiterm.state.save(snap);
-              useWorkspaceStore.getState().markClean();
-              updateWindowTitle();
-            })
-            .catch((err) => {
-              useNotificationStore
-                .getState()
-                .notify("error", t.save_error(String(err)));
-            });
-        } else {
-          void window.ominiterm.workspace
-            .save(snap)
-            .then(async (savedPath) => {
-              if (!savedPath) {
-                return;
-              }
-              useWorkspaceStore.getState().setWorkspacePath(savedPath);
-              await window.ominiterm.state.save(snap);
-              useWorkspaceStore.getState().markClean();
-              updateWindowTitle();
-            })
-            .catch((err) => {
-              useNotificationStore
-                .getState()
-                .notify("error", t.save_error(String(err)));
-            });
-        }
-        return;
-      }
-
-      if (matchesShortcut(event, shortcuts.saveWorkspaceAs)) {
-        event.preventDefault();
-        const snap = snapshotState();
-        void window.ominiterm.workspace
-          .save(snap)
-          .then(async (savedPath) => {
-            if (!savedPath) {
-              return;
-            }
-            useWorkspaceStore.getState().setWorkspacePath(savedPath);
-            await window.ominiterm.state.save(snap);
-            useWorkspaceStore.getState().markClean();
-            updateWindowTitle();
-          })
-          .catch((err) => {
-            useNotificationStore
-              .getState()
-              .notify("error", t.save_error(String(err)));
-          });
         return;
       }
 

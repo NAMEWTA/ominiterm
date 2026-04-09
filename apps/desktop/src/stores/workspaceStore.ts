@@ -1,11 +1,9 @@
 import { create } from "zustand";
 
 interface WorkspaceStore {
-  workspacePath: string | null;
   dirty: boolean;
   lastSavedAt: number | null;
   lastDirtyAt: number | null;
-  setWorkspacePath: (path: string | null) => void;
   markDirty: () => void;
   markClean: () => void;
 }
@@ -38,11 +36,9 @@ export function shouldRunAutoSaveBackstop({
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
-  workspacePath: null,
   dirty: false,
   lastSavedAt: null,
   lastDirtyAt: null,
-  setWorkspacePath: (path) => set({ workspacePath: path }),
   markDirty: () =>
     set({
       dirty: true,

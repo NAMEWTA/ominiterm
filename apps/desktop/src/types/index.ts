@@ -80,10 +80,6 @@ export type TerminalOrigin = "user" | "agent";
 
 export interface TerminalLauncherConfigSnapshot {
   hostShell: LauncherConfigItem["hostShell"];
-  mainCommand: {
-    command: string;
-    args: string[];
-  };
   startupCommands: LauncherCommandStep[];
 }
 
@@ -277,10 +273,6 @@ export interface LauncherConfigItem {
   name: string;
   enabled: boolean;
   hostShell: "auto" | "pwsh" | "bash" | "zsh" | "cmd";
-  mainCommand: {
-    command: string;
-    args: string[];
-  };
   startupCommands: LauncherCommandStep[];
   runPolicy: {
     runOnNewSessionOnly: true;
@@ -383,12 +375,6 @@ export interface OminiTermAPI {
     load: () => Promise<unknown | null>;
     save: (state: unknown) => Promise<void>;
   };
-  workspace: {
-    save: (data: string) => Promise<string | null>;
-    open: () => Promise<string | null>;
-    saveToPath: (filePath: string, data: string) => Promise<void>;
-    setTitle: (title: string) => Promise<void>;
-  };
   fs: {
     listDir: (dirPath: string) => Promise<{ name: string; isDirectory: boolean }[]>;
     readFile: (filePath: string) => Promise<
@@ -433,6 +419,7 @@ export interface OminiTermAPI {
   };
   app: {
     platform: "darwin" | "win32" | "linux";
+    setTitle: (title: string) => Promise<void>;
     onBeforeClose: (callback: () => void) => () => void;
     confirmClose: () => void;
   };

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-test("workspace open is exposed via sidebar button and keyboard shortcut", () => {
+test("workspace file open/save entrypoints are removed from sidebar and shortcuts", () => {
   const sidebarSource = readFileSync(
     new URL("../src/components/ProjectSidebar.tsx", import.meta.url),
     "utf8",
@@ -12,8 +12,9 @@ test("workspace open is exposed via sidebar button and keyboard shortcut", () =>
     "utf8",
   );
 
-  assert.match(sidebarSource, /openWorkspaceFromDialog\(t\)/);
-  assert.match(sidebarSource, /\{t\.open_workspace\}/);
-  assert.match(shortcutSource, /matchesShortcut\(event, shortcuts\.openWorkspace\)/);
-  assert.match(shortcutSource, /void openWorkspaceFromDialog\(t\);/);
+  assert.doesNotMatch(sidebarSource, /openWorkspaceFromDialog\(t\)/);
+  assert.doesNotMatch(sidebarSource, /\{t\.open_workspace\}/);
+  assert.doesNotMatch(shortcutSource, /shortcuts\.openWorkspace/);
+  assert.doesNotMatch(shortcutSource, /shortcuts\.saveWorkspace/);
+  assert.doesNotMatch(shortcutSource, /shortcuts\.saveWorkspaceAs/);
 });

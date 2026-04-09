@@ -306,8 +306,13 @@ export class PtyManager {
     this.outputBuffers.delete(id);
 
     try {
-      process.kill(pid, "SIGTERM");
+      instance.kill();
     } catch {
+      // PTY may have already exited; fall through to PID checks where supported.
+    }
+
+    // Keep ConPTY lifecycle cleanup inside node-pty on Windows.
+    if (process.platform === "win32") {
       return;
     }
 

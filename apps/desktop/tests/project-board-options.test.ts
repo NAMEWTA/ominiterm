@@ -13,10 +13,6 @@ function makeLauncher(
     name: overrides.name ?? id,
     enabled: overrides.enabled ?? true,
     hostShell: overrides.hostShell ?? "auto",
-    mainCommand: overrides.mainCommand ?? {
-      command: id,
-      args: [],
-    },
     startupCommands: overrides.startupCommands ?? [],
     runPolicy: overrides.runPolicy ?? {
       runOnNewSessionOnly: true,

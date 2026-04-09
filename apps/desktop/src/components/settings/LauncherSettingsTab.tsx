@@ -19,9 +19,6 @@ export function LauncherSettingsTab() {
   const launchers = useLaunchersStore((state) => state.launchers);
   const selectedLauncherId = useLaunchersStore((state) => state.selectedLauncherId);
   const draft = useLaunchersStore((state) => state.draft);
-  const mainCommandArgsText = useLaunchersStore(
-    (state) => state.mainCommandArgsText,
-  );
   const loading = useLaunchersStore((state) => state.loading);
   const saving = useLaunchersStore((state) => state.saving);
   const error = useLaunchersStore((state) => state.error);
@@ -56,12 +53,6 @@ export function LauncherSettingsTab() {
   );
   const removeDraftStartupCommand = useLaunchersStore(
     (state) => state.removeDraftStartupCommand,
-  );
-  const updateDraftMainCommand = useLaunchersStore(
-    (state) => state.updateDraftMainCommand,
-  );
-  const updateDraftMainCommandArgsText = useLaunchersStore(
-    (state) => state.updateDraftMainCommandArgsText,
   );
   const saveDraft = useLaunchersStore((state) => state.saveDraft);
 
@@ -199,37 +190,6 @@ export function LauncherSettingsTab() {
                 <span>{t.launcher_enabled}</span>
               </label>
             </div>
-
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-[12px] text-[var(--text-secondary)]">
-                {t.launcher_main_command}
-              </span>
-              <input
-                type="text"
-                value={draft.mainCommand.command}
-                onChange={(event) => updateDraftMainCommand(event.target.value)}
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[13px] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-              />
-              <span className="text-[11px] text-[var(--text-muted)]">
-                {t.launcher_main_command_optional_hint}
-              </span>
-            </label>
-
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-[12px] text-[var(--text-secondary)]">
-                {t.launcher_main_args}
-              </span>
-              <textarea
-                rows={4}
-                value={mainCommandArgsText}
-                onChange={(event) =>
-                  updateDraftMainCommandArgsText(event.target.value)
-                }
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[12px] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-                style={{ fontFamily: '"Geist Mono", monospace' }}
-                placeholder={t.launcher_main_args_hint}
-              />
-            </label>
 
             <div className="flex min-w-0 flex-col gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] p-2">
               <div className="flex items-center justify-between">

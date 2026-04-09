@@ -5,10 +5,6 @@ export const zh = {
   dont_save: "不保存",
   collapse: "收起",
 
-  // App – CloseDialog
-  save_workspace_title: "保存工作区？",
-  save_workspace_desc: "将项目、终端和绘图保存到文件，以便稍后恢复。",
-
   // Toolbar / Settings modal
   settings: "设置",
   reset: "重置",
@@ -22,7 +18,6 @@ export const zh = {
   projects: "项目",
   add: "+ 添加",
   open: "打开",
-  open_workspace: "打开工作区",
   no_projects: "暂无项目",
   sidebar_worktrees: "工作树",
   sidebar_terminals: "终端",
@@ -97,11 +92,10 @@ export const zh = {
 
   // Toolbar
   tutorial: "教程",
-  toolbar_untitled_workspace: "未命名工作区",
+  toolbar_workspace: "工作空间",
 
   // ShortcutHints
   shortcut_add_project: "添加项目",
-  shortcut_open_workspace: "打开工作区",
   shortcut_toggle_sidebar: "切换侧栏",
   shortcut_toggle_right_panel: "切换右侧面板",
   shortcut_new_terminal: "新建终端",
@@ -118,11 +112,6 @@ export const zh = {
   shortcut_context_slash_prev: "Slash 菜单上一项",
   shortcut_context_slash_apply: "Slash 菜单确认",
   shortcut_context_slash_close: "Slash 菜单关闭",
-  shortcut_save_workspace: "保存",
-  shortcut_save_workspace_as: "另存为",
-  save_as: "另存为",
-  save_error: (err: string) => `保存失败：${err}`,
-  open_workspace_error: (err: unknown) => `打开工作区失败：${err}`,
 
   // Selection / batch delete
   confirm_delete_projects: (n: number) =>
@@ -193,14 +182,10 @@ export const zh = {
   launcher_id: "ID",
   launcher_enabled: "启用",
   launcher_host_shell: "宿主 Shell",
-  launcher_main_command: "主命令",
-  launcher_main_command_optional_hint:
-    "可选：留空时仅执行命令组（最后一条命令会作为进入命令执行）。",
-  launcher_main_args: "主命令参数",
-  launcher_main_args_hint: "每行一个参数",
   launcher_startup_commands: "启动命令组",
   launcher_add_startup_command: "添加命令",
-  launcher_startup_commands_empty: "还没有启动命令。可在这里添加多个命令，启动终端时会按顺序执行。",
+  launcher_startup_commands_empty:
+    "还没有启动命令。可在这里添加多条命令，启动终端时按顺序执行，最后一条作为进入命令。",
   launcher_startup_step: (index: number) => `步骤 ${index}`,
   launcher_step_label: "标签",
   launcher_step_command: "命令",
@@ -211,7 +196,7 @@ export const zh = {
   launcher_remove: "删除",
   launcher_validation_name_required: "名称不能为空",
   launcher_validation_entry_command_required:
-    "至少需要配置一条命令：主命令或启动命令组中的命令。",
+    "至少需要配置一条启动命令。",
   launcher_saving: "保存中…",
   launcher_error_prefix: (detail: string) => `错误：${detail}`,
 

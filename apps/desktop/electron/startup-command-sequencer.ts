@@ -20,11 +20,6 @@ interface StartupPtyController {
   ) => Promise<PtyStepWaitResult>;
 }
 
-interface LauncherMainCommand {
-  command: string;
-  args: string[];
-}
-
 export interface StartupStepFailure {
   failedStepIndex: number;
   stepLabel: string;
@@ -57,18 +52,7 @@ interface StartupSequenceParams {
   signal?: AbortSignal;
 }
 
-interface RunMainLauncherCommandParams {
-  ptyManager: Pick<StartupPtyController, "write">;
-  ptyId: number;
-  hostShell: StartupHostShell;
-  actualShell?: string;
-  mainCommand: LauncherMainCommand;
-  signal?: AbortSignal;
-}
-
-interface RunLauncherStartupFlowParams extends StartupSequenceParams {
-  mainCommand: LauncherMainCommand;
-}
+type RunLauncherStartupFlowParams = StartupSequenceParams;
 
 function throwIfStartupCancelled(signal?: AbortSignal): void {
   if (signal?.aborted) {
@@ -133,42 +117,6 @@ function resolveShellFamily(
 function normalizeStepLabel(step: LauncherCommandStep, stepIndex: number): string {
   const label = step.label.trim();
   return label.length > 0 ? label : `Step ${stepIndex + 1}`;
-}
-
-function quoteForCmd(value: string): string {
-  if (!/[\s"]/u.test(value)) {
-    return value;
-  }
-  return `"${value.replace(/"/g, '""')}"`;
-}
-
-function quoteForPowerShell(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
-}
-
-function quoteForPosix(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-function buildCommandLine(
-  command: string,
-  args: string[],
-  shellFamily: ShellFamily,
-): string {
-  const parts = [command, ...args];
-  if (parts.length === 0) {
-    return "";
-  }
-
-  if (shellFamily === "cmd") {
-    return parts.map(quoteForCmd).join(" ");
-  }
-
-  if (shellFamily === "pwsh") {
-    return `& ${parts.map(quoteForPowerShell).join(" ")}`;
-  }
-
-  return parts.map(quoteForPosix).join(" ");
 }
 
 function wrapStepCommand(
@@ -296,26 +244,6 @@ export async function runStartupCommandSequence({
   return { ok: true };
 }
 
-export function runMainLauncherCommand({
-  ptyManager,
-  ptyId,
-  hostShell,
-  actualShell,
-  mainCommand,
-  signal,
-}: RunMainLauncherCommandParams): void {
-  throwIfStartupCancelled(signal);
-
-  const command = mainCommand.command.trim();
-  if (command.length === 0) {
-    return;
-  }
-
-  const shellFamily = resolveShellFamily(hostShell, actualShell);
-  const commandLine = buildCommandLine(command, mainCommand.args, shellFamily);
-  ptyManager.write(ptyId, `${commandLine}\r`);
-}
-
 function runRawLauncherCommand(
   ptyManager: Pick<StartupPtyController, "write">,
   ptyId: number,
@@ -337,16 +265,13 @@ export async function runLauncherStartupFlow({
   actualShell,
   startupCommands,
   emit,
-  mainCommand,
   signal,
 }: RunLauncherStartupFlowParams): Promise<StartupSequenceResult> {
-  const normalizedMainCommand = mainCommand.command.trim();
-  const shouldUseCommandGroupOnlyMode =
-    normalizedMainCommand.length === 0 && startupCommands.length > 0;
+  if (startupCommands.length === 0) {
+    return { ok: true };
+  }
 
-  const bootstrapCommands = shouldUseCommandGroupOnlyMode
-    ? startupCommands.slice(0, -1)
-    : startupCommands;
+  const bootstrapCommands = startupCommands.slice(0, -1);
 
   const startupResult = await runStartupCommandSequence({
     ptyManager,
@@ -361,20 +286,9 @@ export async function runLauncherStartupFlow({
   });
 
   if (startupResult.ok) {
-    if (shouldUseCommandGroupOnlyMode) {
-      throwIfStartupCancelled(signal);
-      const finalStep = startupCommands[startupCommands.length - 1];
-      runRawLauncherCommand(ptyManager, ptyId, finalStep.command);
-    } else {
-      runMainLauncherCommand({
-        ptyManager,
-        ptyId,
-        hostShell,
-        actualShell,
-        mainCommand,
-        signal,
-      });
-    }
+    throwIfStartupCancelled(signal);
+    const finalStep = startupCommands[startupCommands.length - 1];
+    runRawLauncherCommand(ptyManager, ptyId, finalStep.command);
   }
 
   return startupResult;

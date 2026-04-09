@@ -23,8 +23,22 @@ export interface LaunchersService {
 
 const DEFAULT_LAUNCHERS_FILE_PATH = path.join(OMINITERM_DIR, "launchers.json");
 
+function cloneLauncher(launcher: LauncherConfigItem): LauncherConfigItem {
+  return {
+    id: launcher.id,
+    name: launcher.name,
+    enabled: launcher.enabled,
+    hostShell: launcher.hostShell,
+    startupCommands: launcher.startupCommands.map((step) => ({ ...step })),
+    runPolicy: {
+      runOnNewSessionOnly: true,
+      onFailure: "stop",
+    },
+  };
+}
+
 function loadLaunchers(filePath: string): LauncherConfigItem[] {
-  return loadLaunchersConfig(filePath).launchers;
+  return loadLaunchersConfig(filePath).launchers.map(cloneLauncher);
 }
 
 function saveLaunchers(

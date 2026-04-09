@@ -21,17 +21,17 @@ test("save writes atomically via tmp+rename", () => {
   fs.rmSync(dir, { recursive: true });
 });
 
-test("save with skipRestore flag", () => {
+test("save persists regular recovery payload", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tc-state-"));
   const file = path.join(dir, "state.json");
 
-  const data = { version: 1, projects: [], skipRestore: true };
+  const data = { version: 2, projects: [{ id: "p1", worktrees: [] }] };
   const tmp = file + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
   fs.renameSync(tmp, file);
 
   const loaded = JSON.parse(fs.readFileSync(file, "utf-8"));
-  assert.equal(loaded.skipRestore, true);
+  assert.deepEqual(loaded, data);
 
   fs.rmSync(dir, { recursive: true });
 });

@@ -198,8 +198,10 @@ test("xterm helper textarea allows non-printable global shortcuts without modifi
   });
 });
 
-test("new default shortcuts prefer the reorganized keymap", () => {
-  assert.equal(DEFAULT_SHORTCUTS.openWorkspace, "mod+shift+o");
+test("new default shortcuts no longer include workspace file operations", () => {
+  assert.equal("openWorkspace" in DEFAULT_SHORTCUTS, false);
+  assert.equal("saveWorkspace" in DEFAULT_SHORTCUTS, false);
+  assert.equal("saveWorkspaceAs" in DEFAULT_SHORTCUTS, false);
   assert.equal(DEFAULT_SHORTCUTS.toggleSidebar, "mod+b");
   assert.equal(DEFAULT_SHORTCUTS.toggleRightPanel, "mod+shift+b");
   assert.equal(DEFAULT_SHORTCUTS.renameTerminalTitle, "f2");

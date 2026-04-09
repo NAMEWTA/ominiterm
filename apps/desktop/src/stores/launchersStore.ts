@@ -20,10 +20,6 @@ const MAX_STARTUP_TIMEOUT_MS = 600000;
 function cloneLauncher(launcher: LauncherConfigItem): LauncherConfigItem {
   return {
     ...launcher,
-    mainCommand: {
-      ...launcher.mainCommand,
-      args: [...launcher.mainCommand.args],
-    },
     startupCommands: launcher.startupCommands.map((step) => ({ ...step })),
     runPolicy: {
       ...launcher.runPolicy,
@@ -44,27 +40,12 @@ function createDefaultLauncherDraft(
     name: `Launcher ${suffix}`,
     enabled: true,
     hostShell: "auto",
-    mainCommand: {
-      command: "",
-      args: [],
-    },
     startupCommands: [],
     runPolicy: {
       runOnNewSessionOnly: true,
       onFailure: "stop",
     },
   };
-}
-
-export function formatArgsForText(args: string[]): string {
-  return args.join("\n");
-}
-
-export function parseArgsFromText(argsText: string): string[] {
-  return argsText
-    .split(/\r?\n/)
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
 }
 
 export function validateDraft(
@@ -78,16 +59,13 @@ export function validateDraft(
     errors.name = "required";
   }
 
-  const hasMainCommand =
-    typeof draft?.mainCommand?.command === "string" &&
-    draft.mainCommand.command.trim().length > 0;
   const hasStartupCommand =
     Array.isArray(draft?.startupCommands) &&
     draft.startupCommands.some(
       (step) =>
         typeof step.command === "string" && step.command.trim().length > 0,
     );
-  if (!hasMainCommand && !hasStartupCommand) {
+  if (!hasStartupCommand) {
     errors.entryCommand = "required";
   }
 
@@ -102,7 +80,6 @@ interface LaunchersStore {
   selectedLauncherId: string | null;
   draft: LauncherConfigItem | null;
   lastStartupEvent: LauncherStartupEvent | null;
-  mainCommandArgsText: string;
   loading: boolean;
   saving: boolean;
   error: string | null;
@@ -121,8 +98,6 @@ interface LaunchersStore {
   updateDraftStartupCommandTimeoutMs: (index: number, timeoutMs: number) => void;
   moveDraftStartupCommand: (index: number, offset: -1 | 1) => void;
   removeDraftStartupCommand: (index: number) => void;
-  updateDraftMainCommand: (command: string) => void;
-  updateDraftMainCommandArgsText: (argsText: string) => void;
   saveDraft: () => Promise<boolean>;
   clearError: () => void;
 }
@@ -132,7 +107,6 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
   selectedLauncherId: null,
   draft: null,
   lastStartupEvent: null,
-  mainCommandArgsText: "",
   loading: false,
   saving: false,
   error: null,
@@ -170,9 +144,6 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
         launchers,
         selectedLauncherId: selected?.id ?? null,
         draft: selected ? cloneLauncher(selected) : null,
-        mainCommandArgsText: selected
-          ? formatArgsForText(selected.mainCommand.args)
-          : "",
         loading: false,
         validationErrors: {},
       });
@@ -189,7 +160,6 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
     set({
       selectedLauncherId: null,
       draft: defaultDraft,
-      mainCommandArgsText: formatArgsForText(defaultDraft.mainCommand.args),
       validationErrors: {},
       error: null,
     });
@@ -204,7 +174,6 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
     set({
       selectedLauncherId: launcher.id,
       draft: cloneLauncher(launcher),
-      mainCommandArgsText: formatArgsForText(launcher.mainCommand.args),
       validationErrors: {},
       error: null,
     });
@@ -413,45 +382,6 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
     });
   },
 
-  updateDraftMainCommand: (command) => {
-    set((state) => {
-      if (!state.draft) {
-        return state;
-      }
-
-      return {
-        draft: {
-          ...state.draft,
-          mainCommand: {
-            ...state.draft.mainCommand,
-            command,
-          },
-        },
-        error: null,
-      };
-    });
-  },
-
-  updateDraftMainCommandArgsText: (argsText) => {
-    set((state) => {
-      if (!state.draft) {
-        return state;
-      }
-
-      return {
-        mainCommandArgsText: argsText,
-        draft: {
-          ...state.draft,
-          mainCommand: {
-            ...state.draft.mainCommand,
-            args: parseArgsFromText(argsText),
-          },
-        },
-        error: null,
-      };
-    });
-  },
-
   saveDraft: async () => {
     const draft = get().draft;
     const validation = validateDraft(draft);
@@ -465,11 +395,11 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
       ...draft,
       id: draft.id.trim(),
       name: draft.name.trim(),
-      mainCommand: {
-        ...draft.mainCommand,
-        command: draft.mainCommand.command.trim(),
-        args: parseArgsFromText(get().mainCommandArgsText),
-      },
+      startupCommands: draft.startupCommands.map((step) => ({
+        ...step,
+        label: step.label.trim(),
+        command: step.command.trim(),
+      })),
     };
 
     const hasIdCollision = get().launchers.some(
@@ -510,9 +440,6 @@ export const useLaunchersStore = create<LaunchersStore>((set, get) => ({
         launchers,
         selectedLauncherId: selected?.id ?? null,
         draft: selected ? cloneLauncher(selected) : null,
-        mainCommandArgsText: selected
-          ? formatArgsForText(selected.mainCommand.args)
-          : "",
         saving: false,
         validationErrors: {},
       });

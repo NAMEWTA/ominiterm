@@ -80,10 +80,6 @@ function makeLauncher(
     name: overrides.name ?? id,
     enabled: overrides.enabled ?? true,
     hostShell: overrides.hostShell ?? "auto",
-    mainCommand: overrides.mainCommand ?? {
-      command: id,
-      args: [],
-    },
     startupCommands: overrides.startupCommands ?? [],
     runPolicy: overrides.runPolicy ?? {
       runOnNewSessionOnly: true,
@@ -140,10 +136,6 @@ test("shortcut default launcher option picks the first enabled launcher", () => 
     makeLauncher("custom-launcher", {
       name: "Custom Launcher",
       hostShell: "pwsh",
-      mainCommand: {
-        command: "custom-cli",
-        args: ["--fast"],
-      },
       startupCommands: [
         {
           label: "Prepare",
@@ -160,14 +152,7 @@ test("shortcut default launcher option picks the first enabled launcher", () => 
   assert.equal(option?.launcherMeta.launcherId, "custom-launcher");
   assert.equal(option?.launcherMeta.launcherName, "Custom Launcher");
   assert.equal(option?.launcherMeta.launcherConfigSnapshot.hostShell, "pwsh");
-  assert.equal(
-    option?.launcherMeta.launcherConfigSnapshot.mainCommand.command,
-    "custom-cli",
-  );
-  assert.deepEqual(
-    option?.launcherMeta.launcherConfigSnapshot.mainCommand.args,
-    ["--fast"],
-  );
+  assert.equal(option?.launcherMeta.launcherConfigSnapshot.startupCommands.length, 1);
 });
 
 test("shortcut default launcher option returns null when no launcher is enabled", () => {

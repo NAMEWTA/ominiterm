@@ -239,10 +239,6 @@ test("syncWorktrees repairs corrupted duplicate worktrees after a bad rescan", (
 test("migrateProjects normalizes a restored git/modules main worktree path", () => {
   const launcherConfigSnapshot = {
     hostShell: "pwsh" as const,
-    mainCommand: {
-      command: "custom-cli",
-      args: ["--resume"],
-    },
     startupCommands: [
       {
         label: "Prepare",
@@ -289,10 +285,6 @@ test("migrateProjects normalizes a restored git/modules main worktree path", () 
   assert.equal(migratedTerminal.launcherName, "Custom Launcher");
   assert.deepEqual(migratedTerminal.launcherConfigSnapshot, launcherConfigSnapshot);
   assert.notEqual(migratedTerminal.launcherConfigSnapshot, launcherConfigSnapshot);
-  assert.notEqual(
-    migratedTerminal.launcherConfigSnapshot?.mainCommand.args,
-    launcherConfigSnapshot.mainCommand.args,
-  );
   assert.notEqual(
     migratedTerminal.launcherConfigSnapshot?.startupCommands,
     launcherConfigSnapshot.startupCommands,

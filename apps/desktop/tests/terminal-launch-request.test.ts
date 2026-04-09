@@ -62,10 +62,6 @@ test("buildTerminalCreateRequest maps launcher host shell for new sessions", () 
     initialPrompt: "ignored prompt",
     launcherConfigSnapshot: {
       hostShell: "bash",
-      mainCommand: {
-        command: "custom-cli",
-        args: ["--fast"],
-      },
       startupCommands: [
         {
           label: "Prepare",
@@ -86,11 +82,7 @@ test("buildTerminalCreateRequest maps launcher host shell for new sessions", () 
   assert.equal(request.launcherId, "custom-launcher");
   assert.equal(request.launcherName, "Custom Launcher");
   assert.equal(request.launcherConfigSnapshot?.hostShell, "bash");
-  assert.equal(
-    request.launcherConfigSnapshot?.mainCommand.command,
-    "custom-cli",
-  );
-  assert.deepEqual(request.launcherConfigSnapshot?.mainCommand.args, ["--fast"]);
+  assert.equal(request.launcherConfigSnapshot?.startupCommands.length, 1);
   assert.equal(request.shell, "bash");
   assert.deepEqual(request.args, []);
 });
@@ -102,10 +94,6 @@ test("buildTerminalCreateRequest keeps launcher auto host shell undefined", () =
     launcherName: "Launcher Auto",
     launcherConfigSnapshot: {
       hostShell: "auto",
-      mainCommand: {
-        command: "custom-cli",
-        args: [],
-      },
       startupCommands: [],
     },
   });
@@ -129,10 +117,6 @@ test("buildTerminalCreateRequest keeps resume launch args when launcher snapshot
     launcherName: "Custom Launcher",
     launcherConfigSnapshot: {
       hostShell: "pwsh",
-      mainCommand: {
-        command: "custom-cli",
-        args: ["--fast"],
-      },
       startupCommands: [
         {
           label: "Prepare",

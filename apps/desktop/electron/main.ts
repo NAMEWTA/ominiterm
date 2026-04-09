@@ -320,7 +320,6 @@ function setupIpc() {
             actualShell: startupShell,
             startupCommands: launcherSnapshot.startupCommands,
             emit: emitStartupEvent,
-            mainCommand: launcherSnapshot.mainCommand,
             signal: createSignal,
           });
 
@@ -547,41 +546,10 @@ function setupIpc() {
     statePersistence.save(state);
   });
 
-  // Workspace file IPC
-  ipcMain.handle("workspace:save", async (_event, data: string) => {
-    const result = await dialog.showSaveDialog(mainWindow!, {
-      title: "Save Workspace",
-      defaultPath: "workspace.ominiterm",
-      filters: [{ name: "OminiTerm Workspace", extensions: ["ominiterm"] }],
-    });
-    if (result.canceled || !result.filePath) return null;
-    fs.writeFileSync(result.filePath, data, "utf-8");
-    return result.filePath;
-  });
-
-  ipcMain.handle(
-    "workspace:save-to-path",
-    (_event, filePath: string, data: string) => {
-      fs.writeFileSync(filePath, data, "utf-8");
-    },
-  );
-
-  ipcMain.handle("workspace:set-title", (_event, title: string) => {
+  ipcMain.handle("app:set-title", (_event, title: string) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setTitle(title);
     }
-  });
-
-  ipcMain.handle("workspace:open", async () => {
-    const result = await dialog.showOpenDialog(mainWindow!, {
-      title: "Open Workspace",
-      filters: [
-        { name: "OminiTerm Workspace", extensions: ["ominiterm", "termcanvas"] },
-      ],
-      properties: ["openFile"],
-    });
-    if (result.canceled || result.filePaths.length === 0) return null;
-    return fs.readFileSync(result.filePaths[0], "utf-8");
   });
 
   // Filesystem IPC

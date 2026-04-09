@@ -5,11 +5,6 @@ export const en = {
   dont_save: "Don't Save",
   collapse: "Collapse",
 
-  // App – CloseDialog
-  save_workspace_title: "Save workspace?",
-  save_workspace_desc:
-    "Save your projects, terminals, and drawings to a file so you can restore them later.",
-
   // Toolbar / Settings modal
   settings: "Settings",
   reset: "Reset",
@@ -23,7 +18,6 @@ export const en = {
   projects: "Projects",
   add: "+ Add",
   open: "Open",
-  open_workspace: "Open WS",
   no_projects: "No projects",
   sidebar_worktrees: "worktrees",
   sidebar_terminals: "terminals",
@@ -99,11 +93,10 @@ export const en = {
 
   // Toolbar
   tutorial: "Tutorial",
-  toolbar_untitled_workspace: "Untitled Workspace",
+  toolbar_workspace: "Workspace",
 
   // ShortcutHints
   shortcut_add_project: "Add project",
-  shortcut_open_workspace: "Open workspace",
   shortcut_toggle_sidebar: "Toggle sidebar",
   shortcut_toggle_right_panel: "Toggle right panel",
   shortcut_new_terminal: "New terminal",
@@ -120,11 +113,6 @@ export const en = {
   shortcut_context_slash_prev: "Slash menu previous",
   shortcut_context_slash_apply: "Slash menu apply",
   shortcut_context_slash_close: "Slash menu close",
-  shortcut_save_workspace: "Save",
-  shortcut_save_workspace_as: "Save As",
-  save_as: "Save As",
-  save_error: (err: string) => `Save failed: ${err}`,
-  open_workspace_error: (err: unknown) => `Open workspace failed: ${err}`,
 
   // Selection / batch delete
   confirm_delete_projects: (n: number) =>
@@ -195,14 +183,10 @@ export const en = {
   launcher_id: "ID",
   launcher_enabled: "Enabled",
   launcher_host_shell: "Host shell",
-  launcher_main_command: "Main command",
-  launcher_main_command_optional_hint:
-    "Optional: leave empty to run only the command sequence (the last command becomes the entry command).",
-  launcher_main_args: "Main command args",
-  launcher_main_args_hint: "One argument per line",
   launcher_startup_commands: "Startup command sequence",
   launcher_add_startup_command: "Add command",
-  launcher_startup_commands_empty: "No startup commands yet. Add commands to run before the main command.",
+  launcher_startup_commands_empty:
+    "No startup commands yet. Add commands to run in order; the final command becomes the entry command.",
   launcher_startup_step: (index: number) => `Step ${index}`,
   launcher_step_label: "Label",
   launcher_step_command: "Command",
@@ -213,7 +197,7 @@ export const en = {
   launcher_remove: "Remove",
   launcher_validation_name_required: "Name is required",
   launcher_validation_entry_command_required:
-    "Configure at least one command: either a main command or a startup command.",
+    "Configure at least one startup command.",
   launcher_saving: "Saving\u2026",
   launcher_error_prefix: (detail: string) => `Error: ${detail}`,
 

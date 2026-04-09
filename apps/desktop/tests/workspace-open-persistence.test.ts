@@ -2,16 +2,18 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-test("useWorkspaceOpen persists selected workspace payload immediately", () => {
+test("startup restore uses global persisted state without workspace file event flow", () => {
   const source = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
 
-  assert.match(source, /await window\.ominiterm\?\.state\.save\(raw\);/);
-  assert.match(source, /window\.addEventListener\("ominiterm:open-workspace", handler\)/);
+  assert.match(source, /window\.ominiterm\.state\s*\.load\(\)/);
+  assert.doesNotMatch(source, /ominiterm:open-workspace/);
+  assert.doesNotMatch(source, /open_workspace_error/);
 });
 
-test("useWorkspaceOpen reports parse failures via notifications", () => {
+test("close flow no longer writes skipRestore or workspace files", () => {
   const source = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
 
-  assert.match(source, /\[useWorkspaceOpen\] failed to parse workspace file:/);
-  assert.match(source, /notify\("error", t\.open_workspace_error\(err\)\)/);
+  assert.match(source, /await window\.ominiterm\.state\.save\(snapshotState\(\)\);/);
+  assert.doesNotMatch(source, /skipRestore/);
+  assert.doesNotMatch(source, /window\.ominiterm\.workspace\./);
 });

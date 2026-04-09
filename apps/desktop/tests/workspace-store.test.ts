@@ -9,7 +9,6 @@ import {
 
 test("markDirty updates lastDirtyAt even when workspace is already dirty", () => {
   useWorkspaceStore.setState({
-    workspacePath: null,
     dirty: false,
     lastSavedAt: null,
     lastDirtyAt: null,

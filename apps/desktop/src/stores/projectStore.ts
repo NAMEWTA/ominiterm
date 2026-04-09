@@ -116,10 +116,6 @@ function cloneLauncherConfigSnapshot(
 ): TerminalLauncherMeta["launcherConfigSnapshot"] {
   return {
     hostShell: meta.launcherConfigSnapshot.hostShell,
-    mainCommand: {
-      command: meta.launcherConfigSnapshot.mainCommand.command,
-      args: [...meta.launcherConfigSnapshot.mainCommand.args],
-    },
     startupCommands: meta.launcherConfigSnapshot.startupCommands.map((step) => ({
       ...step,
     })),

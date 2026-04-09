@@ -34,10 +34,6 @@ function cloneLauncherConfigSnapshot(
 ): TerminalLauncherConfigSnapshot {
   return {
     hostShell: snapshot.hostShell,
-    mainCommand: {
-      command: snapshot.mainCommand.command,
-      args: [...snapshot.mainCommand.args],
-    },
     startupCommands: snapshot.startupCommands.map((step) => ({ ...step })),
   };
 }

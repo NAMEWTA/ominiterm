@@ -10,7 +10,6 @@ import { WelcomePopup } from "./components/WelcomePopup";
 import { useProjectStore } from "./stores/projectStore";
 import { useSplitLayoutStore } from "./stores/splitLayoutStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { useT } from "./i18n/useT";
 import { loadAllDownloadedFonts } from "./terminal/fontLoader";
 import { normalizeProjectsFocus } from "./stores/projectFocus";
 import {
@@ -20,7 +19,6 @@ import {
 import { shouldRunAutoSaveBackstop, useWorkspaceStore } from "./stores/workspaceStore";
 import { snapshotState } from "./snapshotState";
 import { updateWindowTitle } from "./titleHelper";
-import { useNotificationStore } from "./stores/notificationStore";
 import { logSlowRendererPath } from "./utils/devPerf";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { ProjectBoard } from "./components/ProjectBoard";
@@ -155,13 +153,7 @@ function useStatePersistence() {
         if (!saved) {
           return;
         }
-        const data = saved as Record<string, unknown>;
-        if (data.skipRestore) {
-          window.ominiterm.state.save({ skipRestore: false });
-          return;
-        }
-        restoreFromData(data);
-        useWorkspaceStore.getState().setWorkspacePath(null);
+        restoreFromData(saved as Record<string, unknown>);
         useWorkspaceStore.getState().markClean();
       })
       .catch((err) => {
@@ -227,161 +219,37 @@ function useAutoSave() {
   }, []);
 }
 
-function useWorkspaceOpen() {
-  const t = useT();
-
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const { dirty } = useWorkspaceStore.getState();
-      if (
-        dirty &&
-        !window.confirm("Unsaved changes will be lost. Continue?")
-      ) {
-        return;
-      }
-
-      const raw = (event as CustomEvent<string>).detail;
-      void (async () => {
-        try {
-          restoreFromData(JSON.parse(raw));
-          await window.ominiterm?.state.save(raw);
-          useWorkspaceStore.getState().setWorkspacePath(null);
-          useWorkspaceStore.getState().markClean();
-        } catch (err) {
-          console.error("[useWorkspaceOpen] failed to parse workspace file:", err);
-          useNotificationStore
-            .getState()
-            .notify("error", t.open_workspace_error(err));
-        }
-      })();
-    };
-    window.addEventListener("ominiterm:open-workspace", handler);
-    return () =>
-      window.removeEventListener("ominiterm:open-workspace", handler);
-  }, [t]);
-}
-
-function useCloseHandler() {
-  const [showCloseDialog, setShowCloseDialog] = useState(false);
-  const t = useT();
-
+function useClosePersistence() {
   useEffect(() => {
     if (!window.ominiterm) {
       return;
     }
 
     const unsubscribe = window.ominiterm.app.onBeforeClose(() => {
-      const { dirty } = useWorkspaceStore.getState();
-      if (!dirty) {
-        void (async () => {
-          const startedAt = performance.now();
-          try {
-            await window.ominiterm.state.save(snapshotState());
-          } catch (err) {
-            console.error("[CloseHandler] failed to save recovery snapshot:", err);
-          } finally {
-            logSlowRendererPath("App.closeRecoverySnapshot", startedAt, {
-              thresholdMs: 20,
-            });
-            window.ominiterm.app.confirmClose();
-          }
-        })();
-        return;
-      }
-
-      setShowCloseDialog(true);
+      void (async () => {
+        const startedAt = performance.now();
+        try {
+          await window.ominiterm.state.save(snapshotState());
+        } catch (err) {
+          console.error("[CloseHandler] failed to save recovery snapshot:", err);
+        } finally {
+          logSlowRendererPath("App.closeRecoverySnapshot", startedAt, {
+            thresholdMs: 20,
+          });
+          window.ominiterm.app.confirmClose();
+        }
+      })();
     });
 
     return unsubscribe;
   }, []);
-
-  const handleSave = async () => {
-    try {
-      const snap = snapshotState();
-      const { workspacePath } = useWorkspaceStore.getState();
-
-      if (workspacePath) {
-        await window.ominiterm.workspace.saveToPath(workspacePath, snap);
-      } else {
-        const savedPath = await window.ominiterm.workspace.save(snap);
-        if (!savedPath) {
-          return;
-        }
-        useWorkspaceStore.getState().setWorkspacePath(savedPath);
-      }
-      await window.ominiterm.state.save(snap);
-      useWorkspaceStore.getState().markClean();
-      window.ominiterm.app.confirmClose();
-    } catch (err) {
-      console.error("[CloseHandler] save failed:", err);
-      useNotificationStore
-        .getState()
-        .notify("error", t.save_error(String(err)));
-    }
-  };
-
-  const handleDiscard = async () => {
-    await window.ominiterm.state.save({ skipRestore: true });
-    window.ominiterm.app.confirmClose();
-  };
-
-  return {
-    showCloseDialog,
-    handleSave,
-    handleDiscard,
-    handleCancel: () => setShowCloseDialog(false),
-  };
-}
-
-function CloseDialog({
-  onSave,
-  onDiscard,
-  onCancel,
-}: {
-  onSave: () => void;
-  onDiscard: () => void;
-  onCancel: () => void;
-}) {
-  const t = useT();
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
-      <div className="mx-4 w-full max-w-sm rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
-        <h2 className="mb-2 text-[15px] font-medium text-[var(--text-primary)]">
-          {t.save_workspace_title}
-        </h2>
-        <p className="mb-6 text-[13px] text-[var(--text-secondary)]">
-          {t.save_workspace_desc}
-        </p>
-        <div className="flex justify-end gap-2">
-          <button
-            className="rounded-md px-3 py-1.5 text-[13px] text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--border)] hover:text-[var(--text-primary)]"
-            onClick={onCancel}
-          >
-            {t.cancel}
-          </button>
-          <button
-            className="rounded-md px-3 py-1.5 text-[13px] text-[var(--red)] transition-colors duration-150 hover:bg-[var(--surface-hover)]"
-            onClick={onDiscard}
-          >
-            {t.dont_save}
-          </button>
-          <button
-            className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[13px] text-white transition-all duration-150 hover:brightness-110"
-            onClick={onSave}
-          >
-            {t.save}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function App() {
   useWorktreeWatcher();
   useStatePersistence();
   useAutoSave();
-  useWorkspaceOpen();
+  useClosePersistence();
   useLaunchersBootstrap();
   useLaunchersStartupEvents();
   useKeyboardShortcuts();
@@ -408,8 +276,6 @@ export function App() {
   const closeTerminalDetail = useUiShellStore((state) => state.closeTerminalDetail);
   const syncSelection = useUiShellStore((state) => state.syncSelection);
   const setFocusedTerminal = useProjectStore((state) => state.setFocusedTerminal);
-  const { showCloseDialog, handleSave, handleDiscard, handleCancel } =
-    useCloseHandler();
 
   const [showWelcome, setShowWelcome] = useState(() => {
     return !(
@@ -522,13 +388,6 @@ export function App() {
       {composerEnabled && <ComposerBar />}
       <ShortcutHints />
       <NotificationToast />
-      {showCloseDialog && (
-        <CloseDialog
-          onSave={handleSave}
-          onDiscard={handleDiscard}
-          onCancel={handleCancel}
-        />
-      )}
       {showWelcome && (
         <WelcomePopup
           onClose={() => {

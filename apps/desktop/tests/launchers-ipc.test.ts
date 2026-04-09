@@ -10,11 +10,13 @@ function createLauncher(id: string): LauncherConfigItem {
     name: `Launcher ${id}`,
     enabled: true,
     hostShell: "pwsh",
-    mainCommand: {
-      command: "echo",
-      args: [id],
-    },
-    startupCommands: [],
+    startupCommands: [
+      {
+        label: "Entry",
+        command: `echo ${id}`,
+        timeoutMs: 120000,
+      },
+    ],
     runPolicy: {
       runOnNewSessionOnly: true,
       onFailure: "stop",
